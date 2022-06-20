@@ -1,5 +1,12 @@
 [![DOI](https://zenodo.org/badge/472725375.svg)](https://zenodo.org/badge/latestdoi/472725375)
 
+# rohr-tng-rps
+This repository contains all the relevant python scripts related to Rohr et al. in prep. analyzing the cold gas loss and ram pressure stripping in TNG50 and TNG100 jellyfish galaxies. This includes utility functions, particle data analysis, catalog creation, and plot making. For the particle data analysis, please only run the scripts on VERA or another MPCDF cluseter with direct access to the TNG data. 
+
+Please note that this repository is based on the [mpia-python-template](https://github.com/mpi-astronomy/mpia-python-template), also included below.
+
+
+[![DOI](https://zenodo.org/badge/472725375.svg)](https://zenodo.org/badge/latestdoi/472725375)
 # mpia-python-template
 
 This repository contains a Python template suitable for starting new projects. This template has three main goals:
