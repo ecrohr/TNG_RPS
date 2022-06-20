@@ -1,16 +1,16 @@
 cff-version: 1.2.0
-title: my_package
+title: tng_rps
 message: If you use this software, please cite as below.
-date-released: 2022-03-29
-url: 'https://github.com/mpi-astronomy/mpia-python-template'
+date-released: 2022-06-20
+url: 'https://https://github.com/ecrohr/TNG_RPS'
 version: 0.0.1
 type: software
 authors:
-  - family-names: Name
-    given-names: Author
-    email: author.name@email.com
+  - family-names: Rohr
+    given-names: Eric
+    email: rohr@mpia.de
     affiliation: MPIA
-    orcid: 'https://orcid.org/0000-0003-1665-2073'
+    orcid: 'https://orcid.org/0000-0002-9183-5593'
 
 # For citing software, see:
 

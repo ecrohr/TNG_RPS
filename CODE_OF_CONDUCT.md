@@ -3,13 +3,8 @@ enforced code of conduct and expect everyone in our community to follow these
 guidelines when interacting with others in all forums. Our goal is to keep ours
 a positive, inclusive, successful, and growing community. 
 
-[ All Max Planck Institute for Astronomy (MPIA) researchers are bound to adhere to the 
-[Max Plack Society Code of Conduct](https://www.mpg.de/14172230/code-of-conduct.pdf) and the [MPIA Work Agreement](https://intranet.mpia.de/4404342/03-Works-agreement-code-of-conduct.pdf) (intranet link). All MPIA employees should attach importance to creating a respectful and healthy atmosphere 
-and a level playing field for research and work. Their goal is to ensure good working conditions 
-for everyone and to provide the basis for individual job satisfaction, personal development, 
-motivation, collegiality and positive interpersonal relations. ]
-
-[ Interactions on GitHub are not limited to those between MPIA employees.] The community of
+Any violations of the Code of Conduct should be reported to the owners of this repository.
+The community of
 participants in open source astronomy projects is made up of members from
 around the globe with a diverse set of skills, personalities, and experiences.
 It is through these differences that our community experiences success and
