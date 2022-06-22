@@ -7,134 +7,138 @@ import rohr_utils as ru
 from importlib import reload
 import glob
 
-
 global sim, basePath, snapNum, tcoldgas
 global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
 global part_fields
+global big_array_length
 
-# set up some global variables
-sim        = 'TNG50-4'
-basePath   = ru.ret_basePath(sim)
-snapNum    = 50
-tcoldgas   = 10.**(4.5) # [K]
 
-tracer_ptn = il.util.partTypeNum('tracer')
-star_ptn   = il.util.partTypeNum('star')
-gas_ptn    = il.util.partTypeNum('gas')
-bh_ptn     = il.util.partTypeNum('bh')
-
-bary_pts   = [gas_ptn,
-              star_ptn,
-              bh_ptn]
-
-gas_fields  = ['InternalEnergy', 'ElectronAbundance', 'StarFormationRate', 'ParticleIDs']
-
-part_fields = ['ParticleIDs']
-
-# begin main function
-
-# define the subhalos we care about 
-subfindIDs = [1]
-
-# initialize the outputs and start with the first snapshot snapNum
-
-# initialize the offset dictionary
-offsets_subhalo = {}
-offsets_subhalo['SubfindID']     = np.zeros(len(subfindIDs), int)
-offsets_subhalo['SubhaloOffset'] = np.zeros(len(subfindIDs), int)
-offsets_subhalo['SubhaloLength'] = np.zeros(len(subfindIDs), int)
-
-particles = {}
-big_array_length = int(1e8)
-# rewrite into a 4xbig_array_length array rather than a dictionary
-# for a speed increase
-particles['TracerIDs']      = np.empty(big_array_length, dtype=int)
-particles['TracerIndices']  = np.empty(big_array_length, dtype=int)
-particles['ParentIndices']  = np.empty(big_array_length, dtype=int)
-particles['ParentPartType'] = np.empty(big_array_length, dtype=int)
-
-# load every tracer particle in the simulation at this snapshot
-tracers = il.snapshot.loadSubset(basePath, snapNum, tracer_ptn)
-
-# begin loop over the subhalos at snapshot snapNum
-subfind_i = 0
-subfindID = subfindIDs[subfind_i]
-
-gas_cells    = il.snapshot.loadSubhalo(basePath, snapNum, subfindID, gas_ptn, fields=gas_fields)
-gas_cells    = ru.calc_temp_dict(gas_cells)
-
-# find the local indices and load the global offset for these gas cells
-cgas_indices = np.where(gas_cells['Temperature'] <= tcoldgas)[0]
-ParticleIDs  = gas_cells['ParticleIDs'][cgas_indices]
-
-# match the tracer ParentID with the cold gas cells ParticleIDs
-isin_tracer = np.isin(tracers['ParentID'], ParticleIDs)
-
-# save the tracerIDs and tracer indices at snapshot snapNum
-tracer_IDs = tracers['TracerID'][isin_tracer]
-tracer_indices = np.where(isin_tracer)[0]
-
-# fill in the offsets dictionary for this subhalo
-offsets_subhalo['SubfindID'][subfind_i]     = subfindID
-offsets_subhalo['SubhaloLength'][subfind_i] = len(tracer_indices)
-
-if subfind_i == 0:
-    offsets_subhalo['SubhaloOffset'][subfind_i] = 0
-else:
-    offsets_subhalo['SubhaloOffset'][subfind_i] = (offsets_subhalo['SubhaloOffset'][subfind_i-1]
-                                                   + offsets_subhalo['SubhaloLength'][subfind_i-1])
-
-# save the corresponding gas cell indices
-# get the local cold gas indices with matched tracer particles and include the global offset 
-isin_gas = np.isin(ParticleIDs, tracers['ParentID'][isin_tracer])
-
-r           = il.snapshot.getSnapOffsets(basePath, snapNum, subfindID, "Subhalo")
-offset      = r['offsetType'][gas_ptn]
-gas_indices = offset + cgas_indices[isin_gas]
-
-# note that some of these indices need to be repeated due to having multiple tracers with the same parent
-gas_IDs        = ParticleIDs[isin_gas]
-parent_IDs     = tracers['ParentID'][isin_tracer]
-# find a way to optimize the following line... 
-repeat_indices = np.where([parent_ID == gas_IDs for parent_ID in parent_IDs])[1]
-gas_indices    = gas_indices[repeat_indices]
-
-# note that the parent type is always gas
-parent_ptn = np.ones(len(gas_indices), dtype=int) * gas_ptn
-
-# fill in the particle dictionary for this subhalo
-start = offsets_subhalo['SubhaloOffset'][subfind_i]
-end   = start + offsets_subhalo['SubhaloLength'][subfind_i]
-
-particles['TracerIDs'][start:end]      = tracer_IDs
-particles['TracerIndices'][start:end]  = tracer_indices 
-particles['ParentIndices'][start:end]  = gas_indices
-particles['ParentPartType'][start:end] = parent_ptn
-
-# finish loop over the subhalos at snapshot snapNum
-# reshape the arrays
-end_length = offsets_subhalo['SubhaloLength'][-1]
-for key in particles.keys():
-    particles[key] = particles[key][:end_length]
-
-# save the offsets and particles dictionaries
-dicts  = [offsets_subhalo, particles]
-fnames = ['offsets', 'tracers']
-for d_i, d in enumerate(dicts):
-    fname    = fnames[d_i]
-    outfname = '%s_%03d.hdf5'%(fname, snapNum)
-    outdirec = '../Output/%s_tracers/'%(sim)
+def create_tracertracks():
     
-    with h5py.File(outdirec + outfname, 'a') as outf:
-        group = outf.require_group('group')
-        for dset_key in d.keys():
-            dset = d[dset_key]
-            dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
-            dataset[:] = dset
-            
-        outf.close()
-        
-# finish the first snapshot. move to the next. 
+    # define the global variables
+    sim        = 'TNG50-4'
+    basePath   = ru.ret_basePath(sim)
+    snapNum    = 50
+    tcoldgas   = 10.**(4.5) # [K]
+
+    tracer_ptn = il.util.partTypeNum('tracer')
+    star_ptn   = il.util.partTypeNum('star')
+    gas_ptn    = il.util.partTypeNum('gas')
+    bh_ptn     = il.util.partTypeNum('bh')
+
+    bary_pts   = [gas_ptn,
+                  star_ptn,
+                  bh_ptn]
+
+    gas_fields  = ['InternalEnergy', 'ElectronAbundance', 'StarFormationRate', 'ParticleIDs']
+
+    part_fields = ['ParticleIDs']
+
+    big_array_length = int(1e8)
+
+    # define the subhalos we care about 
+    subfindIDs = [1]
+
+    # initialize the outputs and start with the first snapshot snapNum
+
+    # initialize the offset dictionary
+    offsets_subhalo = {}
+    offsets_subhalo['SubfindID']     = np.zeros(len(subfindIDs), int)
+    offsets_subhalo['SubhaloOffset'] = np.zeros(len(subfindIDs), int)
+    offsets_subhalo['SubhaloLength'] = np.zeros(len(subfindIDs), int)
+
+    particles = {}
+    # rewrite into a 4xbig_array_length array rather than a dictionary
+    # for a speed increase
+    particles['TracerIDs']      = np.empty(big_array_length, dtype=int)
+    particles['TracerIndices']  = np.empty(big_array_length, dtype=int)
+    particles['ParentIndices']  = np.empty(big_array_length, dtype=int)
+    particles['ParentPartType'] = np.empty(big_array_length, dtype=int)
+
+    # load every tracer particle in the simulation at this snapshot
+    tracers = il.snapshot.loadSubset(basePath, snapNum, tracer_ptn)
+
+    # begin loop over the subhalos at snapshot snapNum
+    for subfind_i, subfindID in enumerate(subfindIDs):
+        subfindID = subfindIDs[subfind_i]
+
+        gas_cells    = il.snapshot.loadSubhalo(basePath, snapNum, subfindID, gas_ptn, fields=gas_fields)
+        gas_cells    = ru.calc_temp_dict(gas_cells)
+
+        # find the local indices and load the global offset for these gas cells
+        cgas_indices = np.where(gas_cells['Temperature'] <= tcoldgas)[0]
+        ParticleIDs  = gas_cells['ParticleIDs'][cgas_indices]
+
+        # match the tracer ParentID with the cold gas cells ParticleIDs
+        isin_tracer = np.isin(tracers['ParentID'], ParticleIDs)
+
+        # save the tracerIDs and tracer indices at snapshot snapNum
+        tracer_IDs = tracers['TracerID'][isin_tracer]
+        tracer_indices = np.where(isin_tracer)[0]
+
+        # fill in the offsets dictionary for this subhalo
+        offsets_subhalo['SubfindID'][subfind_i]     = subfindID
+        offsets_subhalo['SubhaloLength'][subfind_i] = len(tracer_indices)
+
+        if subfind_i == 0:
+            offsets_subhalo['SubhaloOffset'][subfind_i] = 0
+        else:
+            offsets_subhalo['SubhaloOffset'][subfind_i] = (offsets_subhalo['SubhaloOffset'][subfind_i-1]
+                                                           + offsets_subhalo['SubhaloLength'][subfind_i-1])
+
+        # save the corresponding gas cell indices
+        # get the local cold gas indices with matched tracer particles and include the global offset 
+        isin_gas = np.isin(ParticleIDs, tracers['ParentID'][isin_tracer])
+
+        r           = il.snapshot.getSnapOffsets(basePath, snapNum, subfindID, "Subhalo")
+        offset      = r['offsetType'][gas_ptn]
+        gas_indices = offset + cgas_indices[isin_gas]
+
+        # note that some of these indices need to be repeated due to having multiple tracers with the same parent
+        gas_IDs        = ParticleIDs[isin_gas]
+        parent_IDs     = tracers['ParentID'][isin_tracer]
+        # find a way to optimize the following line... 
+        repeat_indices = np.where([parent_ID == gas_IDs for parent_ID in parent_IDs])[1]
+        gas_indices    = gas_indices[repeat_indices]
+
+        # note that the parent type is always gas
+        parent_ptn = np.ones(len(gas_indices), dtype=int) * gas_ptn
+
+        # fill in the particle dictionary for this subhalo
+        start = offsets_subhalo['SubhaloOffset'][subfind_i]
+        end   = start + offsets_subhalo['SubhaloLength'][subfind_i]
+
+        particles['TracerIDs'][start:end]      = tracer_IDs
+        particles['TracerIndices'][start:end]  = tracer_indices 
+        particles['ParentIndices'][start:end]  = gas_indices
+        particles['ParentPartType'][start:end] = parent_ptn
+
+    # finish loop over the subhalos at snapshot snapNum
+    # reshape the arrays
+    end_length = offsets_subhalo['SubhaloLength'][-1]
+    for key in particles.keys():
+        particles[key] = particles[key][:end_length]
+
+    # save the offsets and particles dictionaries
+    dicts  = [offsets_subhalo, particles]
+    fnames = ['offsets', 'tracers']
+    for d_i, d in enumerate(dicts):
+        fname    = fnames[d_i]
+        outfname = '%s_%03d.hdf5'%(fname, snapNum)
+        outdirec = '../Output/%s_tracers/'%(sim)
+
+        with h5py.File(outdirec + outfname, 'a') as outf:
+            group = outf.require_group('group')
+            for dset_key in d.keys():
+                dset = d[dset_key]
+                dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+                dataset[:] = dset
+
+            outf.close()
+
+    # finish the first snapshot. move to the next.
+
+    return 
 
 
 
