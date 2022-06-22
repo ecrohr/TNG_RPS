@@ -177,6 +177,8 @@ def track_subfindIDs(subfindIDs):
     # begin loop over subfindIDs
     for i, subfindID in enumerate(subfindIDs):
 
+        print(subfindID)
+
         
         # load MDB
         MDB = il.sublink.loadTree(basePath, snapNum, subfindID, treeName=treeName,
@@ -194,8 +196,8 @@ def track_subfindIDs(subfindIDs):
             stop             = -(max_snap - snapNum + 1)
             MDB['SnapNum']   = MDB['SnapNum'][stop:]
             MDB['SubfindID'] = MDB['SubfindID'][stop:]
-
-            start            = np.argmax(MDB['SnapNum'])
+            
+            start            = np.max(np.where((MDB['SnapNum'][1:] - MDB['SnapNum'][:-1]) >= 0))
             MDB['SnapNum']   = MDB['SnapNum'][start:]
             MDB['SubfindID'] = MDB['SubfindID'][start:]
 
