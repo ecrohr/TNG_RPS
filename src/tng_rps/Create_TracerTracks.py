@@ -14,6 +14,14 @@ global big_array_length
 
 
 def create_tracertracks():
+
+    """
+    Run the Create_TracerTracks.py file. 
+    Starts at snapNum with a list of subhalo subfindIDs,
+    find the descendants, and loops over the snapshots
+    matching the tracers from bound cold gas cells.
+    Saves the output.
+    """
     
     # define the global variables
     sim        = 'TNG50-4'
@@ -37,13 +45,15 @@ def create_tracertracks():
     big_array_length = int(1e8)
 
     # define the subhalos we care about 
-    subfindIDs = [1]
+    subfindIDs = np.arange(100)
+
+    # find the corresponding subfindIDs at the next snapshots
+    track_subfindIDs(subfindIDs)
 
     # initialize the outputs and start with the first snapshot snapNum
 
     # initialize the offset dictionary
     offsets_subhalo = {}
-    offsets_subhalo['SubfindID']     = np.zeros(len(subfindIDs), int)
     offsets_subhalo['SubhaloOffset'] = np.zeros(len(subfindIDs), int)
     offsets_subhalo['SubhaloLength'] = np.zeros(len(subfindIDs), int)
 
@@ -142,9 +152,77 @@ def create_tracertracks():
 
 
 
+def track_subfindIDs(subfindIDs):
+    """
+    Given the list of subhalo subfindIDs at snapNum, use the MDB
+    to find the corresponding subfindIDs at the following snapshots.
+    Be careful at subhalos that don't exist in the trees or skip snaps.
+    """
+
+    # initialize result 
+    max_snap = 99
+    snaps    = np.arange(max_snap, snapNum-1, -1)
+    n_snaps  = len(snaps)
+    result   = np.ones((len(subfindIDs), n_snaps), dtype=int) * -1
+
+    fields   = ['SubfindID', 'SnapNum']
+    treeName = 'SubLink_gal'
+    
+    # begin loop over subfindIDs
+    for i, subfindID in enumerate(subfindIDs):
+
+        
+        # load MDB
+        MDB = il.sublink.loadTree(basePath, snapNum, subfindID, treeName=treeName,
+                                  onlyMDB=True, fields=fields)
+        
+        # is subhalo in the tree?
+        if not MDB:
+            result[i,-1] = subfindID
+            continue
+
+        # does MDB have a bad count? (i.e., not reach z=0?)
+        if (MDB['count'] + snapNum) > 100:
+
+            # find where the MDB stops
+            stop             = -(max_snap - snapNum + 1)
+            MDB['SnapNum']   = MDB['SnapNum'][stop:]
+            MDB['SubfindID'] = MDB['SubfindID'][stop:]
+
+            start            = np.argmax(MDB['SnapNum'])
+            MDB['SnapNum']   = MDB['SnapNum'][start:]
+            MDB['SubfindID'] = MDB['SubfindID'][start:]
+
+        # find which snaps the subhalo was identified
+        isin = np.isin(snaps, MDB['SnapNum'])
+
+        # and record the result
+        result[i,isin] = MDB['SubfindID']
+
+    # finish loop over subfindIDs
+    # save by looping over the snapshots
+    outdirec = '../Output/%s_tracers/'%(sim)
+    
+    for i, snap in enumerate(snaps):
+
+        outfname = 'offsets_%03d.hdf5'%(snap)
+
+        dset = result[:,i]
+        
+        with h5py.File(outdirec + outfname, 'a') as outf:
+            group = outf.require_group('group')
+
+            dataset = group.require_dataset('SubfindID', shape=dset.shape, dtype=dset.dtype)
+            dataset[:] = dset
+
+            outf.close()
+        
+    # finish loop over snaps. return to main function
+            
+    return
 
 
-
+create_tracertracks()
 
 
 """
