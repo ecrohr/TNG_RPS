@@ -22,6 +22,12 @@ def create_tracertracks():
     matching the tracers from bound cold gas cells.
     Saves the output.
     """
+
+    global sim, basePath, snapNum, tcoldgas
+    global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
+    global part_fields
+    global big_array_length
+
     
     # define the global variables
     sim        = 'TNG50-4'
