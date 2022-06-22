@@ -197,7 +197,7 @@ def track_subfindIDs(subfindIDs):
             MDB['SnapNum']   = MDB['SnapNum'][stop:]
             MDB['SubfindID'] = MDB['SubfindID'][stop:]
             
-            start            = np.max(np.where((MDB['SnapNum'][1:] - MDB['SnapNum'][:-1]) >= 0))
+            start            = np.max(np.where((MDB['SnapNum'][1:] - MDB['SnapNum'][:-1]) >= 0)) + 1
             MDB['SnapNum']   = MDB['SnapNum'][start:]
             MDB['SubfindID'] = MDB['SubfindID'][start:]
 
