@@ -78,7 +78,7 @@ tracer_indices = np.where(isin_tracer)[0]
 offsets_subhalo['SubfindID'][subfind_i]     = subfindID
 offsets_subhalo['SubhaloLength'][subfind_i] = len(tracer_indices)
 
-if subhalo_i == 0:
+if subfind_i == 0:
     offsets_subhalo['SubhaloOffset'][subfind_i] = 0
 else:
     offsets_subhalo['SubhaloOffset'][subfind_i] = (offsets_subhalo['SubhaloOffset'][subfind_i-1]
@@ -118,17 +118,17 @@ for key in particles.keys():
     particles[key] = particles[key][:end_length]
 
 # save the offsets and particles dictionaries
-dicts  = [offsets, particles]
+dicts  = [offsets_subhalo, particles]
 fnames = ['offsets', 'tracers']
 for d_i, d in enumerate(dicts):
     fname    = fnames[d_i]
-    outfname = '%s_%03d.hdf5'%(snapNum, fname)
+    outfname = '%s_%03d.hdf5'%(fname, snapNum)
     outdirec = '../Output/%s_tracers/'%(sim)
     
     with h5py.File(outdirec + outfname, 'a') as outf:
         group = outf.require_group('group')
-        for dset_key in result.keys():
-            dset = result[dset_key]
+        for dset_key in d.keys():
+            dset = d[dset_key]
             dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
             dataset[:] = dset
             
