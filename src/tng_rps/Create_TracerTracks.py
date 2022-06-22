@@ -51,7 +51,7 @@ def create_tracertracks():
     big_array_length = int(1e8)
 
     # define the subhalos we care about 
-    subfindIDs = np.arange(100)
+    subfindIDs = np.arange(10)
 
     # find the corresponding subfindIDs at the next snapshots
     track_subfindIDs(subfindIDs)
@@ -76,9 +76,13 @@ def create_tracertracks():
 
     # begin loop over the subhalos at snapshot snapNum
     for subfind_i, subfindID in enumerate(subfindIDs):
-        subfindID = subfindIDs[subfind_i]
 
         gas_cells    = il.snapshot.loadSubhalo(basePath, snapNum, subfindID, gas_ptn, fields=gas_fields)
+
+        # check if there are any gas cells
+        if gas_cells['count'] == 0:
+            continue
+        
         gas_cells    = ru.calc_temp_dict(gas_cells)
 
         # find the local indices and load the global offset for these gas cells
@@ -93,7 +97,6 @@ def create_tracertracks():
         tracer_indices = np.where(isin_tracer)[0]
 
         # fill in the offsets dictionary for this subhalo
-        offsets_subhalo['SubfindID'][subfind_i]     = subfindID
         offsets_subhalo['SubhaloLength'][subfind_i] = len(tracer_indices)
 
         if subfind_i == 0:
@@ -131,9 +134,8 @@ def create_tracertracks():
 
     # finish loop over the subhalos at snapshot snapNum
     # reshape the arrays
-    end_length = offsets_subhalo['SubhaloLength'][-1]
     for key in particles.keys():
-        particles[key] = particles[key][:end_length]
+        particles[key] = particles[key][:end]
 
     # save the offsets and particles dictionaries
     dicts  = [offsets_subhalo, particles]
@@ -176,9 +178,6 @@ def track_subfindIDs(subfindIDs):
     
     # begin loop over subfindIDs
     for i, subfindID in enumerate(subfindIDs):
-
-        print(subfindID)
-
         
         # load MDB
         MDB = il.sublink.loadTree(basePath, snapNum, subfindID, treeName=treeName,
