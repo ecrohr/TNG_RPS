@@ -59,7 +59,7 @@ def create_tracertracks():
     initialize_coldgastracers(subfindIDs, snapNum)
 
     # now track tracers from snapNum + 1 until snap 99
-    track_tracers(subfindIDs, snapNum)
+    #track_tracers(subfindIDs, snapNum + 1)
 
     # finish the first snapshot. move to the next.
 
