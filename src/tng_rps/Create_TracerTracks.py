@@ -53,10 +53,10 @@ def create_tracertracks():
     subfindIDs = np.arange(10)
 
     # find the corresponding subfindIDs at the next snapshots
-    track_subfindIDs(subfindIDs)
+    #track_subfindIDs(subfindIDs)
 
     # at snapNum, initialize the tracers we care about
-    initialize_coldgastracers(subfindIDs, snapNum)
+    #initialize_coldgastracers(subfindIDs, snapNum)
 
     # now track tracers from snapNum + 1 until snap 99
     for snap in range(snapNum+1, 100):
@@ -234,6 +234,8 @@ def track_tracers(subfindIDs, snap):
     # begin loop over the subhalos at snapshot snapNum
     for subfind_i, subfindID in enumerate(subfindIDs):
 
+        print('Working on %s snapshot %d subfindID %d'%(sim, snap, subfindID))
+
         ### cross match cold gas cells with tracers at this snap ###
         gas_cells    = il.snapshot.loadSubhalo(basePath, snapNum, subfindID, gas_ptn, fields=gas_fields)
 
@@ -257,8 +259,8 @@ def track_tracers(subfindIDs, snap):
         ### check which cold gas cell tracers from previous snap are still here ###
         start    = offsets_past['SubhaloOffset'][subfind_i]
         end      = start + offsets_past['SubhaloLengthColdGas'][subfind_i]
-        IDs_past = tracers['TracerIDs'][start:end]
-        indices_past = tracers['TracerIndices'][start:end]
+        IDs_past = tracers_past['TracerIDs'][start:end]
+        indices_past = tracers_past['TracerIndices'][start:end]
 
         _, indices_now, indices_past = np.intersect1d(tracer_IDs, IDs_past, return_indices=True)
 
@@ -291,7 +293,7 @@ def track_tracers(subfindIDs, snap):
         length_cgas = offsets_subhalo['SubhaloLengthColdGas'][subfind_i]
 
         particles['TracerIDs'][start:start+length]     = IDs
-        particles['TracerIndices'][start:start+length] = tracer_indices
+        particles['TracerIndices'][start:start+length] = indices
 
         # for the cold gas cell tracers, save the parent IDs and tracers
         # get the local cold gas indices with matched tracer particles and include the global offset
@@ -319,8 +321,8 @@ def track_tracers(subfindIDs, snap):
         # for now, make the parent indices and parent part type -1
         # then later load the other baryonic particles in the sim and match
         # their particle IDs with all unmatched tracers
-        particles['ParentIDs'][start+length_gas:start+length] = np.ones(len(end - start), dtype=int) * -1
-        particles['ParentIndices'][start+length_cgas:start+length] = np.ones(len(end - start), dtype=int) * -1
+        particles['ParentIndices'][start+length_cgas:start+length] = np.ones((length - length_cgas), dtype=int) * -1
+        particles['ParentPartType'][start+length_cgas:start+length] = np.ones((length - length_cgas), dtype=int) * -1
 
 
     # end loop over subhalos
