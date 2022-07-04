@@ -14,7 +14,6 @@ global big_array_length
 
 
 def create_tracertracks():
-
     """
     Run the Create_TracerTracks.py file. 
     Starts at snapNum with a list of subhalo subfindIDs,
@@ -200,7 +199,7 @@ def track_subfindIDs(subfindIDs):
             MDB['SnapNum']   = MDB['SnapNum'][start:]
             MDB['SubfindID'] = MDB['SubfindID'][start:]
 
-        # find which snaps the subhalo was identified
+        # find at which snaps the subhalo was identified
         isin = np.isin(snaps, MDB['SnapNum'])
 
         # and record the result
