@@ -9,7 +9,7 @@ import glob
 
 global sim, basePath, snapNum, tcoldgas
 global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
-global part_fields
+global gas_fields, part_fields
 global big_array_length
 
 
@@ -24,7 +24,7 @@ def create_tracertracks():
 
     global sim, basePath, snapNum, tcoldgas
     global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
-    global part_fields
+    global gas_fields, part_fields
     global big_array_length
 
     
@@ -89,7 +89,7 @@ def initialize_coldgastracers(subfindIDs, snap):
     offsets_subhalo = {}
     offsets_subhalo['SubhaloOffset']        = np.zeros(len(subfindIDs), int)
     offsets_subhalo['SubhaloLength']        = np.zeros(len(subfindIDs), int)
-    offsets_subhalo['SubhaloLengthColdGas'] = np.zeros(len(subindIDs), int)
+    offsets_subhalo['SubhaloLengthColdGas'] = np.zeros(len(subfindIDs), int)
 
     particles = {}
     # rewrite into a 4xbig_array_length array rather than a dictionary
@@ -212,7 +212,7 @@ def track_tracers(subfindIDs, snap):
     offsets_subhalo = {}
     offsets_subhalo['SubhaloOffset']        = np.zeros(len(subfindIDs), int)
     offsets_subhalo['SubhaloLength']        = np.zeros(len(subfindIDs), int)
-    offsets_subhalo['SubhaloLengthColdGas'] = np.zeros(len(subindIDs), int)
+    offsets_subhalo['SubhaloLengthColdGas'] = np.zeros(len(subfindIDs), int)
 
     particles = {}
     # rewrite into a 4xbig_array_length array rather than a dictionary
