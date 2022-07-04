@@ -56,7 +56,7 @@ def create_tracertracks():
     track_subfindIDs(subfindIDs)
 
     # at snapNum, initialize the tracers we care about
-    initialize_tracers(subfindIDs, snapNum)
+    initialize_coldgastracers(subfindIDs, snapNum)
 
     # now track tracers from snapNum + 1 until snap 99
     track_tracers(subfindIDs, snapNum)
