@@ -106,6 +106,8 @@ def initialize_coldgastracers(subfindIDs, snap):
     # begin loop over the subhalos at snapshot snapNum
     for subfind_i, subfindID in enumerate(subfindIDs):
 
+        print('Working on %s snapshot %d subfindID %d'%(sim, snap, subfindID))
+
         gas_cells    = il.snapshot.loadSubhalo(basePath, snapNum, subfindID, gas_ptn, fields=gas_fields)
 
         # check if there are any gas cells
@@ -116,6 +118,9 @@ def initialize_coldgastracers(subfindIDs, snap):
 
         # find the local indices and load the global offset for these gas cells
         cgas_indices = np.where(gas_cells['Temperature'] <= tcoldgas)[0]
+        if len(cgas_indices) == 0:
+            continue
+        
         ParticleIDs  = gas_cells['ParticleIDs'][cgas_indices]
 
         # match the tracer ParentID with the cold gas cells ParticleIDs
@@ -247,6 +252,9 @@ def track_tracers(subfindIDs, snap):
 
         # find the local indices and load the global offset for these gas cells
         cgas_indices = np.where(gas_cells['Temperature'] <= tcoldgas)[0]
+        if len(cgas_indices) == 0:
+            continue
+
         ParticleIDs  = gas_cells['ParticleIDs'][cgas_indices]
 
         # match the tracer ParentID with the cold gas cells ParticleIDs
