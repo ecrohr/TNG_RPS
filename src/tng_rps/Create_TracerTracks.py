@@ -53,10 +53,10 @@ def create_tracertracks():
     subfindIDs = np.arange(10)
 
     # find the corresponding subfindIDs at the next snapshots
-    #track_subfindIDs(subfindIDs)
+    track_subfindIDs(subfindIDs)
 
     # at snapNum, initialize the tracers we care about
-    #initialize_coldgastracers(subfindIDs, snapNum)
+    initialize_coldgastracers(subfindIDs, snapNum)
 
     # now track tracers from snapNum + 1 until snap 99
     for snap in range(snapNum+1, 100):
