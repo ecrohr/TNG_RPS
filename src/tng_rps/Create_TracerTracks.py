@@ -284,14 +284,32 @@ def track_tracers(snap):
         tracer_indices = np.where(isin_tracer)[0]
 
         ### check which cold gas cell tracers from previous snap are still here ###
-        start    = offsets_past['group']['SubhaloOffset'][subfind_i]
-        end      = start + offsets_past['group']['SubhaloLengthColdGas'][subfind_i]
+
+        # check if the subhalo was defined at the previous snap
+        if offsets_past['group']['SubfindID'][subfind_i] != -1:
+            start = offsets_past['group']['SubhaloOffset'][subfind_i]
+            end   = start + offsets_past['group']['SubhaloLengthColdGas'][subfind_i]
+
+        else:
+            i = 2
+            while i < 4:
+                with h5py.File(outdirec + 'offsets_%03d.hdf5'%(snap - i), 'r') as f:
+                    if f['group']['SubfindID'][subfind_i] == -1:
+                        f.close()
+                        i += 1
+                    else:
+                        start = f['group']['SubhaloOffset'][subfind_i]
+                        end   = start + f['group']['SubhaloLengthColdGas'][subfind_i]
+                        f.close()
+                # if the subhalo isn't in the merger trees the past few snaps, move on
+                if i == 4:
+                    start = end = 0
+            
         IDs_past = tracers_past['group']['TracerIDs'][start:end]
         indices_past = tracers_past['group']['TracerIndices'][start:end]
 
         isin_now  = np.isin(tracer_IDs, IDs_past)
         isin_past = np.isin(IDs_past, tracer_IDs)
-        #_, indices_now, indices_past = np.intersect1d(tracer_IDs, IDs_past, return_indices=True)
 
         # reorder tracer_IDs and tracer_indices such that:
         # 1st: cold gas tracers found in both snapshots
