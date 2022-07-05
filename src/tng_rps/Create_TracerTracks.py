@@ -216,7 +216,7 @@ def track_tracers(snap):
     """
     
     # load the subfindIDs from the offsets file
-    with h5py.File(outdirec + 'offsets_%03d.hdf'%snap, 'r') as f:
+    with h5py.File(outdirec + 'offsets_%03d.hdf5'%snap, 'r') as f:
         subfindIDs = f['group']['SubfindID'][:]
         f.close()
 
@@ -247,6 +247,10 @@ def track_tracers(snap):
     for subfind_i, subfindID in enumerate(subfindIDs):
 
         print('Working on %s snapshot %d subfindID %d'%(sim, snap, subfindID))
+
+        # check if the subhalo is identified at this snap
+        if subfindID == -1:
+            continue
 
         ### cross match cold gas cells with tracers at this snap ###
         gas_cells    = il.snapshot.loadSubhalo(basePath, snap, subfindID, gas_ptn, fields=gas_fields)
