@@ -118,7 +118,7 @@ def initialize_coldgastracers(subfindIDs, snap):
             offsets_subhalo['SubhaloOffset'][subfind_i] = (offsets_subhalo['SubhaloOffset'][subfind_i-1]
                                                            + offsets_subhalo['SubhaloLength'][subfind_i-1])
 
-            gas_cells    = il.snapshot.loadSubhalo(basePath, snapNum, subfindID, gas_ptn, fields=gas_fields)
+        gas_cells    = il.snapshot.loadSubhalo(basePath, snapNum, subfindID, gas_ptn, fields=gas_fields)
 
         # check if there are any gas cells
         if gas_cells['count'] == 0:
