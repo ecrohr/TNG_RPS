@@ -342,7 +342,7 @@ def track_tracers(subfindIDs, snap):
     fnames = ['offsets', 'tracers']
     for d_i, d in enumerate(dicts):
         fname    = fnames[d_i]
-        outfname = '%s_%03d.hdf5'%(fname, snapNum)
+        outfname = '%s_%03d.hdf5'%(fname, snap)
         outdirec = '../Output/%s_tracers/'%(sim)
 
         with h5py.File(outdirec + outfname, 'a') as outf:
