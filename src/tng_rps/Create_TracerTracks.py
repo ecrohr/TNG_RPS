@@ -11,6 +11,7 @@ global sim, basePath, snapNum, tcoldgas
 global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
 global gas_fields, part_fields
 global big_array_length
+global outdirec
 
 
 def create_tracertracks():
@@ -26,6 +27,7 @@ def create_tracertracks():
     global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
     global gas_fields, part_fields
     global big_array_length
+    global outdirec
 
     
     # define the global variables
@@ -49,6 +51,8 @@ def create_tracertracks():
 
     big_array_length = int(1e8)
 
+    outdirec = '../Output/%s_tracers/'%(sim)
+
     # define the subhalos we care about 
     subfindIDs = np.arange(10)
 
@@ -60,7 +64,7 @@ def create_tracertracks():
 
     # now track tracers from snapNum + 1 until snap 99
     for snap in range(snapNum+1, 100):
-        track_tracers(subfindIDs, snap)
+        track_tracers(snap)
 
     # finish the first snapshot. move to the next.
 
@@ -179,7 +183,6 @@ def initialize_coldgastracers(subfindIDs, snap):
     for d_i, d in enumerate(dicts):
         fname    = fnames[d_i]
         outfname = '%s_%03d.hdf5'%(fname, snapNum)
-        outdirec = '../Output/%s_tracers/'%(sim)
 
         with h5py.File(outdirec + outfname, 'a') as outf:
             group = outf.require_group('group')
@@ -194,7 +197,7 @@ def initialize_coldgastracers(subfindIDs, snap):
     return 
 
 
-def track_tracers(subfindIDs, snap):
+def track_tracers(snap):
     """
     Finds the tracers whose parents are cold gas cells gravitationally 
     bound to subhalos in subfindIDs at snapshot snapNum
@@ -211,6 +214,11 @@ def track_tracers(subfindIDs, snap):
     save all info
     return to main function and continue loop over snapshots 
     """
+
+    # load the subfindIDs from the offsets file
+    with h5py.File(outdirec + 'offsets_%03d.hdf'%snap, 'r') as f:
+        subfindIDs = f['group']['SubfindID'][:]
+        f.close()
 
     # initialize the outputs 
 
@@ -351,7 +359,6 @@ def track_tracers(subfindIDs, snap):
     for d_i, d in enumerate(dicts):
         fname    = fnames[d_i]
         outfname = '%s_%03d.hdf5'%(fname, snap)
-        outdirec = '../Output/%s_tracers/'%(sim)
 
         with h5py.File(outdirec + outfname, 'a') as outf:
             group = outf.require_group('group')
@@ -415,7 +422,6 @@ def track_subfindIDs(subfindIDs):
 
     # finish loop over subfindIDs
     # save by looping over the snapshots
-    outdirec = '../Output/%s_tracers/'%(sim)
     
     for i, snap in enumerate(snaps):
 
