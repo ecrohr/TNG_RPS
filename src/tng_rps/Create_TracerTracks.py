@@ -225,8 +225,8 @@ def track_tracers(subfindIDs, snap):
 
     # load the offsets and tracers from the previous snapshot
     outdirec     = '../Output/%s_tracers/'%(sim)
-    offsets_past = h5py.File(outdirec + 'offsets_%03d.hdf5'%(snap - 1))
-    tracers_past = h5py.File(outdirec + 'tracers_%03d.hdf5'%(snap - 1))
+    offsets_past = h5py.File(outdirec + 'offsets_%03d.hdf5'%(snap - 1), 'r')
+    tracers_past = h5py.File(outdirec + 'tracers_%03d.hdf5'%(snap - 1), 'r')
 
     # load every tracer particle in the simulation at this snapshot
     tracers = il.snapshot.loadSubset(basePath, snapNum, tracer_ptn)
@@ -237,7 +237,7 @@ def track_tracers(subfindIDs, snap):
         print('Working on %s snapshot %d subfindID %d'%(sim, snap, subfindID))
 
         ### cross match cold gas cells with tracers at this snap ###
-        gas_cells    = il.snapshot.loadSubhalo(basePath, snapNum, subfindID, gas_ptn, fields=gas_fields)
+        gas_cells    = il.snapshot.loadSubhalo(basePath, snap, subfindID, gas_ptn, fields=gas_fields)
 
         # check if there are any gas cells
         if gas_cells['count'] == 0:
