@@ -60,7 +60,7 @@ def create_tracertracks():
 
     # now track tracers from snapNum + 1 until snap 99
     for snap in range(snapNum+1, 100):
-        track_tracers(subfindIDs, snapNum + 1)
+        track_tracers(subfindIDs, snap)
 
     # finish the first snapshot. move to the next.
 
