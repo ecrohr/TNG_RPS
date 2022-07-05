@@ -225,8 +225,8 @@ def track_tracers(subfindIDs, snap):
 
     # load the offsets and tracers from the previous snapshot
     outdirec     = '../Output/%s_tracers/'%(sim)
-    offsets_past = h5py.File(outdirec + 'offsets_%03d.hdf5'%(snap - 1))['group']
-    tracers_past = h5py.File(outdirec + 'tracers_%03d.hdf5'%(snap - 1))['group']
+    offsets_past = h5py.File(outdirec + 'offsets_%03d.hdf5'%(snap - 1))
+    tracers_past = h5py.File(outdirec + 'tracers_%03d.hdf5'%(snap - 1))
 
     # load every tracer particle in the simulation at this snapshot
     tracers = il.snapshot.loadSubset(basePath, snapNum, tracer_ptn)
@@ -257,10 +257,10 @@ def track_tracers(subfindIDs, snap):
         tracer_indices = np.where(isin_tracer)[0]
 
         ### check which cold gas cell tracers from previous snap are still here ###
-        start    = offsets_past['SubhaloOffset'][subfind_i]
-        end      = start + offsets_past['SubhaloLengthColdGas'][subfind_i]
-        IDs_past = tracers_past['TracerIDs'][start:end]
-        indices_past = tracers_past['TracerIndices'][start:end]
+        start    = offsets_past['group']['SubhaloOffset'][subfind_i]
+        end      = start + offsets_past['group']['SubhaloLengthColdGas'][subfind_i]
+        IDs_past = tracers_past['group']['TracerIDs'][start:end]
+        indices_past = tracers_past['group']['TracerIndices'][start:end]
 
         isin_now  = np.isin(tracer_IDs, IDs_past)
         isin_past = np.isin(IDs_past, tracer_IDs)
