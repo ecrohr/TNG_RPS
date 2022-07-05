@@ -248,6 +248,13 @@ def track_tracers(snap):
 
         print('Working on %s snapshot %d subfindID %d'%(sim, snap, subfindID))
 
+        # calculate subhalo offset
+        if subfind_i == 0:
+            offsets_subhalo['SubhaloOffset'][subfind_i] = 0
+        else:
+            offsets_subhalo['SubhaloOffset'][subfind_i] = (offsets_subhalo['SubhaloOffset'][subfind_i-1]
+                                                           + offsets_subhalo['SubhaloLength'][subfind_i-1])
+
         # check if the subhalo is identified at this snap
         if subfindID == -1:
             continue
@@ -302,12 +309,6 @@ def track_tracers(snap):
         offsets_subhalo['SubhaloLength'][subfind_i]        = len(IDs)
         offsets_subhalo['SubhaloLengthColdGas'][subfind_i] = len(tracer_IDs)
 
-        if subfind_i == 0:
-            offsets_subhalo['SubhaloOffset'][subfind_i] = 0
-        else:
-            offsets_subhalo['SubhaloOffset'][subfind_i] = (offsets_subhalo['SubhaloOffset'][subfind_i-1]
-                                                           + offsets_subhalo['SubhaloLength'][subfind_i-1])
-
         # save the tracer IDs and indices
         start       = offsets_subhalo['SubhaloOffset'][subfind_i]
         length      = offsets_subhalo['SubhaloLength'][subfind_i]
@@ -357,6 +358,7 @@ def track_tracers(snap):
     tracers_past.close()
     
     # reshape the particles arrays
+    end = offsets_subhalo['SubhaloOffset'][-1] + offsets_subhalo['SubhaloLength'][-1]
     for key in particles.keys():
         particles[key] = particles[key][:end]
 
