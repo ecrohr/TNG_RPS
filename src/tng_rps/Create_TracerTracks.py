@@ -53,8 +53,8 @@ def create_tracertracks():
 
     outdirec = '../Output/%s_tracers/'%(sim)
 
-    # define the subhalos we care about 
-    subfindIDs = np.arange(10)
+    # define the subhalos we care about at snapshot snapNum
+    subfindIDs = np.arange(100)
 
     # find the corresponding subfindIDs at the next snapshots
     track_subfindIDs(subfindIDs)
@@ -290,6 +290,7 @@ def track_tracers(snap):
             start = offsets_past['group']['SubhaloOffset'][subfind_i]
             end   = start + offsets_past['group']['SubhaloLengthColdGas'][subfind_i]
 
+        # if not, then try the previous snapshots
         else:
             i = 2
             while i < 4:
