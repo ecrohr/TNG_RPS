@@ -313,6 +313,10 @@ def track_tracers(snap):
         length      = offsets_subhalo['SubhaloLength'][subfind_i]
         length_cgas = offsets_subhalo['SubhaloLengthColdGas'][subfind_i]
 
+        # check that there are cold gas cells with tracers
+        if length_cgas == 0:
+            continue
+
         particles['TracerIDs'][start:start+length]     = IDs
         particles['TracerIndices'][start:start+length] = indices
 
