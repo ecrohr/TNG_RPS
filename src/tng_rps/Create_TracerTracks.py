@@ -214,7 +214,7 @@ def track_tracers(snap):
     save all info
     return to main function and continue loop over snapshots 
     """
-
+    
     # load the subfindIDs from the offsets file
     with h5py.File(outdirec + 'offsets_%03d.hdf'%snap, 'r') as f:
         subfindIDs = f['group']['SubfindID'][:]
@@ -237,7 +237,6 @@ def track_tracers(snap):
     particles['ParentPartType'] = np.empty(big_array_length, dtype=int)
 
     # load the offsets and tracers from the previous snapshot
-    outdirec     = '../Output/%s_tracers/'%(sim)
     offsets_past = h5py.File(outdirec + 'offsets_%03d.hdf5'%(snap - 1), 'r')
     tracers_past = h5py.File(outdirec + 'tracers_%03d.hdf5'%(snap - 1), 'r')
 
