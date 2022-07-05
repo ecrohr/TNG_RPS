@@ -112,7 +112,13 @@ def initialize_coldgastracers(subfindIDs, snap):
 
         print('Working on %s snapshot %d subfindID %d'%(sim, snap, subfindID))
 
-        gas_cells    = il.snapshot.loadSubhalo(basePath, snapNum, subfindID, gas_ptn, fields=gas_fields)
+        if subfind_i == 0:
+            offsets_subhalo['SubhaloOffset'][subfind_i] = 0
+        else:
+            offsets_subhalo['SubhaloOffset'][subfind_i] = (offsets_subhalo['SubhaloOffset'][subfind_i-1]
+                                                           + offsets_subhalo['SubhaloLength'][subfind_i-1])
+
+            gas_cells    = il.snapshot.loadSubhalo(basePath, snapNum, subfindID, gas_ptn, fields=gas_fields)
 
         # check if there are any gas cells
         if gas_cells['count'] == 0:
@@ -137,12 +143,6 @@ def initialize_coldgastracers(subfindIDs, snap):
         # fill in the offsets dictionary for this subhalo
         offsets_subhalo['SubhaloLength'][subfind_i] = len(tracer_indices)
         offsets_subhalo['SubhaloLengthColdGas'][subfind_i] = len(tracer_indices)
-
-        if subfind_i == 0:
-            offsets_subhalo['SubhaloOffset'][subfind_i] = 0
-        else:
-            offsets_subhalo['SubhaloOffset'][subfind_i] = (offsets_subhalo['SubhaloOffset'][subfind_i-1]
-                                                           + offsets_subhalo['SubhaloLength'][subfind_i-1])
 
         # save the corresponding gas cell indices
         # get the local cold gas indices with matched tracer particles and include the global offset
@@ -174,6 +174,7 @@ def initialize_coldgastracers(subfindIDs, snap):
     # finish loop over the subhalos at snapshot snapNum
  
     # reshape the arrays
+    end =  offsets_subhalo['SubhaloOffset'][-1] +  offsets_subhalo['SubhaloLength'][-1]
     for key in particles.keys():
         particles[key] = particles[key][:end]
 
