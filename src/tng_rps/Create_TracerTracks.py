@@ -262,20 +262,22 @@ def track_tracers(subfindIDs, snap):
         IDs_past = tracers_past['TracerIDs'][start:end]
         indices_past = tracers_past['TracerIndices'][start:end]
 
-        _, indices_now, indices_past = np.intersect1d(tracer_IDs, IDs_past, return_indices=True)
+        isin_now  = np.isin(tracer_IDs, IDs_past)
+        isin_past = np.isin(IDs_past, tracer_IDs)
+        #_, indices_now, indices_past = np.intersect1d(tracer_IDs, IDs_past, return_indices=True)
 
         # reorder tracer_IDs and tracer_indices such that:
         # 1st: cold gas tracers found in both snapshots
         # 2nd: new cold gas tracers (not in the previous snapshot)
         # 3rd: no longer cold gas tracers (was in previous snapshot but no longer)
 
-        IDs = np.concatenate([tracer_IDs[indices_now],
-                              tracer_IDs[~indices_now],
-                              IDs_past[~indices_past]])
+        IDs = np.concatenate([tracer_IDs[isin_now],
+                              tracer_IDs[~isin_now],
+                              IDs_past[~isin_past]])
         
-        indices = np.concatenate([tracer_indices[indices_now],
-                                  tracer_indices[~indices_now],
-                                  indices_past[~indices_past]])
+        indices = np.concatenate([tracer_indices[isin_now],
+                                  tracer_indices[~isin_now],
+                                  indices_past[~isin_past]])
         
         # save the offset information
         offsets_subhalo['SubhaloLength'][subfind_i]        = len(IDs)
@@ -297,7 +299,7 @@ def track_tracers(subfindIDs, snap):
 
         # for the cold gas cell tracers, save the parent IDs and tracers
         # get the local cold gas indices with matched tracer particles and include the global offset
-        parent_IDs  = tracers['ParentID'][indices[start:start+length_cgas]]
+        parent_IDs  = tracers['ParentID'][indices[:length_cgas]]
 
         isin_gas    = np.isin(ParticleIDs, parent_IDs)
 
@@ -323,6 +325,7 @@ def track_tracers(subfindIDs, snap):
         # their particle IDs with all unmatched tracers
         particles['ParentIndices'][start+length_cgas:start+length] = np.ones((length - length_cgas), dtype=int) * -1
         particles['ParentPartType'][start+length_cgas:start+length] = np.ones((length - length_cgas), dtype=int) * -1
+
 
 
     # end loop over subhalos
