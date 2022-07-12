@@ -97,9 +97,10 @@ def initialize_coldgastracers():
 
     # initialize the offset dictionary
     offsets_subhalo = {}
-    offsets_subhalo['SubhaloOffset']        = np.zeros(len(subfindIDs), int)
-    offsets_subhalo['SubhaloLength']        = np.zeros(len(subfindIDs), int)
-    offsets_subhalo['SubhaloLengthColdGas'] = np.zeros(len(subfindIDs), int)
+    offsets_subhalo['SubhaloOffset']            = np.zeros(len(subfindIDs), int)
+    offsets_subhalo['SubhaloLength']            = np.zeros(len(subfindIDs), int)
+    offsets_subhalo['SubhaloLengthColdGas']     = np.zeros(len(subfindIDs), int)
+    offsets_subhalo['SubhalolengthColdGas_new'] = np.zeros(len(subfindIDs), int)
 
     particles = {}
     # rewrite into a 4xbig_array_length array rather than a dictionary
@@ -146,8 +147,9 @@ def initialize_coldgastracers():
         tracer_indices = np.where(isin_tracer)[0]
 
         # fill in the offsets dictionary for this subhalo
-        offsets_subhalo['SubhaloLength'][subfind_i] = len(tracer_indices)
-        offsets_subhalo['SubhaloLengthColdGas'][subfind_i] = len(tracer_indices)
+        offsets_subhalo['SubhaloLength'][subfind_i]            = len(tracer_indices)
+        offsets_subhalo['SubhaloLengthColdGas'][subfind_i]     = len(tracer_indices)
+        offsets_subhalo['SubhaloLengthColdGas_new'][subfind_i] = len(tracer_indices)
 
         # save the corresponding gas cell indices
         # get the local cold gas indices with matched tracer particles and include the global offset
@@ -230,9 +232,10 @@ def track_tracers(snap):
 
     # initialize the offset dictionary
     offsets_subhalo = {}
-    offsets_subhalo['SubhaloOffset']        = np.zeros(len(subfindIDs), int)
-    offsets_subhalo['SubhaloLength']        = np.zeros(len(subfindIDs), int)
-    offsets_subhalo['SubhaloLengthColdGas'] = np.zeros(len(subfindIDs), int)
+    offsets_subhalo['SubhaloOffset']            = np.zeros(len(subfindIDs), int)
+    offsets_subhalo['SubhaloLength']            = np.zeros(len(subfindIDs), int)
+    offsets_subhalo['SubhaloLengthColdGas']     = np.zeros(len(subfindIDs), int)
+    offsets_subhalo['SubhaloLengthColdGas_new'] = np.zeros(len(subfindIDs), int)
 
     particles = {}
     # rewrite into a 4xbig_array_length array rather than a dictionary
@@ -331,8 +334,9 @@ def track_tracers(snap):
                                   indices_past[~isin_past]])
         
         # save the offset information
-        offsets_subhalo['SubhaloLength'][subfind_i]        = len(IDs)
-        offsets_subhalo['SubhaloLengthColdGas'][subfind_i] = len(tracer_IDs)
+        offsets_subhalo['SubhaloLength'][subfind_i]            = len(IDs)
+        offsets_subhalo['SubhaloLengthColdGas'][subfind_i]     = len(tracer_IDs)
+        offsets_subhalo['SubhaloLengthColdGas_new'][subfind_i] = len(tracer_IDs[~isin_now])
 
         # save the tracer IDs and indices
         start       = offsets_subhalo['SubhaloOffset'][subfind_i]
