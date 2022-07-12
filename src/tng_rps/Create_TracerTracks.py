@@ -424,7 +424,7 @@ def track_subfindIDs(subfindIDs, z0_flag=True):
     for i, subfindID in enumerate(subfindIDs):
 
         if (z0_flag):
-            tree = il.sublink.loadTree(basepath, 99, subfindID, treeName=treeName,
+            tree = il.sublink.loadTree(basePath, 99, subfindID, treeName=treeName,
                                        onlyMPB=True, fields=fields)
 
             # is subhalo in the tree?
