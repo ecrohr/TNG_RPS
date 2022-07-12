@@ -403,10 +403,11 @@ def track_tracers(snap):
 
 
 
-def track_subfindIDs(subfindIDs):
+def track_subfindIDs(subfindIDs, z0_flag=True):
     """
-    Given the list of subhalo subfindIDs at snapNum, use the MDB
-    to find the corresponding subfindIDs at the following snapshots.
+    Given the list of subhalo subfindIDs at either z0 (default) or 
+    at snapNum, use either the MPB (default) or MDB to find the 
+    corresponding subfindIDs at the other snapshots between snapNum and 99. 
     Be careful at subhalos that don't exist in the trees or skip snaps.
     """
 
