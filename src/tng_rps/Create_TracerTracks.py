@@ -422,33 +422,43 @@ def track_subfindIDs(subfindIDs, z0_flag=True):
     
     # begin loop over subfindIDs
     for i, subfindID in enumerate(subfindIDs):
-        
-        # load MDB
-        MDB = il.sublink.loadTree(basePath, snapNum, subfindID, treeName=treeName,
-                                  onlyMDB=True, fields=fields)
-        
-        # is subhalo in the tree?
-        if not MDB:
-            result[i,-1] = subfindID
-            continue
 
-        # does MDB have a bad count? (i.e., not reach z=0?)
-        if (MDB['count'] + snapNum) > 100:
+        if (z0_flag):
+            tree = il.sublink.loadTree(basepath, 99, subfindID, treeName=treeName,
+                                       onlyMPB=True, fields=fields)
 
-            # find where the MDB stops
-            stop             = -(max_snap - snapNum + 1)
-            MDB['SnapNum']   = MDB['SnapNum'][stop:]
-            MDB['SubfindID'] = MDB['SubfindID'][stop:]
-            
-            start            = np.max(np.where((MDB['SnapNum'][1:] - MDB['SnapNum'][:-1]) >= 0)) + 1
-            MDB['SnapNum']   = MDB['SnapNum'][start:]
-            MDB['SubfindID'] = MDB['SubfindID'][start:]
+            # is subhalo in the tree?
+            if not tree:
+                result[i,0] = subfindID
+                continue
+
+        else:
+            tree = il.sublink.loadTree(basePath, snapNum, subfindID, treeName=treeName,
+                                       onlyMDB=True, fields=fields)
+        
+            # is subhalo in the tree?
+            if not tree:
+                result[i,-1] = subfindID
+                continue
+
+            # does MDB have a bad count? (i.e., not reach z=0?)
+            if (tree['count'] + snapNum) > 100:
+
+                # find where the MDB stops
+                stop              = -(max_snap - snapNum + 1)
+                tree['SnapNum']   = tree['SnapNum'][stop:]
+                tree['SubfindID'] = tree['SubfindID'][stop:]
+
+                start             = np.max(np.where((tree['SnapNum'][1:] - tree['SnapNum'][:-1]) >= 0)) + 1
+                tree['SnapNum']   = tree['SnapNum'][start:]
+                tree['SubfindID'] = tree['SubfindID'][start:]
+
 
         # find at which snaps the subhalo was identified
-        isin = np.isin(snaps, MDB['SnapNum'])
+        isin = np.isin(snaps, tree['SnapNum'])
 
         # and record the result
-        result[i,isin] = MDB['SubfindID']
+        result[i,isin] = tree['SubfindID']
 
     # finish loop over subfindIDs
     # save by looping over the snapshots
