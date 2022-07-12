@@ -60,7 +60,7 @@ def create_tracertracks():
     track_subfindIDs(subfindIDs)
 
     # at snapNum, initialize the tracers we care about
-    initialize_coldgastracers(subfindIDs, snapNum)
+    initialize_coldgastracers()
 
     # now track tracers from snapNum + 1 until snap 99
     for snap in range(snapNum+1, 100):
@@ -72,14 +72,14 @@ def create_tracertracks():
 
 
 
-def initialize_coldgastracers(subfindIDs, snap):
+def initialize_coldgastracers():
     """
     Finds the tracers whose parents are cold gas cells gravitationally 
     bound to subhalos in subfindIDs at snapshot snapNum
     
     architecture: 
-    given the list of subhalo subfindIDs at snap: 
-    load the tracers at this snap;
+    load the subhalo subfindIDs at snapNum: 
+    load the tracers at snapNum;
     for each subhalo in subfindIDs:
         load subfind cold gas cells
         cross match with tracers 
@@ -87,6 +87,11 @@ def initialize_coldgastracers(subfindIDs, snap):
     save all info
     return to main function and continue to next snaps
     """
+
+    # load the subfindIDs from the offsets file
+    with h5py.File(outdirec + 'offsets_%03d.hdf5'%snapNum, 'r') as f:
+        subfindIDs = f['group']['SubfindID'][:]
+        f.close()
 
     # initialize the outputs 
 
