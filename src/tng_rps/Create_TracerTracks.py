@@ -115,7 +115,7 @@ def initialize_coldgastracers():
     # begin loop over the subhalos at snapshot snapNum
     for subfind_i, subfindID in enumerate(subfindIDs):
 
-        print('Working on %s snapshot %d subfindID %d'%(sim, snap, subfindID))
+        print('Working on %s snapshot %d subfindID %d'%(sim, snapNum, subfindID))
 
         if subfind_i == 0:
             offsets_subhalo['SubhaloOffset'][subfind_i] = 0
