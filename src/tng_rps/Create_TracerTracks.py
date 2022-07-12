@@ -33,7 +33,7 @@ def create_tracertracks():
     # define the global variables
     sim        = 'TNG50-3'
     basePath   = ru.ret_basePath(sim)
-    snapNum    = 50
+    snapNum    = 33
     tcoldgas   = 10.**(4.5) # [K]
 
     tracer_ptn = il.util.partTypeNum('tracer')
@@ -432,6 +432,12 @@ def track_subfindIDs(subfindIDs, z0_flag=True):
                 result[i,0] = subfindID
                 continue
 
+            # trim tree to stop at snap snapNum
+            indices  = tree['SnapNum'] >= snapNum
+
+            for field in fields:
+                tree[field] = tree[field][indices]
+               
         else:
             tree = il.sublink.loadTree(basePath, snapNum, subfindID, treeName=treeName,
                                        onlyMDB=True, fields=fields)
