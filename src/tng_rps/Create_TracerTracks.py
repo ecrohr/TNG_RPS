@@ -100,7 +100,7 @@ def initialize_coldgastracers():
     offsets_subhalo['SubhaloOffset']            = np.zeros(len(subfindIDs), int)
     offsets_subhalo['SubhaloLength']            = np.zeros(len(subfindIDs), int)
     offsets_subhalo['SubhaloLengthColdGas']     = np.zeros(len(subfindIDs), int)
-    offsets_subhalo['SubhalolengthColdGas_new'] = np.zeros(len(subfindIDs), int)
+    offsets_subhalo['SubhaloLengthColdGas_new'] = np.zeros(len(subfindIDs), int)
 
     particles = {}
     # rewrite into a 4xbig_array_length array rather than a dictionary
