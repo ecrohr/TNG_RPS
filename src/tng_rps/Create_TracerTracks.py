@@ -9,7 +9,7 @@ import glob
 
 global sim, basePath, snapNum, tcoldgas
 global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
-global gas_fields, part_fields
+global gas_fields
 global big_array_length
 global outdirec
 
@@ -25,7 +25,7 @@ def create_tracertracks():
 
     global sim, basePath, snapNum, tcoldgas
     global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
-    global gas_fields, part_fields
+    global gas_fields
     global big_array_length
     global outdirec
 
@@ -208,7 +208,7 @@ def initialize_coldgastracers():
 def track_tracers(snap):
     """
     Finds the tracers whose parents are cold gas cells gravitationally 
-    bound to subhalos in subfindIDs at snapshot snapNum
+    bound to subhalos in subfindIDs at snapshot snap
     
     architecture: 
     given the list of subhalo subfindIDs at snap: 
@@ -250,9 +250,9 @@ def track_tracers(snap):
     tracers_past = h5py.File(outdirec + 'tracers_%03d.hdf5'%(snap - 1), 'r')
 
     # load every tracer particle in the simulation at this snapshot
-    tracers = il.snapshot.loadSubset(basePath, snapNum, tracer_ptn)
+    tracers = il.snapshot.loadSubset(basePath, snap, tracer_ptn)
 
-    # begin loop over the subhalos at snapshot snapNum
+    # begin loop over the subhalos at snapshot snap
     for subfind_i, subfindID in enumerate(subfindIDs):
 
         print('Working on %s snapshot %d subfindID %d'%(sim, snap, subfindID))
@@ -287,7 +287,7 @@ def track_tracers(snap):
         # match the tracer ParentID with the cold gas cells ParticleIDs
         isin_tracer = np.isin(tracers['ParentID'], ParticleIDs)
 
-        # save the tracerIDs and tracer indices at snapshot snapNum
+        # save the tracerIDs and tracer indices at snapshot snap
         tracer_IDs = tracers['TracerID'][isin_tracer]
         tracer_indices = np.where(isin_tracer)[0]
 
@@ -356,7 +356,7 @@ def track_tracers(snap):
 
         isin_gas    = np.isin(ParticleIDs, parent_IDs)
 
-        r           = il.snapshot.getSnapOffsets(basePath, snapNum, subfindID, "Subhalo")
+        r           = il.snapshot.getSnapOffsets(basePath, snap, subfindID, "Subhalo")
         offset      = r['offsetType'][gas_ptn]
         gas_indices = offset + cgas_indices[isin_gas]
 
@@ -433,7 +433,7 @@ def track_subfindIDs(subfindIDs, z0_flag=True):
     for i, subfindID in enumerate(subfindIDs):
 
         if (z0_flag):
-            tree = il.sublink.loadTree(basePath, 99, subfindID, treeName=treeName,
+            tree = il.sublink.loadTree(basePath, max_snap, subfindID, treeName=treeName,
                                        onlyMPB=True, fields=fields)
 
             # is subhalo in the tree?
@@ -457,7 +457,7 @@ def track_subfindIDs(subfindIDs, z0_flag=True):
                 continue
 
             # does MDB have a bad count? (i.e., not reach z=0?)
-            if (tree['count'] + snapNum) > 100:
+            if (tree['count'] + snapNum) > max_snap:
 
                 # find where the MDB stops
                 stop              = -(max_snap - snapNum + 1)
