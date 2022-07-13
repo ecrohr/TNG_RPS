@@ -54,7 +54,7 @@ def create_tracertracks():
     outdirec = '../Output/%s_tracers/'%(sim)
 
     # define the subhalos we care about at snapshot snapNum
-    subfindIDs = np.arange(10)
+    subfindIDs = np.arange(100)
 
     # find the corresponding subfindIDs at the next snapshots
     track_subfindIDs(subfindIDs)
@@ -123,6 +123,10 @@ def initialize_coldgastracers():
         else:
             offsets_subhalo['SubhaloOffset'][subfind_i] = (offsets_subhalo['SubhaloOffset'][subfind_i-1]
                                                            + offsets_subhalo['SubhaloLength'][subfind_i-1])
+
+        # check that the subhalo is identified at snapNum
+        if subfindID == -1:
+            continue
 
         gas_cells    = il.snapshot.loadSubhalo(basePath, snapNum, subfindID, gas_ptn, fields=gas_fields)
 
