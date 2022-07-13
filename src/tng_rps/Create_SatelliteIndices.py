@@ -79,9 +79,9 @@ def run_zooniverseindices(create_indices_flag=False, mp_flag=False, zooniverse_f
 
     # not using the zooniverse results -- define subfindIDs somehow else... 
     else:
-        SnapNum, SubfindID = initialize_satelliteindices()
+        SnapNum, SubfindID = initialize_subfindindices()
 
-        outdirec = '../Output/%s_subfindGRP/'
+        outdirec = '../Output/%s_subfindGRP/'%sim
         outfname = 'subfind_%s_branches.hdf5'%(sim)
 
         # run return_subfindindices
@@ -91,9 +91,9 @@ def run_zooniverseindices(create_indices_flag=False, mp_flag=False, zooniverse_f
                                                                   SubfindID))
         else:
             result_list = []
-            for index, subfindID in enumerate(subfindID):
+            for index, subfindID in enumerate(SubfindID):
                 result_list.append(return_subfindindices(SnapNum[index],
-                                                         SubfindID))
+                                                         subfindID))
         
 
     # reformat result and save
@@ -125,8 +125,8 @@ def initialize_subfindindices():
     Returns SnapNums, SubfindIDs
     """
 
-    SnapNums   = np.ones(len(SubfindIDs), dtype=int) * 99
     SubfindIDs = np.arange(10)
+    SnapNums   = np.ones(len(SubfindIDs), dtype=int) * 99
 
     return SnapNums, SubfindIDs
 
@@ -412,7 +412,6 @@ def return_subfindindices(snap, subfindID, snapNum=33, max_snap=99):
             for key in sub_fields:
                 subMDB[key] = subMDB[key][start:stop]
             subMDB['count'] = len(subMDB[key])
-            subMDB[tree_flag_key] = np.array([1], dtype=int)
 
             
         # if the MDB is clean (reaches z=0), combine the MPB and MDB trees
@@ -423,15 +422,12 @@ def return_subfindindices(snap, subfindID, snapNum=33, max_snap=99):
             else:
                 sub_tree[key] = np.concatenate([subMDB[key][:-1], subMPB[key]])
 
-        tree_flag = np.array([1], dtype=int)
-        sub_tree[tree_flag_key] = tree_flag
         return sub_tree
 
     # initialize results
     snaps = np.arange(max_snap, snapNum-1, -1)
     
     return_key = '%03d_%08d'%(snap, subfindID)
-    tree_flag_key = 'tree_flag'
 
     result_keys = ['SnapNum', 'SubfindID',
                    'Subhalo_Mstar_Rgal',
@@ -448,16 +444,23 @@ def return_subfindindices(snap, subfindID, snapNum=33, max_snap=99):
                    'HostGroup_M_Crit200',
                    'HostGroup_R_Crit200',
                    'HostSubhaloGrNr',
-                   'HostCentricDistance_phys', 'HostCentricDistance_norm',
-                   'tree_flag']
+                   'HostCentricDistance_phys', 'HostCentricDistance_norm']
+    
     result = {}
     result[return_key] = {}
 
+    int_keys = ['SnapNum', 'SubfindID',
+                'SubhaloGrNr', 'SubhaloGroupFirstSub',
+                'HostSubfindID', 'HostSubhaloGrNr']
+
+    threed_keys = ['SubhaloPos', 'SubhaloVel',
+                   'HostSubhaloVel', 'HostSubhaloPos']
+
     for key in result_keys:
-        if key == tree_flag_key:
-            result[return_key][tree_flag_key] = np.array([0], dtype=int)
-        elif key in [SnapNum, SubfindID, SubhaloGrNr, SubhaloGroupFirstSub, HostSubfindID, HostSubhaloGrNr]:
+        if key in int_keys:
             result[return_key][key] = np.ones(len(snaps), dtype=int) * -1
+        elif key in threed_keys:
+            result[return_key][key] = np.ones((len(snaps), 3), dtype=int) * -1
         else:
             result[return_key][key] = np.ones(len(snaps), dtype=float) * -1.
 
@@ -491,7 +494,6 @@ def return_subfindindices(snap, subfindID, snapNum=33, max_snap=99):
         sub_tree = return_subtree(subMPB)
     else: 
         sub_tree = subMPB
-        sub_tree[tree_flag_key] = np.array([1], dtype=int)
     
     # load the host_tree MPB using the GroupFirstSub from the last identified snap of the subhalo        
     host_tree = il.sublink.loadTree(basePath, sub_tree['SnapNum'][0], sub_tree['GroupFirstSub'][0],
@@ -501,7 +503,7 @@ def return_subfindindices(snap, subfindID, snapNum=33, max_snap=99):
     sub_indices  = []
     host_indices = []
     snap_indices = []
-    for snap_index, SnapNum in enumerate(SnapNums):
+    for snap_index, SnapNum in enumerate(snaps):
         if ((SnapNum in sub_tree['SnapNum']) & (SnapNum in host_tree['SnapNum'])):
             sub_indices.append(np.where(SnapNum == sub_tree['SnapNum'])[0])
             host_indices.append(np.where(SnapNum == host_tree['SnapNum'])[0])
@@ -544,11 +546,13 @@ def return_subfindindices(snap, subfindID, snapNum=33, max_snap=99):
              host_tree['Group_M_Crit200'][host_indices] * 1.0e10 / h,
              host_tree['Group_R_Crit200'][host_indices] * a / h,
              host_tree['SubhaloGrNr'][host_indices],
-             hostcentricdistances, hostcentricdistances_norm,
-             sub_tree[tree_flag_key]]
-
+             hostcentricdistances, hostcentricdistances_norm,]
+    
     for i, key in enumerate(result_keys):
-        result[return_key][key][snap_indices] = dsets[i]
+        if key in threed_keys:
+            result[return_key][key][snap_indices,:] = dsets[i]
+        else:
+            result[return_key][key][snap_indices] = dsets[i]
                                                
     return result
 
