@@ -11,7 +11,7 @@ import illustris_python as il
 import multiprocessing as mp
 import numpy as np
 import h5py
-import rohr_utils as ru 
+import rohr_utils as ru
 from importlib import reload
 import glob
 
