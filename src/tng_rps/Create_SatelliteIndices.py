@@ -266,7 +266,7 @@ def return_zooniverseindices(snap, subfindID):
         sub_tree = subMPB
         sub_tree[tree_flag_key] = np.array([1], dtype=int)
     
-    # load the host_tree MPB using the GroupFirstSub from the last identified snap of the subhalo        
+    # load the host_tree MPB using the GroupFirstSub from the last identified snap of the subhalo
     host_tree = il.sublink.loadTree(basePath, sub_tree['SnapNum'][0], sub_tree['GroupFirstSub'][0],
                                     treeName='SubLink_gal', fields=host_fields, onlyMPB=True)
 
