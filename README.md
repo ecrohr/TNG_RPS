@@ -3,8 +3,10 @@
 # rohr-tng-rps
 This repository contains all the relevant python scripts related to Rohr et al. in prep. analyzing the cold gas loss and ram pressure stripping in TNG50 and TNG100 jellyfish galaxies. This includes utility functions, particle data analysis, catalog creation, and plot making. For the particle data analysis, please only run the scripts on VERA or another MPCDF cluseter with direct access to the TNG data. 
 
-Please note that this repository is based on the [mpia-python-template](https://github.com/mpi-astronomy/mpia-python-template), also included below.
 
+<!---
+
+Please note that this repository is based on the [mpia-python-template](https://github.com/mpi-astronomy/mpia-python-template), also included below. Please ignore -- this is for my reference for future documentation.
 
 [![DOI](https://zenodo.org/badge/472725375.svg)](https://zenodo.org/badge/latestdoi/472725375)
 # mpia-python-template
@@ -173,3 +175,5 @@ open _build/html/index.html
 This repository is also set to auto-generate an HTML page with the documentation and creates a GitHub pages webpage. While the files are auto-generated, the page must be made visible in the first place. Go to the `Settings` tab in GitHub and in the left-hand menu navigate to the `Pages` option. Select the `gh-pages` branch in the drop down `Source` menu. This is a one-time setting. The URL for your documentation will be displayed in the green banner. The example documentation page for this repository can be found at [https://mpi-astronomy.github.io/mpia-python-template/](https://mpi-astronomy.github.io/mpia-python-template/). 
 
 You can disable/enable the auto-generated documentation builds as shown [here](https://docs.github.com/en/actions/managing-workflow-runs/disabling-and-enabling-a-workflow) or by deleting the `.github/workflows/docs.yml` file (use `git rm`). To unpublish the documentation page, you also need to delete the `gh-pages` branch, see instructions [here](https://docs.github.com/en/pages/getting-started-with-github-pages/unpublishing-a-github-pages-site#unpublishing-a-project-site).
+
+-->
