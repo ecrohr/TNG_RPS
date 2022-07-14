@@ -7,7 +7,7 @@ import rohr_utils as ru
 from importlib import reload
 import glob
 
-global sim, basePath, snapNum, tcoldgas
+global sim, basePath, snapNum, tcoldgas, max_snap
 global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
 global gas_fields
 global big_array_length
@@ -23,7 +23,7 @@ def create_tracertracks():
     Saves the output.
     """
 
-    global sim, basePath, snapNum, tcoldgas
+    global sim, basePath, snapNum, tcoldgas, max_snap
     global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
     global gas_fields
     global big_array_length
@@ -35,6 +35,7 @@ def create_tracertracks():
     basePath   = ru.ret_basePath(sim)
     snapNum    = 33
     tcoldgas   = 10.**(4.5) # [K]
+    max_snap   = 99
 
     tracer_ptn = il.util.partTypeNum('tracer')
     star_ptn   = il.util.partTypeNum('star')
@@ -56,6 +57,8 @@ def create_tracertracks():
     # define the subhalos we care about at snapshot snapNum
     subfindIDs = np.arange(100)
 
+    # already ran for snapshots 33-35; no need to rerun at the moment
+    """
     # find the corresponding subfindIDs at the next snapshots
     track_subfindIDs(subfindIDs)
 
@@ -63,9 +66,13 @@ def create_tracertracks():
     initialize_coldgastracers()
 
     # now track tracers from snapNum + 1 until snap 99
-    for snap in range(snapNum+1, 100):
+    for snap in range(snapNum+1, max_snap+1):
         track_tracers(snap)
-
+    """
+    # 
+    for snap in range(36, max_snap+1):
+        track_tracers(snap)
+        
     # finish the first snapshot. move to the next.
 
     return 
@@ -314,6 +321,7 @@ def track_tracers(snap):
                         start = f['group']['SubhaloOffset'][subfind_i]
                         end   = start + f['group']['SubhaloLengthColdGas'][subfind_i]
                         f.close()
+                        break
                 # if the subhalo isn't in the merger trees the past few snaps, move on
                 if i == 4:
                     start = end = 0
@@ -425,7 +433,6 @@ def track_subfindIDs(subfindIDs, z0_flag=True):
     """
 
     # initialize result 
-    max_snap = 99
     snaps    = np.arange(max_snap, snapNum-1, -1)
     n_snaps  = len(snaps)
     result   = np.ones((len(subfindIDs), n_snaps), dtype=int) * -1
