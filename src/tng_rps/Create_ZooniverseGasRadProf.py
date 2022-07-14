@@ -16,7 +16,7 @@ import os
 import multiprocessing as mp
 from importlib import reload
 
-global sim, basePath, fname
+global sim, basePath, fname, direc
 global tlim, radii_binwidth, key
 global scalar_keys
 global rmin_norm, rmax_norm, radii_bins_norm, radii_bincents_norm, nbins
@@ -130,9 +130,20 @@ def return_satelliteGRP(snapnum, subfindID):
     
     print('Working on %s snap %s subfindID %d'%(sim, snapnum, subfindID))
     
+    # initialize result
     result            = {}
     group_key         = '%d'%snapnum
     result[group_key] = {}
+
+    for dset_key in dset_keys:
+        result[group_key][dset_key] = np.ones(len(radii_bins_norm), dtype=float) * -1.
+            
+    for scalar_key in scalar_keys:
+        result[group_key][scalar_key] = -1.
+
+    # check if the subhalo is identified at this snap
+    if subfindID == -1:
+        return result 
 
     # load general simulation parameters
     header  = il.groupcat.loadHeader(basePath, snapnum)
@@ -205,7 +216,7 @@ def return_satelliteGRP(snapnum, subfindID):
     
     dsets = [radii_bincents, mass_shells, vol_shells, densities_shells]
     for dset_index, dset_key in enumerate(dset_keys):
-        result[group_key][dset_key] = dsets[dset_index]
+        result[group_key][dset_key][:] = dsets[dset_index]
         
     scalars = [subhalo_coldgasmass, subhalo_gasmass, subhalo_hotgasmass]
     
@@ -442,7 +453,11 @@ def add_coldgasmasstau():
 sims = ['TNG50-1', 'TNG100-1']
 for sim in sims:
     basePath = ru.ret_basePath(sim)
+    direc = '../Output/zooniverse/'
     fname = 'zooniverse_%s_%s_branches.hdf5'%(sim, key)
+
+    direc = '../Output/%s_subfindGRP/'%sim
+    fname = 'subfind_%s_branches.hdf5'%sim
 
     run_satelliteGRP()
 
