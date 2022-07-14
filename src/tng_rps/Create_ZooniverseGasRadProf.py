@@ -40,9 +40,9 @@ radii_bincents_norm = np.insert(radii_bincents_norm, 0, radii_bins_norm[1]/2.)
 nbins = len(radii_bins_norm)
 
 def run_satelliteGRP():
-    """
+
     dics = []
-    f = h5py.File('../Output/'+fname, 'a')
+    f = h5py.File(direc + fname, 'a')
     for group_key in f.keys():
         dic = {}
         dic[group_key] = {}
@@ -51,7 +51,7 @@ def run_satelliteGRP():
             dic[group_key][dset_key] = group[dset_key][:]
         dics.append(dic)
 
-    Pool = mp.Pool(mp.cpu_count()) # should be 8 when running interactively; mp.cpu_count() for SLURM
+    Pool = mp.Pool(8) # should be 8 when running interactively; mp.cpu_count() for SLURM
 
     result_list = Pool.map(create_satelliteGRP, dics)
 
@@ -74,13 +74,13 @@ def run_satelliteGRP():
             dataset[:] = dset
 
     f.close()
-    """
+    
     
     # post process the gas radial profiles
-    #add_memberflags()
-    #add_times()
-    #add_dmin()
-    #add_Nperipass()
+    add_memberflags()
+    add_times()
+    add_dmin()
+    add_Nperipass()
     add_coldgasmasstau()
 
     return
@@ -230,7 +230,7 @@ def return_satelliteGRP(snapnum, subfindID):
 # add membership flags -- central flag, pre-processed flag, member of final FoF flag
 def add_memberflags():
 
-    f = h5py.File('../Output/'+fname, 'a')
+    f = h5py.File(direc+fname, 'a')
 
     keys = ['central_flags', 'preprocessed_flags', 'memberlifof_flags']
 
@@ -282,7 +282,7 @@ def add_times():
     cosmictimes /= 1.0e9 # convert to [Gyr]
     scales = 1. / (1. + zs)
 
-    f = h5py.File('../Output/'+fname, 'a')
+    f = h5py.File(direc+fname, 'a')
 
     keys = ['CosmicTime', 'Redshift', 'Time']
     dsets = [cosmictimes, zs, scales]
@@ -302,7 +302,7 @@ def add_times():
 # add the min distance to the host
 def add_dmin():
 
-    f = h5py.File('../Output/'+fname, 'a')
+    f = h5py.File(direc+fname, 'a')
     keys = ['min_HostCentricDistance_norm', 'min_HostCentricDistance_phys']
 
     for group_key in f.keys():
@@ -334,7 +334,7 @@ def add_dmin():
 # add flags for pericenter passages
 def add_Nperipass(mindist_phys=1000.0, mindist_norm=2.0):
 
-    f = h5py.File('../Output/'+fname, 'a')
+    f = h5py.File(direc+fname, 'a')
     keys = ['Nperipass', 'min_Dperi_norm', 'min_Dperi_phys']
     
     for group_key in f.keys():
@@ -401,7 +401,7 @@ def add_coldgasmasstau():
 
         return tau
 
-    f = h5py.File('../Output/'+fname, 'a')
+    f = h5py.File(direc+fname, 'a')
     
     N_RM = 3 # the number of snapshots to average over for running median
              # should be an odd number
