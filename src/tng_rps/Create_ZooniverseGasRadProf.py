@@ -18,7 +18,7 @@ from importlib import reload
 
 global sim, basePath, fname, direc
 global tlim, radii_binwidth, key
-global scalar_keys
+global scalar_keys, dset_keys
 global rmin_norm, rmax_norm, radii_bins_norm, radii_bincents_norm, nbins
 
 tlim = 10.**(4.5) # K; cutoff between cold and hot CGM gas
@@ -26,6 +26,7 @@ radii_binwidth = 0.1
 key = 'inspected'
 
 scalar_keys = ['SubhaloColdGasMass', 'SubhaloGasMass', 'SubhaloHotGasMass']
+dset_keys = ['radii', 'mass_shells', 'vol_shells', 'densities_shells']
 
 ### define radial bins and bincenters ###
 rmin_norm = 10.**(-1.) # [r/rgal]
@@ -42,6 +43,7 @@ nbins = len(radii_bins_norm)
 def run_satelliteGRP():
 
     dics = []
+    
     f = h5py.File(direc + fname, 'a')
     for group_key in f.keys():
         dic = {}
@@ -161,9 +163,7 @@ def return_satelliteGRP(snapnum, subfindID):
     subhalo      = ru.loadSingleFields(basePath, snapnum, subhaloID=subfindID, fields=subhalofields)
     subhalopos   = subhalo['SubhaloPos'] * a / h
     subhalo_rgal = 2. * subhalo['SubhaloHalfmassRadType'][starpartnum] * a / h 
-        
-    dset_keys = ['radii', 'mass_shells', 'vol_shells', 'densities_shells']
-                    
+                            
     # load gas particles for relevant halo
     gasparts = il.snapshot.loadSubhalo(basePath, snapnum, subfindID, gaspartnum, fields=gasfields)
     
@@ -450,7 +450,7 @@ def add_coldgasmasstau():
     return
     
 
-sims = ['TNG50-1', 'TNG100-1']
+sims = ['TNG50-3']
 for sim in sims:
     basePath = ru.ret_basePath(sim)
     direc = '../Output/zooniverse/'
