@@ -137,14 +137,12 @@ def return_satelliteGRP(snapnum, subfindID):
     group_key         = '%d'%snapnum
     result[group_key] = {}
 
-    for dset_key in dset_keys:
-        result[group_key][dset_key] = np.ones(len(radii_bins_norm), dtype=float) * -1.
-            
-    for scalar_key in scalar_keys:
-        result[group_key][scalar_key] = -1.
-
     # check if the subhalo is identified at this snap
     if subfindID == -1:
+        for dset_key in dset_keys:
+            result[group_key][dset_key] = np.ones(nbins-1, dtype=float) * -1.     
+        for scalar_key in scalar_keys:
+            result[group_key][scalar_key] = -1.
         return result 
 
     # load general simulation parameters
@@ -216,7 +214,7 @@ def return_satelliteGRP(snapnum, subfindID):
     
     dsets = [radii_bincents, mass_shells, vol_shells, densities_shells]
     for dset_index, dset_key in enumerate(dset_keys):
-        result[group_key][dset_key][:] = dsets[dset_index]
+        result[group_key][dset_key] = dsets[dset_index]
         
     scalars = [subhalo_coldgasmass, subhalo_gasmass, subhalo_hotgasmass]
     
