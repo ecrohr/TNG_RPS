@@ -31,7 +31,7 @@ def create_tracertracks():
 
     
     # define the global variables
-    sim        = 'TNG50-3'
+    sim        = 'TNG50-4'
     basePath   = ru.ret_basePath(sim)
     snapNum    = 33
     tcoldgas   = 10.**(4.5) # [K]
@@ -58,7 +58,6 @@ def create_tracertracks():
     subfindIDs = np.arange(100)
 
     # already ran for snapshots 33-35; no need to rerun at the moment
-    """
     # find the corresponding subfindIDs at the next snapshots
     track_subfindIDs(subfindIDs)
 
@@ -68,13 +67,7 @@ def create_tracertracks():
     # now track tracers from snapNum + 1 until snap 99
     for snap in range(snapNum+1, max_snap+1):
         track_tracers(snap)
-    """
-    # 
-    for snap in range(36, max_snap+1):
-        track_tracers(snap)
         
-    # finish the first snapshot. move to the next.
-
     return 
 
 
@@ -312,7 +305,7 @@ def track_tracers(snap):
         # if not, then try the previous snapshots
         else:
             i = 2
-            while i < 4:
+            while ((snap - i) >= snapNum) & (i < 4):
                 with h5py.File(outdirec + 'offsets_%03d.hdf5'%(snap - i), 'r') as f:
                     if f['group']['SubfindID'][subfind_i] == -1:
                         f.close()

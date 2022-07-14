@@ -448,13 +448,13 @@ def add_coldgasmasstau():
     return
     
 
-sims = ['TNG50-3']
+sims = ['TNG50-4']
 for sim in sims:
     basePath = ru.ret_basePath(sim)
     direc = '../Output/zooniverse/'
     fname = 'zooniverse_%s_%s_branches.hdf5'%(sim, key)
 
-    direc = '../Output/%s_subfindGRP/'%sim
+    direc = '../Output/%s_subfindGRP_0-10/'%sim
     fname = 'subfind_%s_branches.hdf5'%sim
 
     run_satelliteGRP()

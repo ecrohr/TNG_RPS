@@ -84,7 +84,7 @@ def run_zooniverseindices(create_indices_flag=False, mp_flag=False, zooniverse_f
     else:
         SnapNum, SubfindID = initialize_subfindindices()
 
-        outdirec = '../Output/%s_subfindGRP/'%sim
+        outdirec = '../Output/%s_subfindGRP_0-10/'%sim
         outfname = 'subfind_%s_branches.hdf5'%(sim)
 
         # run return_subfindindices
@@ -128,7 +128,7 @@ def initialize_subfindindices():
     Returns SnapNums, SubfindIDs
     """
 
-    SubfindIDs = np.arange(100)
+    SubfindIDs = np.arange(10)
     SnapNums   = np.ones(len(SubfindIDs), dtype=int) * 99
 
     return SnapNums, SubfindIDs
@@ -306,7 +306,7 @@ def return_subfindindices(snap, subfindID, snapNum=33, max_snap=99):
     return result
 
 
-sims = ['TNG50-3']
+sims = ['TNG50-4']
 create_indices_flag = True
 mp_flag = False
 zooniverse_flag = False
