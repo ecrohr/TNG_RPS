@@ -1,9 +1,3 @@
-#######################################
-### fname:          rohr_utils.py
-### created by:     Eric Rohr
-### created on:     2020-11-10
-### last updated:   2021-04-07
-#######################################
 """ 
 This file contains utility functions to 
 facilitate analysis of IllustrisTNG data.
@@ -1105,5 +1099,18 @@ def loadInfallFields(basePath, fields=None, infallindices=None):
 
 def ret_basePath(sim):
     return ('../IllustrisTNG/%s/output/'%sim)
+
+
+def loadHeader(basePath, snapNum):
+    """ Load the snapshot catalog header. """
+    direc = basePath + 'snapdir_%03d/'%snapNum
+    fname = 'snap_%03d.0.hdf5'%snapNum
+    
+    with h5py.File(direc + fname, 'r') as f:
+        header = dict(f['Header'].attrs.items())
+
+        f.close()
+
+    return header
 
 
