@@ -42,7 +42,6 @@ nbins = len(radii_bins_norm)
 
 def run_satelliteGRP():
 
-    """
     dics = []
     
     f = h5py.File(direc + fname, 'a')
@@ -77,16 +76,13 @@ def run_satelliteGRP():
             dataset[:] = dset
 
     f.close()
-
-    """
-    
     
     # post process the gas radial profiles
-    #add_memberflags()
-    #add_times()
-    #add_dmin()
-    #add_Nperipass()
-    #add_coldgasmasstau()
+    add_memberflags()
+    add_times()
+    add_dmin()
+    add_Nperipass()
+    add_coldgasmasstau()
     add_tracers()
 
     return
@@ -468,6 +464,11 @@ def add_tracers():
     max_snap = np.max(group['SnapNum'])
     min_snap = np.min(group['SnapNum'])
     snaps = np.arange(max_snap, min_snap-1, -1)
+
+    tracer_ptn  = il.util.partTypeNum('tracer')
+    header      = ru.loadHeader(basePath, max_snap)
+    h           = header['HubbleParam']
+    tracer_mass = header['MassTable'][tracer_ptn] * 1.0e10 / h
     
     # initialize results
     SubhaloColdGasMassTracer_net = np.ones((NsubfindIDs, len(snaps))) * -1.
@@ -476,7 +477,8 @@ def add_tracers():
 
     for snap_i, snap in enumerate(snaps):
 
-        offsets = h5py.File(direc + 'offsets_%03d.hdf5'%snap, 'r')
+        off_direc = '../Output/%s_tracers/'%sim
+        offsets = h5py.File(off_direc + 'offsets_%03d.hdf5'%snap, 'r')
         group = offsets['group']
 
         SubhaloColdGasMassTracer_net[:,snap_i] = group['SubhaloLengthColdGas'] * tracer_mass
