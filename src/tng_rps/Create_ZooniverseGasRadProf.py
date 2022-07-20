@@ -42,6 +42,7 @@ nbins = len(radii_bins_norm)
 
 def run_satelliteGRP():
 
+    """
     dics = []
     
     f = h5py.File(direc + fname, 'a')
@@ -76,14 +77,17 @@ def run_satelliteGRP():
             dataset[:] = dset
 
     f.close()
+
+    """
     
     
     # post process the gas radial profiles
-    add_memberflags()
-    add_times()
-    add_dmin()
-    add_Nperipass()
-    add_coldgasmasstau()
+    #add_memberflags()
+    #add_times()
+    #add_dmin()
+    #add_Nperipass()
+    #add_coldgasmasstau()
+    add_tracers()
 
     return
 
@@ -446,6 +450,60 @@ def add_coldgasmasstau():
     f.close()
         
     return
+
+
+def add_tracers():
+    """
+    Add tracer particle post-processing datasets to the GRP catalog.
+    """
+
+    direc = '../Output/%s_subfindGRP/'%sim
+    fname = 'subfind_%s_branches.hdf5'%sim
+
+    f = h5py.File(direc + fname, 'a')
+    keys = np.array(list(f.keys()))
+
+    group = f[keys[0]]
+    NsubfindIDs = len(keys)
+    max_snap = np.max(group['SnapNum'])
+    min_snap = np.min(group['SnapNum'])
+    snaps = np.arange(max_snap, min_snap-1, -1)
+    
+    # initialize results
+    SubhaloColdGasMassTracer_net = np.ones((NsubfindIDs, len(snaps))) * -1.
+    SubhaloColdGasMassTracer_new = np.ones((NsubfindIDs, len(snaps))) * -1.
+    SubhaloColdGasMassTracer_out = np.ones((NsubfindIDs, len(snaps))) * -1.
+
+    for snap_i, snap in enumerate(snaps):
+
+        offsets = h5py.File(direc + 'offsets_%03d.hdf5'%snap, 'r')
+        group = offsets['group']
+
+        SubhaloColdGasMassTracer_net[:,snap_i] = group['SubhaloLengthColdGas'] * tracer_mass
+        SubhaloColdGasMassTracer_new[:,snap_i] = group['SubhaloLengthColdGas_new'] * tracer_mass
+        SubhaloColdGasMassTracer_out[:,snap_i] = (group['SubhaloLength'][:] - group['SubhaloLengthColdGas'][:]) * tracer_mass
+
+        offsets.close()
+
+    # save new datasets
+    dset_keys = ['SubhaloColdGasMassTracer_net',
+                 'SubhaloColdGasMassTracer_new',
+                 'SubhaloColdGasMassTracer_out']
+
+    dsets     = [SubhaloColdGasMassTracer_net,
+                 SubhaloColdGasMassTracer_new,
+                 SubhaloColdGasMassTracer_out]
+
+    for key_i, key in enumerate(keys):
+        group = f[key]
+        for dset_key_i, dset_key in enumerate(dset_keys):
+            dset = dsets[dset_key_i][key_i]
+            dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+            dataset[:] = dset
+            
+    f.close()
+
+    return
     
 
 sims = ['TNG50-4']
@@ -454,7 +512,7 @@ for sim in sims:
     direc = '../Output/zooniverse/'
     fname = 'zooniverse_%s_%s_branches.hdf5'%(sim, key)
 
-    direc = '../Output/%s_subfindGRP_0-10/'%sim
+    direc = '../Output/%s_subfindGRP/'%sim
     fname = 'subfind_%s_branches.hdf5'%sim
 
     run_satelliteGRP()
