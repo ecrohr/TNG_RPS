@@ -339,7 +339,7 @@ def track_tracers(snap):
         
         indices = np.concatenate([tracer_indices[isin_now],
                                   tracer_indices[~isin_now],
-                                  np.nonzero(isin_group3)]
+                                  np.nonzero(isin_group3)])
         
         # save the offset information
         offsets_subhalo['SubhaloLength'][subfind_i]            = len(IDs)
