@@ -149,7 +149,7 @@ def return_subfindindices(snap, subfindID, snapNum=33, max_snap=99):
         
         # check if there's an issue with the MDB -- if the MDB reaches z=0
         # if so, then only use the MPB
-        if (subMDB['count'] + snap) > max_snap:
+        if (subMDB['count'] + snap) > (max_snap + 1):
             print('Issue with MDB for %s snap %d subfindID %d'%(sim, snap, subfindID))
 
             # find where the MDB stops

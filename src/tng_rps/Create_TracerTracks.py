@@ -465,7 +465,7 @@ def track_subfindIDs(subfindIDs, z0_flag=True):
                 continue
 
             # does MDB have a bad count? (i.e., not reach z=0?)
-            if (tree['count'] + snapNum) > max_snap:
+            if (tree['count'] + snapNum) > (max_snap + 1):
 
                 # find where the MDB stops
                 stop              = -(max_snap - snapNum + 1)
