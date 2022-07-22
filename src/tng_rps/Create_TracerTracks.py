@@ -102,13 +102,14 @@ def initialize_coldgastracers():
     offsets_subhalo['SubhaloLengthColdGas']     = np.zeros(len(subfindIDs), int)
     offsets_subhalo['SubhaloLengthColdGas_new'] = np.zeros(len(subfindIDs), int)
 
-    particles = {}
+    tracers_subhalo = {}
     # rewrite into a 4xbig_array_length array rather than a dictionary
     # for a speed increase
-    particles['TracerIDs']      = np.empty(big_array_length, dtype=int)
-    particles['TracerIndices']  = np.empty(big_array_length, dtype=int)
-    particles['ParentIndices']  = np.empty(big_array_length, dtype=int)
-    particles['ParentPartType'] = np.empty(big_array_length, dtype=int)
+    tracers_subhalo['TracerIDs']      = np.empty(big_array_length, dtype=int)
+    tracers_subhalo['TracerIndices']  = np.empty(big_array_length, dtype=int)
+    tracers_subhalo['ParentIndices']  = np.empty(big_array_length, dtype=int)
+    tracers_subhalo['ParentPartType'] = np.empty(big_array_length, dtype=int)
+    tracers_subhalo['ParentGasTemp']  = np.empty(big_array_length, dtype=float)
 
     # load every tracer particle in the simulation at this snapshot
     tracers = il.snapshot.loadSubset(basePath, snapNum, tracer_ptn)
@@ -140,7 +141,7 @@ def initialize_coldgastracers():
         cgas_indices = np.where(gas_cells['Temperature'] <= tcoldgas)[0]
         if len(cgas_indices) == 0:
             continue
-        
+       
         ParticleIDs  = gas_cells['ParticleIDs'][cgas_indices]
 
         # match the tracer ParentID with the cold gas cells ParticleIDs
@@ -177,20 +178,24 @@ def initialize_coldgastracers():
         start = offsets_subhalo['SubhaloOffset'][subfind_i]
         end   = start + offsets_subhalo['SubhaloLength'][subfind_i]
 
-        particles['TracerIDs'][start:end]      = tracer_IDs
-        particles['TracerIndices'][start:end]  = tracer_indices 
-        particles['ParentIndices'][start:end]  = gas_indices
-        particles['ParentPartType'][start:end] = parent_ptn
+        temps = gas_cells['Temperature'][cgas_indices][gas_indices][repeat_indices]
+
+        tracers_subhalo['TracerIDs'][start:end]      = tracer_IDs
+        tracers_subhalo['TracerIndices'][start:end]  = tracer_indices 
+        tracers_subhalo['ParentIndices'][start:end]  = gas_indices
+        tracers_subhalo['ParentPartType'][start:end] = parent_ptn
+        tracers_subhalo['ParentGasTemp'][start:end]  = temps
+
 
     # finish loop over the subhalos at snapshot snapNum
  
     # reshape the arrays
     end =  offsets_subhalo['SubhaloOffset'][-1] +  offsets_subhalo['SubhaloLength'][-1]
-    for key in particles.keys():
-        particles[key] = particles[key][:end]
+    for key in tracers_subhalo.keys():
+        tracers_subhalo[key] = tracers_subhalo[key][:end]
 
     # save the offsets and particles dictionaries
-    dicts  = [offsets_subhalo, particles]
+    dicts  = [offsets_subhalo, tracers_subhalo]
     fnames = ['offsets', 'tracers']
     for d_i, d in enumerate(dicts):
         fname    = fnames[d_i]
@@ -241,13 +246,14 @@ def track_tracers(snap):
     offsets_subhalo['SubhaloLengthColdGas']     = np.zeros(len(subfindIDs), int)
     offsets_subhalo['SubhaloLengthColdGas_new'] = np.zeros(len(subfindIDs), int)
 
-    particles = {}
+    tracers_subhalo = {}
     # rewrite into a 4xbig_array_length array rather than a dictionary
     # for a speed increase
-    particles['TracerIDs']      = np.empty(big_array_length, dtype=int)
-    particles['TracerIndices']  = np.empty(big_array_length, dtype=int)
-    particles['ParentIndices']  = np.empty(big_array_length, dtype=int)
-    particles['ParentPartType'] = np.empty(big_array_length, dtype=int)
+    tracers_subhalo['TracerIDs']      = np.empty(big_array_length, dtype=int)
+    tracers_subhalo['TracerIndices']  = np.empty(big_array_length, dtype=int)
+    tracers_subhalo['ParentIndices']  = np.empty(big_array_length, dtype=int)
+    tracers_subhalo['ParentPartType'] = np.empty(big_array_length, dtype=int)
+    tracers_subhalo['ParentGasTemp']  = np.empty(big_array_length, dtype=float)
 
     # load the offsets and tracers from the previous snapshot
     offsets_past = h5py.File(outdirec + 'offsets_%03d.hdf5'%(snap - 1), 'r')
@@ -330,14 +336,15 @@ def track_tracers(snap):
         # 2nd: new cold gas tracers (not in the previous snapshot)
         # 3rd: no longer cold gas tracers (was in previous snapshot but no longer)
 
+        # find the indices of group 3
+        isin_group3    = np.isin(tracers['TracerID'], IDs_past[~isin_past])
+        IDs_group3     = tracers['TracerID'][isin_group3]
+        indices_group3 = np.where(isin_group3)[0]
+
         IDs = np.concatenate([tracer_IDs[isin_now],
                               tracer_IDs[~isin_now],
-                              IDs_past[~isin_past]])
-        
-        # find the indices of group 3
-        isin_group3 = np.isin(tracers['TracerID'], IDs_past[~isin_past])
-        indices_group3 = np.where(isin_group3)[0]
-        
+                              IDs_group3])
+                
         indices = np.concatenate([tracer_indices[isin_now],
                                   tracer_indices[~isin_now],
                                   indices_group3])
@@ -356,8 +363,8 @@ def track_tracers(snap):
         if length_cgas == 0:
             continue
 
-        particles['TracerIDs'][start:start+length]     = IDs
-        particles['TracerIndices'][start:start+length] = indices
+        tracers_subhalo['TracerIDs'][start:start+length]     = IDs
+        tracers_subhalo['TracerIndices'][start:start+length] = indices
 
         # for the cold gas cell tracers, save the parent IDs and tracers
         # get the local cold gas indices with matched tracer particles and include the global offset
@@ -379,15 +386,14 @@ def track_tracers(snap):
         parent_ptn = np.ones(len(gas_indices), dtype=int) * gas_ptn
 
         # fill in the particle dictionary for this subhalo
-        particles['ParentIndices'][start:start+length_cgas]  = gas_indices
-        particles['ParentPartType'][start:start+length_cgas] = parent_ptn
+        tracers_subhalo['ParentIndices'][start:start+length_cgas]  = gas_indices
+        tracers_subhalo['ParentPartType'][start:start+length_cgas] = parent_ptn
 
         # for now, make the parent indices and parent part type -1
         # then later load the other baryonic particles in the sim and match
         # their particle IDs with all unmatched tracers
-        particles['ParentIndices'][start+length_cgas:start+length] = np.ones((length - length_cgas), dtype=int) * -1
-        particles['ParentPartType'][start+length_cgas:start+length] = np.ones((length - length_cgas), dtype=int) * -1
-
+        tracers_subhalo['ParentIndices'][start+length_cgas:start+length] = np.ones((length - length_cgas), dtype=int) * -1
+        tracers_subhalo['ParentPartType'][start+length_cgas:start+length] = np.ones((length - length_cgas), dtype=int) * -1
 
 
     # end loop over subhalos
@@ -395,13 +401,13 @@ def track_tracers(snap):
     offsets_past.close()
     tracers_past.close()
     
-    # reshape the particles arrays
+    # reshape the tracers_subhalo arrays
     end = offsets_subhalo['SubhaloOffset'][-1] + offsets_subhalo['SubhaloLength'][-1]
-    for key in particles.keys():
-        particles[key] = particles[key][:end]
+    for key in tracers_subhalo.keys():
+        tracers_subhalo[key] = tracers_subhalo[key][:end]
 
-    # save the offsets and particles dictionaries
-    dicts  = [offsets_subhalo, particles]
+    # save the offsets and tracers_subhalo dictionaries
+    dicts  = [offsets_subhalo, tracers_subhalo]
     fnames = ['offsets', 'tracers']
     for d_i, d in enumerate(dicts):
         fname    = fnames[d_i]
