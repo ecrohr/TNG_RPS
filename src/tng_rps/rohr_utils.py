@@ -1113,4 +1113,51 @@ def loadHeader(basePath, snapNum):
 
     return header
 
+def loadMainTreeBranch(snap, subfindID, sim='TNG50-1', fields=None, treeName='SubLink_gal',
+                       min_snap=0, max_snap=99):
+    """
+    Return the entire main branch (progenitor + descendant) of a given subhalo.
+    When snap == 99, then just returns the MPB.
+    Has the option only to return the tree between min and max snaps. 
+    """
+    
+    basePath = ret_basePath(sim)
+    
+    
+    # start by loading the MPB
+    subMPB = il.sublink.loadTree(basePath, snap, subfindID, treeName=treeName,
+                                 fields=fields, onlyMPB=True)
+    
+    if not subMPB:
+        return 
+    
+    if snap == 99:
+        return subMPB
+    
+    # load the MDB and combine 
+    subMDB = il.sublink.loadTree(basePath, snap, subfindID, treeName=treeName,
+                                 fields=fields, onlyMDB=True)
+        
+    # check if there's an issue with the MDB -- if the MDB reaches z=0
+    # if so, then only use the MPB
+    if (subMDB['count'] + snap) > (max_snap + 1):
+        
+        # find where the MDB stops
+        stop  = -(max_snap - min_snap + 1)
+        start = np.max(np.where((subMDB['SnapNum'][1:] - subMDB['SnapNum'][:-1]) >= 0)) + 1
+
+        for key in fields:
+            subMDB[key] = subMDB[key][start:stop]
+        subMDB['count'] = len(subMDB[key])
+
+            
+    # for the clean MDB, combine the MPB and MDB trees
+    result = {}
+    for key in subMPB.keys():
+        if key == 'count':
+            result[key] = subMDB[key] + subMPB[key] - 1
+        else:
+            result[key] = np.concatenate([subMDB[key][:-1], subMPB[key]])
+    
+    return result
 
