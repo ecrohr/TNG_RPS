@@ -9,7 +9,7 @@ import glob
 
 global sim, basePath, snapNum, tcoldgas, max_snap
 global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
-global gas_fields
+global gas_fields, part_fields
 global big_array_length
 global outdirec
 
@@ -25,7 +25,7 @@ def create_tracertracks():
 
     global sim, basePath, snapNum, tcoldgas, max_snap
     global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
-    global gas_fields
+    global gas_fields, part_fields
     global big_array_length
     global outdirec
 
@@ -42,7 +42,7 @@ def create_tracertracks():
     gas_ptn    = il.util.partTypeNum('gas')
     bh_ptn     = il.util.partTypeNum('bh')
 
-    bary_pts   = [gas_ptn,
+    bary_ptns   = [gas_ptn,
                   star_ptn,
                   bh_ptn]
 
@@ -421,9 +421,7 @@ def track_tracers(snap):
     del tracers
 
     # for each baryonic particle type, load the snapshot data
-    for i, ptn in enumerate(bary_pts):
-
-        print(i, ptn)
+    for i, ptn in enumerate(bary_ptns):
 
         if i == 0:
             fields = gas_fields
@@ -457,8 +455,7 @@ def track_tracers(snap):
 
             particles = ru.calc_temp_dict(particles)
             temps = particles['Temperature']
-            print(np.log10(np.min(temps)), np.log10(np.max(temps)))
-            print()
+
         else:
             temps = np.ones(len(parent_indices), dtype=float) * -1
 
