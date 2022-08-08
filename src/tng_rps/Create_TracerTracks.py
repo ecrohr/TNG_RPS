@@ -178,7 +178,7 @@ def initialize_coldgastracers():
         start = offsets_subhalo['SubhaloOffset'][subfind_i]
         end   = start + offsets_subhalo['SubhaloLength'][subfind_i]
 
-        temps = gas_cells['Temperature'][cgas_indices][gas_indices][repeat_indices]
+        temps = gas_cells['Temperature'][cgas_indices][isin_gas][repeat_indices]
 
         tracers_subhalo['TracerIDs'][start:end]      = tracer_IDs
         tracers_subhalo['TracerIndices'][start:end]  = tracer_indices 
@@ -385,15 +385,19 @@ def track_tracers(snap):
         # note that the parent type is always gas
         parent_ptn = np.ones(len(gas_indices), dtype=int) * gas_ptn
 
+        temps = gas_cells['Temperature'][cgas_indices][isin_gas][repeat_indices]
+        
         # fill in the particle dictionary for this subhalo
         tracers_subhalo['ParentIndices'][start:start+length_cgas]  = gas_indices
         tracers_subhalo['ParentPartType'][start:start+length_cgas] = parent_ptn
+        tracers_subhalo['ParentGasTemp'][start:start+length_cgas]  = temps
 
         # for now, make the parent indices and parent part type -1
         # then later load the other baryonic particles in the sim and match
         # their particle IDs with all unmatched tracers
-        tracers_subhalo['ParentIndices'][start+length_cgas:start+length] = np.ones((length - length_cgas), dtype=int) * -1
+        tracers_subhalo['ParentIndices'][start+length_cgas:start+length]  = np.ones((length - length_cgas), dtype=int) * -1
         tracers_subhalo['ParentPartType'][start+length_cgas:start+length] = np.ones((length - length_cgas), dtype=int) * -1
+        tracers_subhalo['ParentGasTemp'][start+length_cgas:start+length]  = np.ones((length - length_cgas), dtype=float) * -1
 
 
     # end loop over subhalos
@@ -405,6 +409,66 @@ def track_tracers(snap):
     end = offsets_subhalo['SubhaloOffset'][-1] + offsets_subhalo['SubhaloLength'][-1]
     for key in tracers_subhalo.keys():
         tracers_subhalo[key] = tracers_subhalo[key][:end]
+
+    # find the parentIDs of the group 3 tracers, 
+    # i.e. the ones whose parents are no longer bound cold gas cells
+
+    unmatched_indices = tracers_subhalo['ParentPartType'] == -1
+    tracer_indices    = tracers_subhalo['TracerIndices'][unmatched_indices]
+    ParentIDs         = tracers['ParentID'][tracer_indices]
+
+    # close the tracer snapshot data before loading in baryonic snapshot data
+    del tracers
+
+    # for each baryonic particle type, load the snapshot data
+    for i, ptn in enumerate(bary_pts):
+
+        print(i, ptn)
+
+        if i == 0:
+            fields = gas_fields
+        else:
+            fields = part_fields
+
+        particles   = il.snapshot.loadSubset(basePath, snap, ptn, fields=fields, sq=False)
+        ParticleIDs = particles['ParticleIDs']
+
+        isin_tracer    = np.isin(ParentIDs, ParticleIDs)
+        isin_particles = np.isin(ParticleIDs, ParentIDs)
+
+        parent_IDs       = ParentIDs[isin_tracer]
+        particle_indices = np.where(isin_particles)[0]
+
+        # note that some of these indices need to be repeated due to having multiple tracers with the same parent
+        particle_IDs   = ParticleIDs[isin_particles]
+        where = np.where([parent_ID == particle_IDs for parent_ID in parent_IDs])
+        repeat_indices = np.where([parent_ID == particle_IDs for parent_ID in parent_IDs])[1]
+
+        parent_indices = particle_indices[repeat_indices]
+        parent_ptn     = np.ones(len(parent_indices), dtype=int) * ptn
+
+        # for gas cells, also calculate the temperature
+        if i == 0:
+            for key in particles.keys():
+                if key == 'count':
+                    particles[key] = len(parent_indices)
+                else:
+                    particles[key] = particles[key][parent_indices]
+
+            particles = ru.calc_temp_dict(particles)
+            temps = particles['Temperature']
+            print(np.log10(np.min(temps)), np.log10(np.max(temps)))
+            print()
+        else:
+            temps = np.ones(len(parent_indices), dtype=float) * -1
+
+        save_indices = np.where(unmatched_indices)[0][np.where(isin_tracer)[0]]
+
+        # save the parent part types and indices, and the temperatures for parents that are gas cells
+        tracers_subhalo['ParentIndices'][save_indices]  = parent_indices
+        tracers_subhalo['ParentPartType'][save_indices] = parent_ptn
+        tracers_subhalo['ParentGasTemp'][save_indices]  = temps
+    # finish loop finding the unmatched tracers
 
     # save the offsets and tracers_subhalo dictionaries
     dicts  = [offsets_subhalo, tracers_subhalo]
@@ -422,7 +486,6 @@ def track_tracers(snap):
 
             outf.close()
 
-    
     return 
 
 
