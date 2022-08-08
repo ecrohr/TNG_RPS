@@ -434,12 +434,15 @@ def track_tracers(snap):
         isin_tracer    = np.isin(ParentIDs, ParticleIDs)
         isin_particles = np.isin(ParticleIDs, ParentIDs)
 
+        # if there are no matches, then continue
+        if len(isin_tracer[isin_tracer]) == 0:
+            continue
+        
         parent_IDs       = ParentIDs[isin_tracer]
         particle_indices = np.where(isin_particles)[0]
 
         # note that some of these indices need to be repeated due to having multiple tracers with the same parent
         particle_IDs   = ParticleIDs[isin_particles]
-        where = np.where([parent_ID == particle_IDs for parent_ID in parent_IDs])
         repeat_indices = np.where([parent_ID == particle_IDs for parent_ID in parent_IDs])[1]
 
         parent_indices = particle_indices[repeat_indices]
