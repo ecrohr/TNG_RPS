@@ -20,6 +20,7 @@ global sim, basePath, fname, direc
 global tlim, radii_binwidth, key
 global scalar_keys, dset_keys
 global rmin_norm, rmax_norm, radii_bins_norm, radii_bincents_norm, nbins
+global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
 
 tlim = 10.**(4.5) # K; cutoff between cold and hot CGM gas
 radii_binwidth = 0.1
@@ -40,8 +41,19 @@ radii_bincents_norm = np.insert(radii_bincents_norm, 0, radii_bins_norm[1]/2.)
 
 nbins = len(radii_bins_norm)
 
+tracer_ptn = il.util.partTypeNum('tracer')
+star_ptn   = il.util.partTypeNum('star')
+gas_ptn    = il.util.partTypeNum('gas')
+bh_ptn     = il.util.partTypeNum('bh')
+
+bary_ptns   = [gas_ptn,
+               star_ptn,
+               bh_ptn]
+
+
 def run_satelliteGRP():
 
+    """
     dics = []
     
     f = h5py.File(direc + fname, 'a')
@@ -83,6 +95,8 @@ def run_satelliteGRP():
     add_dmin()
     add_Nperipass()
     add_coldgasmasstau()
+    
+    """
     add_tracers()
 
     return
@@ -150,20 +164,17 @@ def return_satelliteGRP(snapnum, subfindID):
     a       = header['Time'] # scale factor
     h       = header['HubbleParam'] # = 0.6774
     boxsize = header['BoxSize'] * a / h
-    
-    gaspartnum  = il.util.partTypeNum('gas')
-    starpartnum = il.util.partTypeNum('star')
-    
+        
     subhalofields = ['SubhaloHalfmassRadType', 'SubhaloPos']
     gasfields     = ['Coordinates', 'Masses', 'InternalEnergy',
                      'ElectronAbundance', 'StarFormationRate']
             
     subhalo      = ru.loadSingleFields(basePath, snapnum, subhaloID=subfindID, fields=subhalofields)
     subhalopos   = subhalo['SubhaloPos'] * a / h
-    subhalo_rgal = 2. * subhalo['SubhaloHalfmassRadType'][starpartnum] * a / h 
+    subhalo_rgal = 2. * subhalo['SubhaloHalfmassRadType'][star_ptn] * a / h 
                             
     # load gas particles for relevant halo
-    gasparts = il.snapshot.loadSubhalo(basePath, snapnum, subfindID, gaspartnum, fields=gasfields)
+    gasparts = il.snapshot.loadSubhalo(basePath, snapnum, subfindID, gas_ptn, fields=gasfields)
     
     # if the satellite has no gas, write zeros for all dsets
     if gasparts['count'] == 0:
@@ -453,6 +464,8 @@ def add_tracers():
     Add tracer particle post-processing datasets to the GRP catalog.
     """
 
+    off_direc = '../Output/%s_tracers/'%sim
+    
     direc = '../Output/%s_subfindGRP/'%sim
     fname = 'subfind_%s_branches.hdf5'%sim
 
@@ -464,37 +477,84 @@ def add_tracers():
     max_snap = np.max(group['SnapNum'])
     min_snap = np.min(group['SnapNum'])
     snaps = np.arange(max_snap, min_snap-1, -1)
+    CosmicTimes = group['CosmicTime'][:]
+    time_diffs = (CosmicTimes[:-1] - CosmicTimes[1:]) * 1.0e9
 
-    tracer_ptn  = il.util.partTypeNum('tracer')
     header      = ru.loadHeader(basePath, max_snap)
     h           = header['HubbleParam']
     tracer_mass = header['MassTable'][tracer_ptn] * 1.0e10 / h
     
     # initialize results
-    SubhaloColdGasMassTracer_net = np.ones((NsubfindIDs, len(snaps))) * -1.
-    SubhaloColdGasMassTracer_new = np.ones((NsubfindIDs, len(snaps))) * -1.
-    SubhaloColdGasMassTracer_out = np.ones((NsubfindIDs, len(snaps))) * -1.
-
+    SubhaloColdGasTracer_Mass  = np.ones((NsubfindIDs, len(snaps))) * -1.
+    SubhaloColdGasTracer_new   = np.ones((NsubfindIDs, len(snaps))) * -1.
+    SubhaloColdGasTracer_out   = np.ones((NsubfindIDs, len(snaps))) * -1.
+    SubhaloColdGasTracer_Strip = np.ones((NsubfindIDs, len(snaps))) * -1.
+    SubhaloColdGasTracer_Heat  = np.ones((NsubfindIDs, len(snaps))) * -1.
+    SubhaloColdGasTracer_Star  = np.ones((NsubfindIDs, len(snaps))) * -1.
+    SubhaloColdGasTracer_BH    = np.ones((NsubfindIDs, len(snaps))) * -1.
+    
     for snap_i, snap in enumerate(snaps):
 
-        off_direc = '../Output/%s_tracers/'%sim
         offsets = h5py.File(off_direc + 'offsets_%03d.hdf5'%snap, 'r')
-        group = offsets['group']
+        tracers = h5py.File(off_direc + 'tracers_%03d.hdf5'%snap, 'r')
 
-        SubhaloColdGasMassTracer_net[:,snap_i] = group['SubhaloLengthColdGas'] * tracer_mass
-        SubhaloColdGasMassTracer_new[:,snap_i] = group['SubhaloLengthColdGas_new'] * tracer_mass
-        SubhaloColdGasMassTracer_out[:,snap_i] = (group['SubhaloLength'][:] - group['SubhaloLengthColdGas'][:]) * tracer_mass
+        offsets_group = offsets['group']
+        tracers_group = tracers['group']
+
+        SubhaloColdGasTracer_Mass[:,snap_i] = offsets_group['SubhaloLengthColdGas'] * tracer_mass
+        SubhaloColdGasTracer_new[:,snap_i] = offsets_group['SubhaloLengthColdGas_new'] * tracer_mass
+        SubhaloColdGasTracer_out[:,snap_i] = ((offsets_group['SubhaloLength'][:] - offsets_group['SubhaloLengthColdGas'][:])
+                                                      * tracer_mass)
+
+        # for every snap except min_snap (the last one), calculate the tracer derivatives
+        if snap_i != (len(snaps) - 1):
+
+            # loop over each subhalo at this snapshot to split the out sample into the various components
+            for subfind_i, _ in enumerate(offsets_group['SubfindID']):
+                start = offsets_group['SubhaloOffset'][subfind_i] + offsets_group['SubhaloLengthColdGas'][subfind_i]
+                end   = offsets_group['SubhaloOffset'][subfind_i] + offsets_group['SubhaloLength'][subfind_i]
+
+                ParentPartType = tracers_group['ParentPartType'][start:end]
+
+                # first, gas particles: could be stripping + outflows or heating
+                gas_indices = ParentPartType == gas_ptn
+                ParentGasTemp = tracers_group['ParentGasTemp'][start:end][gas_indices]
+                coldgas_indices = ParentGasTemp <= tlim
+                
+                SubhaloColdGasTracer_Strip[subfind_i,snap_i] = len(coldgas_indices[coldgas_indices]) * tracer_mass / time_diffs[snap_i]
+                SubhaloColdGasTracer_Heat[subfind_i,snap_i] = len(coldgas_indices[~coldgas_indices]) * tracer_mass / time_diffs[snap_i]
+
+                # second, star paticles: treating winds + stars identically here
+                star_indices = ParentPartType == star_ptn
+                SubhaloColdGasTracer_Star[subfind_i,snap_i] = len(star_indices[star_indices]) * tracer_mass / time_diffs[snap_i]
+
+                # lastly, black holes
+                bh_indices = ParentPartType == bh_ptn
+                SubhaloColdGasTracer_BH[subfind_i,snap_i] = len(bh_indices[bh_indices]) * tracer_mass / time_diffs[snap_i]
+
+            # finish loop over subhalos at the given snapshot
 
         offsets.close()
+        tracers.close()
+
+    # finish loop over snapshots
 
     # save new datasets
-    dset_keys = ['SubhaloColdGasMassTracer_net',
-                 'SubhaloColdGasMassTracer_new',
-                 'SubhaloColdGasMassTracer_out']
+    dset_keys = ['SubhaloColdGasTracer_Mass',
+                 'SubhaloColdGasTracer_new',
+                 'SubhaloColdGasTracer_out',
+                 'SubhaloColdGasTracer_Strip',
+                 'SubhaloColdGasTracer_Heat',
+                 'SubhaloColdGasTracer_Star',
+                 'SubhaloColdGasTracer_BH']
 
-    dsets     = [SubhaloColdGasMassTracer_net,
-                 SubhaloColdGasMassTracer_new,
-                 SubhaloColdGasMassTracer_out]
+    dsets     = [SubhaloColdGasTracer_Mass,
+                 SubhaloColdGasTracer_new,
+                 SubhaloColdGasTracer_out,
+                 SubhaloColdGasTracer_Strip,
+                 SubhaloColdGasTracer_Heat,
+                 SubhaloColdGasTracer_Star,
+                 SubhaloColdGasTracer_BH]
 
     for key_i, key in enumerate(keys):
         group = f[key]
