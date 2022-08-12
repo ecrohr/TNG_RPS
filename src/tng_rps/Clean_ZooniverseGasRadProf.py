@@ -44,7 +44,7 @@ def clean_zooniverseGRP(savekeys=False):
     keys_dic   = run_clean_zooniverseGRP(dic)
     final_keys = keys_dic[clean_key]
     
-    outdirec = '../Output/'
+    outdirec = '../Output/zooniverse/'
 
     # save each set of dic keys
     if (savekeys):
@@ -204,7 +204,7 @@ def run_clean_zooniverseGRP(dic):
 
 def load_subfindsnapshot_flags():
     
-    direc = '../Output/'
+    direc = '../Output/%s_subfindflags/'%sim
     fname = 'subfindflags_%s_zooniverse.hdf5'%(sim)
     result = {}
     
@@ -229,7 +229,7 @@ def load_dict(key, clean=False):
     if (clean):
         fname = 'zooniverse_%s_%s_branches_clean.hdf5'%(sim, key)
 
-    with h5py.File('../Output/' + fname, 'a') as f:
+    with h5py.File('../Output/zooniverse/' + fname, 'a') as f:
         for group_key in f.keys():
             result[group_key] = {}
             for dset_key in f[group_key].keys():
@@ -242,7 +242,7 @@ def load_dict(key, clean=False):
 # split the inspected branches into jellyfish and nonjellyf
 def split_inspected_branches():
     
-    direc = '../Output/'
+    direc = '../Output/zooniverse/'
     keys = ['inspected', 'jellyfish', 'nonjellyf']
     fnames = []
     for key in keys:
@@ -288,7 +288,7 @@ def split_inspected_branches():
 
 # reorganize the evolutionary tracks into 1D arrays with scalars at specific times
 # we want an array of scalar quantities at important times for various plots.
-# namely, we care about times tau0, tau10, and tau90 defined by infall and peak MCgas, and at z=0
+# namely, we care about times tau0, tau10, and tau90 defined by infall and peak MCgas, at z=0, and quenching time
 
 def return_taudict(key):
 
@@ -322,6 +322,10 @@ def return_taudict(key):
                 tauresult_key = grp_key + '_z0'
                 tauresult[tauresult_key] = np.zeros(len(result.keys()),
                                               dtype=group[grp_key].dtype)
+
+                tauresult_key = grp_key + '_quench'
+                tauresult[tauresult_key] = np.zeros(len(result.keys()),
+                                                    dtype=group[grp_key].dtype)
                     
         tauresult['SubfindID'][group_index] = int(float(group_key))
     
@@ -361,13 +365,28 @@ def return_taudict(key):
             tauresult_key = grp_key + '_z0'
             tauresult[tauresult_key][group_index] = group[grp_key][0]
 
+        # and at the quenching time, if this exists
+        quench_snap = group['quenching_snap']
+        if quench_snap < 0:
+            for grp_key in grp_keys:
+                tauresult_key = grp_key + '_quench'
+                tauresult[tauresult_key][group_index] = -1.
+        else:
+            SnapNum = group['SnapNum']
+            quench_index = np.where(quench_snap == SnapNum)[0]
+            for grp_key in grp_keys:
+                tauresult_key = grp_key + '_quench'
+                tauresult[tauresult_key][group_index] = group[grp_key][quench_index]
+                
+                
+
     # and mu(z=0) = M_star^sat (z=0) / M_200c^host (z=0)
     tauresult['muz0'] = (tauresult['Subhalo_Mstar_Rgal_z0']
                          / tauresult['HostGroup_M_Crit200_z0'])
     
     # save the tau dictionary
     outfname = 'zooniverse_%s_%s_clean_tau.hdf5'%(sim, key)
-    with h5py.File('../Output/' + outfname, 'a') as outf:
+    with h5py.File('../Output/zooniverse/' + outfname, 'a') as outf:
         group = outf.require_group('Group')        
         for dset_key in tauresult.keys():  
             dset = tauresult[dset_key]
