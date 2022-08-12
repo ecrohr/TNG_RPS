@@ -40,6 +40,8 @@ out_keys = [nonz0_key, beforesnapfirst_key, backsplash_key,
 
 def clean_zooniverseGRP(savekeys=False):
 
+    """
+
     dic        = load_dict(ins_key)
     keys_dic   = run_clean_zooniverseGRP(dic)
     final_keys = keys_dic[clean_key]
@@ -75,12 +77,11 @@ def clean_zooniverseGRP(savekeys=False):
                 dataset[:] = dset
                 
         outf.close()
-
     # now split the inspected branches into jellyfish, if there's a jellyfish classificaiton
     # at snap >= snap_first, and into nonjellyf, if there are no jelly classiifications at snap >= snap_first
     # this means that some of the branches with a jellyfish classification may become nonjellyf branches!
     split_inspected_branches()
-
+    """
     # reorganize each of the three sets of branches [inspected, jellyfish, nonjellyf] into tau dictionaries
 
     keys = ['inspected', 'jellyfish', 'nonjellyf']
@@ -342,7 +343,8 @@ def return_taudict(key):
                     for grp_key in grp_keys:
                         tauresult_key = grp_key + '_' + tau_key + '%d'%tau_val
                         tauresult[tauresult_key][group_index] = group[grp_key][tau_index]
-                    
+
+            """
             # add the characteristic stripping time: tstrip = tau_x2 - tau_x1
             # for now, hard coded
             tau_x1 = 10
@@ -358,6 +360,7 @@ def return_taudict(key):
         
             tstrip_key = 'Tstrip_%s_tau%d-tau%d'%(tau_key, tau_x2, tau_x1)
             tauresult[tstrip_key] = tstrip
+            """
         
         # and at z=0 -- this is always the first element in the arrays 
         for grp_key in grp_keys:
@@ -376,8 +379,39 @@ def return_taudict(key):
             for grp_key in grp_keys:
                 tauresult_key = grp_key + '_quench'
                 tauresult[tauresult_key][group_index] = group[grp_key][quench_index]
-                
-                
+
+
+    # finish loop over the branches
+
+    # hard code the characteristic cold gas loss timescales
+    for tau_key in tau_keys:
+        tau_x1 = 10
+        tau_x2 = 90
+        key_x1 = 'CosmicTime_%s%d'%(tau_key, tau_x1)
+        key_x2 = 'CosmicTime_%s%d'%(tau_key, tau_x2)
+        x1 = tauresult[key_x1]
+        x2 = tauresult[key_x2]
+        indices = np.where(x2 > 0)[0]
+        
+        tstrip = np.ones(len(x1), dtype=x1.dtype) * -1.
+        tstrip[indices] = x2[indices] - x1[indices]
+        
+        tstrip_key = 'Tstrip_%s_tau%d-tau%d'%(tau_key, tau_x2, tau_x1)
+        tauresult[tstrip_key] = tstrip
+
+
+    # now hard code the quenching time: tau_infall0 - time of last quenching
+    key_x1 = 'CosmicTime_tau_infall0'
+    key_x2 = 'CosmicTime_quench'
+    x1 = tauresult[key_x1]
+    x2 = tauresult[key_x2]
+    indices = (x1 > 0) & (x2 > 0)
+        
+    tquench = np.ones(len(x1), dtype=x1.dtype) * -1.
+    tquench[indices] = x2[indices] - x1[indices]
+        
+    tquench_key = 'Tquench'
+    tauresult[tquench_key] = tquench
 
     # and mu(z=0) = M_star^sat (z=0) / M_200c^host (z=0)
     tauresult['muz0'] = (tauresult['Subhalo_Mstar_Rgal_z0']
@@ -410,6 +444,8 @@ def combine_taudicts():
 
     for key in keys:
 
+        print(key)
+
         fname = 'zooniverse_%s_%s_clean_tau.hdf5'%(sims[0], key)
         f0 = h5py.File(direc + fname, 'r')
         group0 = f0['Group']
@@ -432,9 +468,10 @@ def combine_taudicts():
         f0.close()
         f1.close()
 
-        return
 
-for sim in ['TNG50-1', 'TNG100-1']:
-    clean_zooniverseGRP(savekeys=True)
+    return
+
+#for sim in ['TNG50-1', 'TNG100-1']:
+    #clean_zooniverseGRP(savekeys=True)
 
 combine_taudicts()
