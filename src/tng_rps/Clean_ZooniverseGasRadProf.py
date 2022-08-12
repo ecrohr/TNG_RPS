@@ -85,8 +85,7 @@ def clean_zooniverseGRP(savekeys=False):
 
     keys = ['inspected', 'jellyfish', 'nonjellyf']
     for key in keys:
-        _ = return_taudict(key)
-        
+        _ = return_taudict(key)        
             
     return
 
@@ -398,7 +397,44 @@ def return_taudict(key):
     
     return tauresult
 
+
+def combine_taudicts():
+    """
+    Combine the TNG50-1 and TNG100-1 tau dictionaries
+    """
+
+    # load both tau files
+    sims = ['TNG50-1', 'TNG100-1']
+    keys = ['jellyfish', 'nonjellyf', 'inspected']
+    direc = '../Output/zooniverse/'
+
+    for key in keys:
+
+        fname = 'zooniverse_%s_%s_clean_tau.hdf5'%(sims[0], key)
+        f0 = h5py.File(direc + fname, 'r')
+        group0 = f0['Group']
+
+        fname = 'zooniverse_%s_%s_clean_tau.hdf5'%(sims[1], key)
+        f1 = h5py.File(direc + fname, 'r')
+        group1 = f1['Group']
+
+
+        sim = sims[0] + '+' + sims[1]
+        outfname = 'zooniverse_%s_%s_clean_tau.hdf5'%(sim, key)
+        with h5py.File(direc + outfname, 'a') as outf:
+            group = outf.require_group('Group')
+            for dset_key in group0.keys():
+                dset = np.concatenate([group0[dset_key], group1[dset_key]])
+                datset = group.require_dataset(dset_key,  shape=dset.shape, dtype=dset.dtype)
+                datset[:] = dset
+            outf.close()
+
+        f0.close()
+        f1.close()
+
+        return
+
 for sim in ['TNG50-1', 'TNG100-1']:
     clean_zooniverseGRP(savekeys=True)
 
-
+combine_taudicts()
