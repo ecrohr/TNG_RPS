@@ -31,7 +31,7 @@ def create_tracertracks():
 
     
     # define the global variables
-    sim        = 'TNG50-4'
+    sim        = 'TNG50-3'
     basePath   = ru.ret_basePath(sim)
     snapNum    = 33
     tcoldgas   = 10.**(4.5) # [K]
