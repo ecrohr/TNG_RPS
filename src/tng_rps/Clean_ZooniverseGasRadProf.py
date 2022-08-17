@@ -343,24 +343,6 @@ def return_taudict(key):
                     for grp_key in grp_keys:
                         tauresult_key = grp_key + '_' + tau_key + '%d'%tau_val
                         tauresult[tauresult_key][group_index] = group[grp_key][tau_index]
-
-            """
-            # add the characteristic stripping time: tstrip = tau_x2 - tau_x1
-            # for now, hard coded
-            tau_x1 = 10
-            tau_x2 = 90
-            key_x1 = 'CosmicTime_%s%d'%(tau_key, tau_x1)
-            key_x2 = 'CosmicTime_%s%d'%(tau_key, tau_x2)
-            x1 = tauresult[key_x1]
-            x2 = tauresult[key_x2]
-            indices = np.where(x2 > 0)[0]
-        
-            tstrip = np.ones(len(x1), dtype=x1.dtype) * -1.
-            tstrip[indices] = x2[indices] - x1[indices]
-        
-            tstrip_key = 'Tstrip_%s_tau%d-tau%d'%(tau_key, tau_x2, tau_x1)
-            tauresult[tstrip_key] = tstrip
-            """
         
         # and at z=0 -- this is always the first element in the arrays 
         for grp_key in grp_keys:
@@ -400,8 +382,8 @@ def return_taudict(key):
         tauresult[tstrip_key] = tstrip
 
 
-    # now hard code the quenching time: tau_infall0 - time of last quenching
-    key_x1 = 'CosmicTime_tau_infall0'
+    # now hard code the quenching time: time of last quenching - tau_medpeak10
+    key_x1 = 'CosmicTime_tau_medpeak10'
     key_x2 = 'CosmicTime_quench'
     x1 = tauresult[key_x1]
     x2 = tauresult[key_x2]
@@ -471,7 +453,7 @@ def combine_taudicts():
 
     return
 
-#for sim in ['TNG50-1', 'TNG100-1']:
-    #clean_zooniverseGRP(savekeys=True)
+for sim in ['TNG50-1', 'TNG100-1']:
+    clean_zooniverseGRP(savekeys=True)
 
 combine_taudicts()
