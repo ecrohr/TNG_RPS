@@ -312,20 +312,26 @@ def return_taudict(key):
     
         # if just starting, then initialize the dictionary 
         if group_index == 0:
-            tauresult['SubfindID'] = np.zeros(len(result.keys()), dtype=int)
+            tauresult['SubfindID'] = np.zeros(len(result_keys), dtype=int)
             for grp_key in grp_keys:
                 for tau_key in tau_keys:
                     for tau_val in tau_vals:
                         tauresult_key = grp_key + '_' + tau_key + '%d'%tau_val
-                        tauresult[tauresult_key] = np.zeros(len(result.keys()), 
-                                                      dtype=group[grp_key].dtype)
+                        tauresult[tauresult_key] = np.zeros(len(result_keys), 
+                                                            dtype=group[grp_key].dtype)
                 tauresult_key = grp_key + '_z0'
-                tauresult[tauresult_key] = np.zeros(len(result.keys()),
-                                              dtype=group[grp_key].dtype)
+                tauresult[tauresult_key] = np.zeros(len(result_keys),
+                                                    dtype=group[grp_key].dtype)
 
                 tauresult_key = grp_key + '_quench'
-                tauresult[tauresult_key] = np.zeros(len(result.keys()),
+                tauresult[tauresult_key] = np.zeros(len(result_keys),
                                                     dtype=group[grp_key].dtype)
+
+            # also calculate tau at the quenching time
+            for tau_key in tau_keys:
+                tauresult_key = tau_key + '_quench'
+                tauresult[tauresult_key] = np.zeros(len(result_keys),
+                                                    dtype=group[tau_key].dtype)
                     
         tauresult['SubfindID'][group_index] = int(float(group_key))
     
@@ -355,12 +361,20 @@ def return_taudict(key):
             for grp_key in grp_keys:
                 tauresult_key = grp_key + '_quench'
                 tauresult[tauresult_key][group_index] = -1.
+            for tau_key in tau_keys:
+                tauresult_key = tau_key + '_quench'
+                tauresult[tauresult_key][group_index] = -1.
         else:
             SnapNum = group['SnapNum']
             quench_index = np.where(quench_snap == SnapNum)[0]
             for grp_key in grp_keys:
                 tauresult_key = grp_key + '_quench'
                 tauresult[tauresult_key][group_index] = group[grp_key][quench_index]
+
+            # also calculate the tau values at quenching
+            for tau_key in tau_keys:
+                tauresult_key = tau_key + '_quench'
+                tauresult[tauresult_key][group_index] = group[tau_key][quench_index]
 
 
     # finish loop over the branches
