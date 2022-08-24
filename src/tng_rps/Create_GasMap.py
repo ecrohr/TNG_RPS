@@ -24,7 +24,7 @@ global sim, basePath, nbins, snap
 global direc, result
 global grp_dict
 
-nbins = 800
+nbins = 100
 sim = 'TNG50-1'
 basePath = ru.ret_basePath(sim)
 snap = 99
@@ -42,10 +42,10 @@ gaspart_num = il.util.partTypeNum('gas')
 gas_fields = ['Coordinates', 'Masses', 'InternalEnergy',
               'ElectronAbundance', 'StarFormationRate', 'GFM_Metallicity']
 
-subfindIDs = [19,     63872,  117260, 117265, 117316,
-              143896, 167399, 184958, 184959, 208845,
-              220616, 229946, 264888, 275549, 289401,
-              294876, 333427, 345888, 394625, 443056]
+subfindIDs = [19,     63872,  96793,  117260, 117265,
+              143896, 167399, 184958, 184959, 208820,
+              220616, 229946, 253878, 264888, 275549,
+              289386, 289401, 294876, 333427, 394625]
 
 outdirec = '../Output/zooniverse/'
 
@@ -57,6 +57,11 @@ def run_creategasmap(sim, subfindIDs, mp_flag=False):
     grp_dict = load_grpdict(sim, key='jellyfish')
 
     keys = ['%08d'%subfindID for subfindID in subfindIDs]
+
+    # test that each key actually works
+    for key in keys:
+        _ = grp_dict[key]
+    print('All keys work properly.')
 
     result_list = []
     if mp_flag:
