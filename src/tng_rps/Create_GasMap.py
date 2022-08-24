@@ -89,7 +89,6 @@ def run_creategasmap(sim, subfindIDs, mp_flag=False):
     return
 
 
-
 def create_gasmap(key):
     """
     Given the group key, create the temperature and metallcitity gas maps, 
@@ -104,7 +103,7 @@ def create_gasmap(key):
     result = np.zeros(result_sub.shape, dtype=result_sub.dtype)
 
     # fiducial map is the FoF map, masked by the subhalo map
-    indices = np.nonzero(result_sub[0])[0]
+    indices = result_sub[0] > 0
     for i, _ in enumerate(result):
         result[i] = result_fof[i]
         result[i][indices] = result_sub[i][indices]
@@ -121,7 +120,7 @@ def calc_gasmap(group, subhalo=True):
     Subhalo flag determines whether the gas cells come from the FoF or the subhalo host
     """
 
-    maxcoord = 40. * group['Subhalo_Rgal'][0]
+    maxcoord = 20. * group['Subhalo_Rgal'][0]
     center = group['SubhaloPos'][0]
 
     # load gas cells of either the subhalo or the host
