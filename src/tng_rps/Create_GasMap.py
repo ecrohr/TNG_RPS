@@ -42,10 +42,21 @@ gaspart_num = il.util.partTypeNum('gas')
 gas_fields = ['Coordinates', 'Masses', 'InternalEnergy',
               'ElectronAbundance', 'StarFormationRate', 'GFM_Metallicity']
 
-subfindIDs = [19,     63872,  96793,  117260, 117265,
-              143896, 167399, 184958, 184959, 208820,
-              220616, 229946, 253878, 264888, 275549,
-              289386, 289401, 294876, 333427, 394625]
+# 20 good examples of z=0 jellyfish 
+subfindIDs = [19,     63872,  96793,  117260,
+              117265, 143896, 167399, 184958,
+              184959, 208820, 220616, 229946,
+              253878, 264888, 275549, 289386,
+              289401, 294876, 333427, 394625]
+
+# when using only 16 rather than 20 examples
+
+subfindIDs = [19,     63872,  96793,  117260,
+              117265, 143896, 167399,
+              184959, 208820,
+              253878, 264888, 275549,
+              289401, 294876, 333427, 394625]
+
 
 outdirec = '../Output/zooniverse/'
 
