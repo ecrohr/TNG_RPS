@@ -395,19 +395,18 @@ def return_taudict(key):
         tstrip_key = 'Tstrip_%s_tau%d-tau%d'%(tau_key, tau_x2, tau_x1)
         tauresult[tstrip_key] = tstrip
 
-
-    # now hard code the quenching time: time of last quenching - tau_medpeak10
-    key_x1 = 'CosmicTime_tau_medpeak10'
-    key_x2 = 'CosmicTime_quench'
-    x1 = tauresult[key_x1]
-    x2 = tauresult[key_x2]
-    indices = (x1 > 0) & (x2 > 0)
+        # now hard code the quenching time: time of last quenching - tau_*_10
+        key_x1 = 'CosmicTime_%s10'%tau_key
+        key_x2 = 'CosmicTime_quench'
+        x1 = tauresult[key_x1]
+        x2 = tauresult[key_x2]
+        indices = (x1 > 0) & (x2 > 0)
         
-    tquench = np.ones(len(x1), dtype=x1.dtype) * -1.
-    tquench[indices] = x2[indices] - x1[indices]
+        tquench = np.ones(len(x1), dtype=x1.dtype) * -1.
+        tquench[indices] = x2[indices] - x1[indices]
         
-    tquench_key = 'Tquench'
-    tauresult[tquench_key] = tquench
+        tquench_key = 'Tquench_%s'%tau_key
+        tauresult[tquench_key] = tquench
 
     # and mu(z=0) = M_star^sat (z=0) / M_200c^host (z=0)
     tauresult['muz0'] = (tauresult['Subhalo_Mstar_Rgal_z0']

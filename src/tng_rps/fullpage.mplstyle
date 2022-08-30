@@ -162,7 +162,7 @@ font.monospace      :  Computer Modern Typewriter, DejaVu Sans Mono, Bitstream V
 #text.color          : black
 
 #### LaTeX customizations. See http://wiki.scipy.org/Cookbook/Matplotlib/UsingTex
-#text.usetex         : True  ## use latex for all text handling. The following fonts
+text.usetex         : True  ## use latex for all text handling. The following fonts
                               ## are supported through the usual rc parameter settings:
                               ## new century schoolbook, bookman, times, palatino,
                               ## zapf chancery, charter, serif, sans-serif, helvetica,
@@ -216,7 +216,7 @@ text.latex.preamble : \usepackage{amsmath}
 #mathtext.it  : sans:italic
 #mathtext.bf  : sans:bold
 #mathtext.sf  : sans
-#mathtext.fontset : dejavusans ## Should be 'dejavusans' (default),
+mathtext.fontset : cm ## Should be 'dejavusans' (default),
                                ## 'dejavuserif', 'cm' (Computer Modern), 'stix',
                                ## 'stixsans' or 'custom'
 #mathtext.fallback_to_cm : True  ## When True, use symbols from the Computer Modern
