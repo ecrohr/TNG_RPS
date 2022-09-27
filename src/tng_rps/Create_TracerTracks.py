@@ -515,43 +515,13 @@ def track_subfindIDs(subfindIDs, z0_flag=True):
     
     # begin loop over subfindIDs
     for i, subfindID in enumerate(subfindIDs):
-
-        if (z0_flag):
-            tree = il.sublink.loadTree(basePath, max_snap, subfindID, treeName=treeName,
-                                       onlyMPB=True, fields=fields)
-
-            # is subhalo in the tree?
-            if not tree:
-                result[i,0] = subfindID
-                continue
-
-            # trim tree to stop at snap snapNum
-            indices  = tree['SnapNum'] >= snapNum
-
-            for field in fields:
-                tree[field] = tree[field][indices]
-               
-        else:
-            tree = il.sublink.loadTree(basePath, snapNum, subfindID, treeName=treeName,
-                                       onlyMDB=True, fields=fields)
         
-            # is subhalo in the tree?
-            if not tree:
-                result[i,-1] = subfindID
-                continue
-
-            # does MDB have a bad count? (i.e., not reach z=0?)
-            if (tree['count'] + snapNum) > (max_snap + 1):
-
-                # find where the MDB stops
-                stop              = -(max_snap - snapNum + 1)
-                tree['SnapNum']   = tree['SnapNum'][stop:]
-                tree['SubfindID'] = tree['SubfindID'][stop:]
-
-                start             = np.max(np.where((tree['SnapNum'][1:] - tree['SnapNum'][:-1]) >= 0)) + 1
-                tree['SnapNum']   = tree['SnapNum'][start:]
-                tree['SubfindID'] = tree['SubfindID'][start:]
-
+        if (z0_flag):
+            tree = ru.loadMainTreeBranch(basePath, max_snap, subfindID, treeName=treeName,
+                                         fields=fields, min_snap=snapNum, max_snap=max_snap)
+        else:
+            tree = ru.loadMainTreeBranch(basePath, snapNum, subfindID, treeName=treeName,
+                                         fields=fields, min_snap=snapNum, max_snap=max_snap)
 
         # find at which snaps the subhalo was identified
         isin = np.isin(snaps, tree['SnapNum'])
