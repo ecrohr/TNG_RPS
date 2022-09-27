@@ -13,7 +13,6 @@ global gas_fields, part_fields
 global big_array_length
 global outdirec
 
-
 def create_tracertracks():
     """
     Run the Create_TracerTracks.py file. 
