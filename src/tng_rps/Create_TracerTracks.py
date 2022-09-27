@@ -27,10 +27,9 @@ def create_tracertracks():
     global gas_fields, part_fields
     global big_array_length
     global outdirec
-
     
     # define the global variables
-    sim        = 'TNG50-1'
+    sim        = 'TNG50-4'
     basePath   = ru.ret_basePath(sim)
     snapNum    = 33
     tcoldgas   = 10.**(4.5) # [K]
@@ -49,12 +48,12 @@ def create_tracertracks():
 
     part_fields = ['ParticleIDs']
 
-    big_array_length = int(1e8)
+    big_array_length = int(1e6)
 
     # define the subhalos we care about at snapshot snapNum
-    subfindIDs = [30, 282800, 363014]
+    subfindIDs = range(10)
 
-    outdirec = '../Output/%s_tracers_zooniverse/'%(sim)
+    outdirec = '../Output/%s_tracers_%d-%d/'%(sim,subfindIDs[0],subfindIDs[-1])
 
     print(outdirec)
 
@@ -67,6 +66,11 @@ def create_tracertracks():
     # now track tracers from snapNum + 1 until snap 99
     for snap in range(snapNum+1, max_snap+1):
         track_tracers(snap)
+
+    # and find the unmatched tracers from snapNum + 1 until snap 99
+    #for snap in range(snapNum+1, max_snap+1):
+    #    find_unmatched_tracers(snap)
+
         
     return 
 
@@ -94,22 +98,7 @@ def initialize_coldgastracers():
         f.close()
 
     # initialize the outputs 
-
-    # initialize the offset dictionary
-    offsets_subhalo = {}
-    offsets_subhalo['SubhaloOffset']            = np.zeros(len(subfindIDs), int)
-    offsets_subhalo['SubhaloLength']            = np.zeros(len(subfindIDs), int)
-    offsets_subhalo['SubhaloLengthColdGas']     = np.zeros(len(subfindIDs), int)
-    offsets_subhalo['SubhaloLengthColdGas_new'] = np.zeros(len(subfindIDs), int)
-
-    tracers_subhalo = {}
-    # rewrite into a 4xbig_array_length array rather than a dictionary
-    # for a speed increase
-    tracers_subhalo['TracerIDs']      = np.empty(big_array_length, dtype=int)
-    tracers_subhalo['TracerIndices']  = np.empty(big_array_length, dtype=int)
-    tracers_subhalo['ParentIndices']  = np.empty(big_array_length, dtype=int)
-    tracers_subhalo['ParentPartType'] = np.empty(big_array_length, dtype=int)
-    tracers_subhalo['ParentGasTemp']  = np.empty(big_array_length, dtype=float)
+    offsets_subhalo, tracers_subhalo = initialize_outputs()
 
     # load every tracer particle in the simulation at this snapshot
     tracers = il.snapshot.loadSubset(basePath, snapNum, tracer_ptn)
@@ -240,20 +229,7 @@ def track_tracers(snap):
     # initialize the outputs 
 
     # initialize the offset dictionary
-    offsets_subhalo = {}
-    offsets_subhalo['SubhaloOffset']            = np.zeros(len(subfindIDs), int)
-    offsets_subhalo['SubhaloLength']            = np.zeros(len(subfindIDs), int)
-    offsets_subhalo['SubhaloLengthColdGas']     = np.zeros(len(subfindIDs), int)
-    offsets_subhalo['SubhaloLengthColdGas_new'] = np.zeros(len(subfindIDs), int)
-
-    tracers_subhalo = {}
-    # rewrite into a 4xbig_array_length array rather than a dictionary
-    # for a speed increase
-    tracers_subhalo['TracerIDs']      = np.empty(big_array_length, dtype=int)
-    tracers_subhalo['TracerIndices']  = np.empty(big_array_length, dtype=int)
-    tracers_subhalo['ParentIndices']  = np.empty(big_array_length, dtype=int)
-    tracers_subhalo['ParentPartType'] = np.empty(big_array_length, dtype=int)
-    tracers_subhalo['ParentGasTemp']  = np.empty(big_array_length, dtype=float)
+    offsets_subhalo, tracers_subhalo = initialize_outputs()
 
     # load the offsets and tracers from the previous snapshot
     offsets_past = h5py.File(outdirec + 'offsets_%03d.hdf5'%(snap - 1), 'r')
@@ -409,6 +385,44 @@ def track_tracers(snap):
     end = offsets_subhalo['SubhaloOffset'][-1] + offsets_subhalo['SubhaloLength'][-1]
     for key in tracers_subhalo.keys():
         tracers_subhalo[key] = tracers_subhalo[key][:end]
+        
+    # save the offsets and particles dictionaries
+    dicts  = [offsets_subhalo, tracers_subhalo]
+    fnames = ['offsets', 'tracers']
+    for d_i, d in enumerate(dicts):
+        fname    = fnames[d_i]
+        outfname = '%s_%03d.hdf5'%(fname, snapNum)
+
+        with h5py.File(outdirec + outfname, 'a') as outf:
+            group = outf.require_group('group')
+            for dset_key in d.keys():
+                dset = d[dset_key]
+                dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+                dataset[:] = dset
+
+            outf.close()
+
+    return 
+
+
+def find_unmatched_tracers(snap):
+    """
+    For all unmatched tracers at snap, find their parents.
+    """
+    
+    # load the tracers at snap
+    tracers = il.snapshot.loadSubset(basePath, snap, tracer_ptn)
+            
+    # load the tracers_subhalo catalog at this snap
+    tracers_subhalo = {}
+    fname = 'tracers'
+    outfname = '%s_%03d.hdf5'%(fname, snap)
+
+    with h5py.File(outdirec + outfname, 'a') as outf:
+        group = outf.require_group('group')
+        for dset_key in group.keys():
+            tracers_subhalo[dset_key] = group[dset_key][:]
+        outf.close()
 
     # find the parentIDs of the group 3 tracers, 
     # i.e. the ones whose parents are no longer bound cold gas cells
@@ -471,23 +485,18 @@ def track_tracers(snap):
     # finish loop finding the unmatched tracers
 
     # save the offsets and tracers_subhalo dictionaries
-    dicts  = [offsets_subhalo, tracers_subhalo]
-    fnames = ['offsets', 'tracers']
-    for d_i, d in enumerate(dicts):
-        fname    = fnames[d_i]
-        outfname = '%s_%03d.hdf5'%(fname, snap)
+    d = tracers_subhalo
+    
+    with h5py.File(outdirec + outfname, 'a') as outf:
+        group = outf.require_group('group')
+        for dset_key in d.keys():
+            dset = d[dset_key]
+            dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+            dataset[:] = dset
 
-        with h5py.File(outdirec + outfname, 'a') as outf:
-            group = outf.require_group('group')
-            for dset_key in d.keys():
-                dset = d[dset_key]
-                dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
-                dataset[:] = dset
-
-            outf.close()
+        outf.close()
 
     return 
-
 
 
 def track_subfindIDs(subfindIDs, z0_flag=True):
@@ -574,5 +583,29 @@ def track_subfindIDs(subfindIDs, z0_flag=True):
     return
 
 
-create_tracertracks()
+def initialize_outputs():
+    """
+    Given the global variable big_array_length, initalize the final outputs.
+    """
+    
+    # initialize the offset dictionary
+    offsets_subhalo = {}
+    offsets_subhalo['SubhaloOffset']            = np.zeros(len(subfindIDs), int)
+    offsets_subhalo['SubhaloLength']            = np.zeros(len(subfindIDs), int)
+    offsets_subhalo['SubhaloLengthColdGas']     = np.zeros(len(subfindIDs), int)
+    offsets_subhalo['SubhaloLengthColdGas_new'] = np.zeros(len(subfindIDs), int)
+
+    tracers_subhalo = {}
+    # rewrite into a 4xbig_array_length array rather than a dictionary
+    # for a speed increase
+    tracers_subhalo['TracerIDs']      = np.empty(big_array_length, dtype=int)
+    tracers_subhalo['TracerIndices']  = np.empty(big_array_length, dtype=int)
+    tracers_subhalo['ParentIndices']  = np.empty(big_array_length, dtype=int)
+    tracers_subhalo['ParentPartType'] = np.empty(big_array_length, dtype=int)
+    tracers_subhalo['ParentGasTemp']  = np.empty(big_array_length, dtype=float)
+    
+    return offsets_subhalo, tracers_subhalo
+
+
+Create_tracertracks()
 
