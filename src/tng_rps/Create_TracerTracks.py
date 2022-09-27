@@ -72,8 +72,100 @@ def create_tracertracks():
     #    find_unmatched_tracers(snap)
 
         
-    return 
+    return
 
+
+def match_subhalo_tracers(subfind_i, subfindID, snap, tracers, offsets_subhalo, tracers_subhalo):
+    """
+    Match the bound gas cells of a given subhalo to the tracerrs at snap.
+    Returns the offsets_subahlo, tracers_subhalo dictionaries.
+    """
+    
+    print('Working on %s snapshot %d subfindID %d'%(sim, snap, subfindID))
+    
+    if subfind_i == 0:
+        offsets_subhalo['SubhaloOffset'][subfind_i] = 0
+    else:
+        offsets_subhalo['SubhaloOffset'][subfind_i] = (offsets_subhalo['SubhaloOffset'][subfind_i-1]
+                                                       + offsets_subhalo['SubhaloLength'][subfind_i-1])
+    # check that the subhalo is identified at snapNum
+    if subfindID == -1:
+        return offsets_subhalo, tracers_subhalo
+    
+    gas_cells    = il.snapshot.loadSubhalo(basePath, snap, subfindID, gas_ptn, fields=gas_fields)
+
+    # check if there are any gas cells
+    if gas_cells['count'] == 0:
+        return offsets_subhalo, tracers_subhalo
+            
+    gas_cells    = ru.calc_temp_dict(gas_cells)
+
+    # find the local indices and load the global offset for these gas cells
+    cgas_indices = np.where(gas_cells['Temperature'] <= tcoldgas)[0]
+    if len(cgas_indices) == 0:
+        return offsets_subhalo, tracers_subhalo
+           
+    ParticleIDs  = gas_cells['ParticleIDs'][cgas_indices]
+
+    # match the tracer ParentID with the cold gas cells ParticleIDs
+    isin_tracer = np.isin(tracers['ParentID'], ParticleIDs)
+
+    # save the tracerIDs and tracer indices at snapshot snapNum
+    tracer_IDs = tracers['TracerID'][isin_tracer]
+    tracer_indices = np.where(isin_tracer)[0]
+    
+    offsets_subhalo['SubhaloLength'][subfind_i]            = len(tracer_indices)
+    offsets_subhalo['SubhaloLengthColdGas'][subfind_i]     = len(tracer_indices)
+    offsets_subhalo['SubhaloLengthColdGas_new'][subfind_i] = len(tracer_indices)
+    
+    IDs = tracer_IDs
+    indices = tracer_indices
+    
+    # save the tracer IDs and indices
+    start       = offsets_subhalo['SubhaloOffset'][subfind_i]
+    length      = offsets_subhalo['SubhaloLength'][subfind_i]
+    length_cgas = offsets_subhalo['SubhaloLengthColdGas'][subfind_i]
+    
+    # check that there are cold gas cells with tracers
+    if length_cgas == 0:
+        return offsets_subhalo, tracers_subhalo
+    
+    # for the cold gas cell tracers, save the parent IDs and tracers
+    # get the local cold gas indices with matched tracer particles and include the global offset
+    parent_IDs  = tracers['ParentID'][indices[:length_cgas]]
+    isin_gas    = np.isin(ParticleIDs, parent_IDs)
+
+    r           = il.snapshot.getSnapOffsets(basePath, snap, subfindID, "Subhalo")
+    offset      = r['offsetType'][gas_ptn]
+    gas_indices = offset + cgas_indices[isin_gas]
+
+    # note that some of these indices need to be repeated due to having multiple tracers with the same parent
+    gas_IDs        = ParticleIDs[isin_gas]
+    # find a way to optimize the following line... 
+    repeat_indices = np.where([parent_ID == gas_IDs for parent_ID in parent_IDs])[1]
+    gas_indices    = gas_indices[repeat_indices]
+
+    # note that the parent type is always gas
+    parent_ptn = np.ones(len(gas_indices), dtype=int) * gas_ptn
+
+    temps = gas_cells['Temperature'][cgas_indices][isin_gas][repeat_indices]
+    
+    # fill in the particle dictionary for this subhalo
+    tracers_subhalo['TracerIDs'][start:start+length]     = IDs
+    tracers_subhalo['TracerIndices'][start:start+length] = indices
+
+    tracers_subhalo['ParentIndices'][start:start+length_cgas]  = gas_indices
+    tracers_subhalo['ParentPartType'][start:start+length_cgas] = parent_ptn
+    tracers_subhalo['ParentGasTemp'][start:start+length_cgas]  = temps
+
+    # for now, make the parent indices and parent part type -1
+    # then later load the other baryonic particles in the sim and match
+    # their particle IDs with all unmatched tracers
+    tracers_subhalo['ParentIndices'][start+length_cgas:start+length]  = np.ones((length - length_cgas), dtype=int) * -1
+    tracers_subhalo['ParentPartType'][start+length_cgas:start+length] = np.ones((length - length_cgas), dtype=int) * -1
+    tracers_subhalo['ParentGasTemp'][start+length_cgas:start+length]  = np.ones((length - length_cgas), dtype=float) * -1
+            
+    return offsets_subhalo, tracers_subhalo
 
 
 def initialize_coldgastracers():
