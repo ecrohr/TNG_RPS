@@ -98,7 +98,7 @@ def initialize_coldgastracers():
         f.close()
 
     # initialize the outputs 
-    offsets_subhalo, tracers_subhalo = initialize_outputs()
+    offsets_subhalo, tracers_subhalo = initialize_outputs(len(subfindIDs))
 
     # load every tracer particle in the simulation at this snapshot
     tracers = il.snapshot.loadSubset(basePath, snapNum, tracer_ptn)
@@ -229,7 +229,7 @@ def track_tracers(snap):
     # initialize the outputs 
 
     # initialize the offset dictionary
-    offsets_subhalo, tracers_subhalo = initialize_outputs()
+    offsets_subhalo, tracers_subhalo = initialize_outputs(len(subfindIDs))
 
     # load the offsets and tracers from the previous snapshot
     offsets_past = h5py.File(outdirec + 'offsets_%03d.hdf5'%(snap - 1), 'r')
@@ -583,17 +583,17 @@ def track_subfindIDs(subfindIDs, z0_flag=True):
     return
 
 
-def initialize_outputs():
+def initialize_outputs(Nsubhalos):
     """
     Given the global variable big_array_length, initalize the final outputs.
     """
     
     # initialize the offset dictionary
     offsets_subhalo = {}
-    offsets_subhalo['SubhaloOffset']            = np.zeros(len(subfindIDs), int)
-    offsets_subhalo['SubhaloLength']            = np.zeros(len(subfindIDs), int)
-    offsets_subhalo['SubhaloLengthColdGas']     = np.zeros(len(subfindIDs), int)
-    offsets_subhalo['SubhaloLengthColdGas_new'] = np.zeros(len(subfindIDs), int)
+    offsets_subhalo['SubhaloOffset']            = np.zeros(Nsubhalos, int)
+    offsets_subhalo['SubhaloLength']            = np.zeros(Nsubhalos, int)
+    offsets_subhalo['SubhaloLengthColdGas']     = np.zeros(Nsubhalos, int)
+    offsets_subhalo['SubhaloLengthColdGas_new'] = np.zeros(Nsubhalos, int)
 
     tracers_subhalo = {}
     # rewrite into a 4xbig_array_length array rather than a dictionary
@@ -607,5 +607,6 @@ def initialize_outputs():
     return offsets_subhalo, tracers_subhalo
 
 
-Create_tracertracks()
+
+create_tracertracks()
 
