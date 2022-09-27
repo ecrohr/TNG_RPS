@@ -1132,32 +1132,39 @@ def loadMainTreeBranch(snap, subfindID, sim='TNG50-1', fields=None, treeName='Su
         return 
     
     if snap == 99:
-        return subMPB
-    
-    # load the MDB and combine 
-    subMDB = il.sublink.loadTree(basePath, snap, subfindID, treeName=treeName,
-                                 fields=fields, onlyMDB=True)
-        
-    # check if there's an issue with the MDB -- if the MDB reaches z=0
-    # if so, then only use the MPB
-    if (subMDB['count'] + snap) > (max_snap + 1):
-        
-        # find where the MDB stops
-        stop  = -(max_snap - min_snap + 1)
-        start = np.max(np.where((subMDB['SnapNum'][1:] - subMDB['SnapNum'][:-1]) >= 0)) + 1
+        tree = subMPB
 
-        for key in fields:
-            subMDB[key] = subMDB[key][start:stop]
-        subMDB['count'] = len(subMDB[key])
+    else:
+        # load the MDB and combine 
+        subMDB = il.sublink.loadTree(basePath, snap, subfindID, treeName=treeName,
+                                     fields=fields, onlyMDB=True)
 
-            
-    # for the clean MDB, combine the MPB and MDB trees
-    result = {}
-    for key in subMPB.keys():
-        if key == 'count':
-            result[key] = subMDB[key] + subMPB[key] - 1
-        else:
-            result[key] = np.concatenate([subMDB[key][:-1], subMPB[key]])
+        # check if there's an issue with the MDB -- if the MDB reaches z=0
+        # if so, then only use the MPB
+        if (subMDB['count'] + snap) > (max_snap + 1):
+
+            # find where the MDB stops
+            stop  = -(max_snap - min_snap + 1)
+            start = np.max(np.where((subMDB['SnapNum'][1:] - subMDB['SnapNum'][:-1]) >= 0)) + 1
+
+            for key in fields:
+                subMDB[key] = subMDB[key][start:stop]
+            subMDB['count'] = len(subMDB[key])
+
+
+        # for the clean MDB, combine the MPB and MDB trees
+        tree = {}
+        for key in subMPB.keys():
+            if key == 'count':
+                tree[key] = subMDB[key] + subMPB[key] - 1
+            else:
+                tree[key] = np.concatenate([subMDB[key][:-1], subMPB[key]])
+
+
+    indices = tree['SnapNum'] >= min_snap
+    for field in fields:
+        tree[field] = tree[field][indices]
+    tree['count'] = len(indices)
     
-    return result
+    return tree
 
