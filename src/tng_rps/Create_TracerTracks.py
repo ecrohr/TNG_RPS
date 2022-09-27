@@ -64,8 +64,8 @@ def create_tracertracks():
     initialize_coldgastracers()
 
     # now track tracers from snapNum + 1 until snap 99
-    for snap in range(snapNum+1, max_snap+1):
-        track_tracers(snap)
+    #for snap in range(snapNum+1, max_snap+1):
+    #    track_tracers(snap)
 
     # and find the unmatched tracers from snapNum + 1 until snap 99
     #for snap in range(snapNum+1, max_snap+1):
@@ -92,7 +92,6 @@ def initialize_coldgastracers():
     return to main function and continue to next snaps
     """
 
-    # load the subfindIDs from the offsets file
     with h5py.File(outdirec + 'offsets_%03d.hdf5'%snapNum, 'r') as f:
         subfindIDs = f['group']['SubfindID'][:]
         f.close()
@@ -105,79 +104,9 @@ def initialize_coldgastracers():
 
     # begin loop over the subhalos at snapshot snapNum
     for subfind_i, subfindID in enumerate(subfindIDs):
-
-        print('Working on %s snapshot %d subfindID %d'%(sim, snapNum, subfindID))
-
-        if subfind_i == 0:
-            offsets_subhalo['SubhaloOffset'][subfind_i] = 0
-        else:
-            offsets_subhalo['SubhaloOffset'][subfind_i] = (offsets_subhalo['SubhaloOffset'][subfind_i-1]
-                                                           + offsets_subhalo['SubhaloLength'][subfind_i-1])
-
-        # check that the subhalo is identified at snapNum
-        if subfindID == -1:
-            continue
-
-        gas_cells    = il.snapshot.loadSubhalo(basePath, snapNum, subfindID, gas_ptn, fields=gas_fields)
-
-        # check if there are any gas cells
-        if gas_cells['count'] == 0:
-            continue
+        offsets_subhalo, tracers_subhalo = match_subhalo_tracers(subfind_i, subfindID, snapNum,
+                                                                 tracers, offsets_subhalo, tracers_subhalo)
         
-        gas_cells    = ru.calc_temp_dict(gas_cells)
-
-        # find the local indices and load the global offset for these gas cells
-        cgas_indices = np.where(gas_cells['Temperature'] <= tcoldgas)[0]
-        if len(cgas_indices) == 0:
-            continue
-       
-        ParticleIDs  = gas_cells['ParticleIDs'][cgas_indices]
-
-        # match the tracer ParentID with the cold gas cells ParticleIDs
-        isin_tracer = np.isin(tracers['ParentID'], ParticleIDs)
-
-        # save the tracerIDs and tracer indices at snapshot snapNum
-        tracer_IDs = tracers['TracerID'][isin_tracer]
-        tracer_indices = np.where(isin_tracer)[0]
-
-        # fill in the offsets dictionary for this subhalo
-        offsets_subhalo['SubhaloLength'][subfind_i]            = len(tracer_indices)
-        offsets_subhalo['SubhaloLengthColdGas'][subfind_i]     = len(tracer_indices)
-        offsets_subhalo['SubhaloLengthColdGas_new'][subfind_i] = len(tracer_indices)
-
-        # save the corresponding gas cell indices
-        # get the local cold gas indices with matched tracer particles and include the global offset
-        parent_IDs  = tracers['ParentID'][isin_tracer]
-        isin_gas    = np.isin(ParticleIDs, parent_IDs)
-
-        r           = il.snapshot.getSnapOffsets(basePath, snapNum, subfindID, "Subhalo")
-        offset      = r['offsetType'][gas_ptn]
-        gas_indices = offset + cgas_indices[isin_gas]
-
-        # note that some of these indices need to be repeated due to having multiple tracers with the same parent
-        gas_IDs        = ParticleIDs[isin_gas]
-        # find a way to optimize the following line... 
-        repeat_indices = np.where([parent_ID == gas_IDs for parent_ID in parent_IDs])[1]
-        gas_indices    = gas_indices[repeat_indices]
-
-        # note that the parent type is always gas
-        parent_ptn = np.ones(len(gas_indices), dtype=int) * gas_ptn
-
-        # fill in the particle dictionary for this subhalo
-        start = offsets_subhalo['SubhaloOffset'][subfind_i]
-        end   = start + offsets_subhalo['SubhaloLength'][subfind_i]
-
-        temps = gas_cells['Temperature'][cgas_indices][isin_gas][repeat_indices]
-
-        tracers_subhalo['TracerIDs'][start:end]      = tracer_IDs
-        tracers_subhalo['TracerIndices'][start:end]  = tracer_indices 
-        tracers_subhalo['ParentIndices'][start:end]  = gas_indices
-        tracers_subhalo['ParentPartType'][start:end] = parent_ptn
-        tracers_subhalo['ParentGasTemp'][start:end]  = temps
-
-
-    # finish loop over the subhalos at snapshot snapNum
- 
     # reshape the arrays
     end =  offsets_subhalo['SubhaloOffset'][-1] +  offsets_subhalo['SubhaloLength'][-1]
     for key in tracers_subhalo.keys():
@@ -198,7 +127,6 @@ def initialize_coldgastracers():
                 dataset[:] = dset
 
             outf.close()
-
     
     return 
 
