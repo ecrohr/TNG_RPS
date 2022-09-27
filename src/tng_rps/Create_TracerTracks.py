@@ -227,8 +227,6 @@ def track_tracers(snap):
         f.close()
 
     # initialize the outputs 
-
-    # initialize the offset dictionary
     offsets_subhalo, tracers_subhalo = initialize_outputs(len(subfindIDs))
 
     # load the offsets and tracers from the previous snapshot
@@ -391,7 +389,7 @@ def track_tracers(snap):
     fnames = ['offsets', 'tracers']
     for d_i, d in enumerate(dicts):
         fname    = fnames[d_i]
-        outfname = '%s_%03d.hdf5'%(fname, snapNum)
+        outfname = '%s_%03d.hdf5'%(fname, snap)
 
         with h5py.File(outdirec + outfname, 'a') as outf:
             group = outf.require_group('group')
