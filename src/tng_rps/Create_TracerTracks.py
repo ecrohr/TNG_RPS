@@ -537,10 +537,10 @@ def track_subfindIDs(subfindIDs, z0_flag=True):
     for i, subfindID in enumerate(subfindIDs):
         
         if (z0_flag):
-            tree = ru.loadMainTreeBranch(basePath, max_snap, subfindID, treeName=treeName,
+            tree = ru.loadMainTreeBranch(max_snap, subfindID, sim=sim, treeName=treeName,
                                          fields=fields, min_snap=snapNum, max_snap=max_snap)
         else:
-            tree = ru.loadMainTreeBranch(basePath, snapNum, subfindID, treeName=treeName,
+            tree = ru.loadMainTreeBranch(snapNum, subfindID, sim=sim, treeName=treeName,
                                          fields=fields, min_snap=snapNum, max_snap=max_snap)
 
         # find at which snaps the subhalo was identified
