@@ -64,8 +64,8 @@ def create_tracertracks():
     initialize_coldgastracers()
 
     # now track tracers from snapNum + 1 until snap 99
-    #for snap in range(snapNum+1, max_snap+1):
-    #    track_tracers(snap)
+    for snap in range(snapNum+1, max_snap+1):
+        track_tracers(snap)
 
     # and find the unmatched tracers from snapNum + 1 until snap 99
     #for snap in range(snapNum+1, max_snap+1):
