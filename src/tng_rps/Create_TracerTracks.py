@@ -273,8 +273,9 @@ def track_tracers(snap):
  
     # end loop over subhalos
     # close previous offsets and tracers files
-    offsets_past.close()
-    tracers_past.close()
+    if offsets_past:
+        offsets_past.close()
+        tracers_past.close()
     
     # reshape the tracers_subhalo arrays
     end = offsets_subhalo['SubhaloOffset'][-1] + offsets_subhalo['SubhaloLength'][-1]
