@@ -6,6 +6,7 @@ import h5py
 import rohr_utils as ru 
 from importlib import reload
 import glob
+import time
 
 global sim, basePath, snapNum, tcoldgas, max_snap
 global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
@@ -27,6 +28,8 @@ def create_tracertracks():
     global gas_fields, part_fields
     global big_array_length
     global outdirec
+    
+    a = time.time()
     
     # define the global variables
     sim        = 'TNG50-4'
@@ -51,7 +54,7 @@ def create_tracertracks():
     big_array_length = int(1e6)
 
     # define the subhalos we care about at snapshot snapNum
-    subfindIDs = range(10)
+    subfindIDs = range(3)
 
     outdirec = '../Output/%s_tracers_%d-%d/'%(sim,subfindIDs[0],subfindIDs[-1])
 
@@ -60,8 +63,11 @@ def create_tracertracks():
     # find the corresponding subfindIDs at the next snapshots
     track_subfindIDs(subfindIDs)
 
+    b = time.time()
+    print('create_tracertracks: Initalization: %.2g s'%(b-a))
+    
     # now track tracers from snapNum + 1 until snap 99
-    for snap in range(snapNum, max_snap+1):
+    for snap in range(snapNum, snapNum+1):
         track_tracers(snap)
 
     # and find the unmatched tracers from snapNum + 1 until snap 99
@@ -94,23 +100,32 @@ def match_subhalo_tracers(subfind_i, subfindID, snap, tracers, offsets_subhalo, 
     if subfindID == -1:
         return offsets_subhalo, tracers_subhalo
     
+    a = time.time()
     gas_cells = il.snapshot.loadSubhalo(basePath, snap, subfindID, gas_ptn, fields=gas_fields)
-
+    b = time.time()
+    print('match_subhalo_tracers: Load subhalo gas cells: %.2g s'%(b-a))
+    
     # check if there are any gas cells
     if gas_cells['count'] == 0:
         return offsets_subhalo, tracers_subhalo
             
     gas_cells = ru.calc_temp_dict(gas_cells)
-
+    c = time.time()
+    print('match_subhalo_tracers: Calc gas cell temps: %.2g s'%(c-b))
+    
     # find the local indices and load the global offset for these gas cells
     cgas_indices = np.where(gas_cells['Temperature'] <= tcoldgas)[0]
     if len(cgas_indices) == 0:
         return offsets_subhalo, tracers_subhalo
-           
+    d = time.time()
+    print('match_subhalo_tracers: Find cold gas cell indices: %.2g s'%(d-c))
+    
     ParticleIDs = gas_cells['ParticleIDs'][cgas_indices]
 
     # match the tracer ParentID with the cold gas cells ParticleIDs
     isin_tracer = np.isin(tracers['ParentID'], ParticleIDs)
+    e = time.time()
+    print('match_subhalo_tracers: Match tracers with gas cells: %.2g s'%(e-d))
 
     # save the tracerIDs and tracer indices at snapshot snapNum
     tracer_IDs = tracers['TracerID'][isin_tracer]
@@ -119,6 +134,8 @@ def match_subhalo_tracers(subfind_i, subfindID, snap, tracers, offsets_subhalo, 
     offsets_subhalo['SubhaloLength'][subfind_i]            = len(tracer_indices)
     offsets_subhalo['SubhaloLengthColdGas'][subfind_i]     = len(tracer_indices)
     offsets_subhalo['SubhaloLengthColdGas_new'][subfind_i] = len(tracer_indices)
+    f = time.time()
+    print('match_subhalo_tracers: Save offsets info: %.2g s'%(f-e))
     
     IDs = tracer_IDs
     indices = tracer_indices
@@ -198,8 +215,13 @@ def match_subhalo_tracers(subfind_i, subfindID, snap, tracers, offsets_subhalo, 
 
     # note that some of these indices need to be repeated due to having multiple tracers with the same parent
     gas_IDs        = ParticleIDs[isin_gas]
+    g = time.time()
+    print('match_subhalo_tracers: Start finding matched gas cell indices: %.2g s'%(g-f))
+
     # find a way to optimize the following line... 
     repeat_indices = np.where([parent_ID == gas_IDs for parent_ID in parent_IDs])[1]
+    h = time.time()
+    print('match_subhalo_tracers: Find repeat indices: %.2g s'%(h-g))
     gas_indices    = gas_indices[repeat_indices]
 
     # note that the parent type is always gas
@@ -221,7 +243,9 @@ def match_subhalo_tracers(subfind_i, subfindID, snap, tracers, offsets_subhalo, 
     tracers_subhalo['ParentIndices'][start+length_cgas:start+length]  = np.ones((length - length_cgas), dtype=int) * -1
     tracers_subhalo['ParentPartType'][start+length_cgas:start+length] = np.ones((length - length_cgas), dtype=int) * -1
     tracers_subhalo['ParentGasTemp'][start+length_cgas:start+length]  = np.ones((length - length_cgas), dtype=float) * -1
-            
+    i = time.time()
+    print('match_subhalo_tracers: Finish finding gas cell indices + save tracers: %.g s'%(i-h))
+    
     return offsets_subhalo, tracers_subhalo
 
 
@@ -244,17 +268,23 @@ def track_tracers(snap):
     save all info
     return to main function and continue loop over snapshots 
     """
-    
+    a = time.time()
     # load the subfindIDs from the offsets file
     with h5py.File(outdirec + 'offsets_%03d.hdf5'%snap, 'r') as f:
         subfindIDs = f['group']['SubfindID'][:]
         f.close()
-
+    b = time.time()
+    print('track_tracers: Load subfindIDs: %.2g s'%(b-a))
+        
     # initialize the outputs 
     offsets_subhalo, tracers_subhalo = initialize_outputs(len(subfindIDs))
+    c = time.time()
+    print('track_tracers: Initalize outputs: %.2g s'%(c-b))
     
     # load every tracer particle in the simulation at this snapshot
     tracers = il.snapshot.loadSubset(basePath, snap, tracer_ptn)
+    d = time.time()
+    print('track_tracers: Load tracers: %.2g s'%(d-c))
 
     # load the offsets and tracers from the previous snapshot
     if snap > snapNum:
@@ -264,13 +294,15 @@ def track_tracers(snap):
     else:
         offsets_past = None
         tracers_past = None
-
+    
     # begin loop over the subhalos at snapshot snap
     for subfind_i, subfindID in enumerate(subfindIDs):
         offsets_subhalo, tracers_subhalo = match_subhalo_tracers(subfind_i, subfindID, snap,
                                                                  tracers, offsets_subhalo, tracers_subhalo,
                                                                  offsets_past=offsets_past, tracers_past=tracers_past)
- 
+    
+    e = time.time()
+    print('track_tracers: Finish loop over all subhalos: %.2g s'%(e-d))
     # end loop over subhalos
     # close previous offsets and tracers files
     if offsets_past:
@@ -297,6 +329,9 @@ def track_tracers(snap):
                 dataset[:] = dset
 
             outf.close()
+            
+    f = time.time()
+    print('track_tracers: Save all info: %.2g s'%(f-e))
 
     return 
 
