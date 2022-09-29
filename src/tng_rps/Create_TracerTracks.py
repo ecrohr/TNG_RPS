@@ -7,6 +7,7 @@ import rohr_utils as ru
 from importlib import reload
 import glob
 import time
+import os
 
 global sim, basePath, snapNum, tcoldgas, max_snap
 global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
@@ -58,7 +59,7 @@ def create_tracertracks():
 
     outdirec = '../Output/%s_tracers_%d-%d/'%(sim,subfindIDs[0],subfindIDs[-1])
     print(outdirec)
-    if not os.path.isdir(outdir):
+    if not os.path.isdir(outdirec):
         os.system('mkdir %s'%outdirec)
 
     # find the corresponding subfindIDs at the next snapshots
@@ -88,6 +89,8 @@ def match_tracers(snap):
     no longer are (group 3 tracers in the code below).
     No returns.
     """
+
+    print('Working on %s snap %03d'%(sim, snap))
     
     # load the subfindIDs
     with h5py.File(outdirec + 'offsets_%03d.hdf5'%snap, 'r') as f:
@@ -101,6 +104,10 @@ def match_tracers(snap):
     if (snap > snapNum):
         offsets_past = h5py.File(outdirec + 'offsets_%03d.hdf5'%(snap - 1), 'r')
         tracers_past = h5py.File(outdirec + 'tracers_%03d.hdf5'%(snap - 1), 'r')
+
+    else:
+        offsets_past = None
+        tracers_past = None
         
     # find the gas cells of interest
     a = time.time()
