@@ -30,10 +30,8 @@ def create_tracertracks():
     global big_array_length
     global outdirec
     
-    a = time.time()
-    
     # define the global variables
-    sim        = 'TNG50-1'
+    sim        = 'TNG50-3'
     basePath   = ru.ret_basePath(sim)
     snapNum    = 33
     tcoldgas   = 10.**(4.5) # [K]
@@ -55,7 +53,7 @@ def create_tracertracks():
     big_array_length = int(1e8)
 
     # define the subhalos we care about at snapshot snapNum
-    subfindIDs = np.array([    30, 282800, 363014])
+    subfindIDs = range(10000)
 
     outdirec = '../Output/%s_tracers_%d-%d/'%(sim,subfindIDs[0],subfindIDs[-1])
     print(outdirec)
@@ -64,22 +62,19 @@ def create_tracertracks():
 
     # find the corresponding subfindIDs at the next snapshots
     track_subfindIDs(subfindIDs)
-
-    b = time.time()
-    print('create_tracertracks: Initalization: %.2g s'%(b-a))
     
-    # now track tracers from snapNum + 1 until snap 99
+    # now track tracers from snapNum until max_snap
     for snap in range(snapNum, max_snap+1):
-        match_tracers(snap)
+        track_tracers(snap)
 
-    # and find the unmatched tracers from snapNum + 1 until snap 99
+    # and find the unmatched tracers from snapNum + 1 until max_snap
     #for snap in range(snapNum+1, max_snap+1):
     #    find_unmatched_tracers(snap)
 
     return
 
 
-def match_tracers(snap):
+def track_tracers(snap):
     """
     Match the bound cold gas cells of the subfindIDs at snap to the tracers.
     If snap < snapNum, then loads the previous tracers and checks if they still
@@ -102,17 +97,21 @@ def match_tracers(snap):
     
     # if snap > snapNum: load previous tracers
     if (snap > snapNum):
-        offsets_past = h5py.File(outdirec + 'offsets_%03d.hdf5'%(snap - 1), 'r')
-        tracers_past = h5py.File(outdirec + 'tracers_%03d.hdf5'%(snap - 1), 'r')
+        offsets_past = []
+        tracers_past = []
+        for i in range(1, 4):
+            if (snap - i) < snapNum:
+                break
+            offsets, tracers = load_catalogs(snap - i)
+            offsets_past.append(offsets)
+            tracers_past.append(tracers)
 
     else:
         offsets_past = None
         tracers_past = None
         
     # find the gas cells of interest
-    a = time.time()
     ParticleIDs, Particle_indices, Temperatures, offsets, lengths = find_coldgascells(subfindIDs, snap)
-    b = time.time()
 
     # load all tracers in the simulation
     tracers = il.snapshot.loadSubset(basePath, snap, tracer_ptn)
@@ -153,46 +152,24 @@ def match_tracers(snap):
         tracer_indices_sub = tracer_indices[sub_indices]
 
         # if snap > SnapNum: cross match with previous snapshot(s)
-        """
-        This chunk needs to be rewritten using the new match3 scheme. Additionally, the 
-        group 3 tracer indices (and parentIDs) should be tabulated but only after finishing
-        the loop over subfindIDs. This means that we only do the match3 search on all tracers
-        at snap one time per snapshot rather than per subhalo. Or can keep this entirely separate and 
-        as part of the find_unmatched_tracers() routine.
-        """
         if snap > snapNum:
             ### check which cold gas cell tracers from previous snap are still here ###
+            i = 1
+            while ((snap - i) >= snapNum) & (i < 4):
+                if offsets_past[i-1]['SubfindID'][subfind_i] != -1:
+                    start = offsets_past[i-1]['SubhaloOffset'][subfind_i]
+                    end   = start + offsets_past[i-1]['SubhaloLengthColdGas'][subfind_i]
 
-            # check if the subhalo was defined at the previous snap
-            if offsets_past['group']['SubfindID'][subfind_i] != -1:
-                start = offsets_past['group']['SubhaloOffset'][subfind_i]
-                end   = start + offsets_past['group']['SubhaloLengthColdGas'][subfind_i]
-                
-                IDs_past = tracers_past['group']['TracerIDs'][start:end]
-                indices_past = tracers_past['group']['TracerIndices'][start:end]
-
-            # if not, then try the previous snapshots
-            else:
-                i = 2
-                while ((snap - i) >= snapNum) & (i < 4):
-                    with h5py.File(outdirec + 'offsets_%03d.hdf5'%(snap - i), 'r') as f:
-                        if f['group']['SubfindID'][subfind_i] == -1:
-                            f.close()
-                            i += 1
-                        else:
-                            start = f['group']['SubhaloOffset'][subfind_i]
-                            end   = start + f['group']['SubhaloLengthColdGas'][subfind_i]
-                            f.close()
-                            with h5py.File(outdirec + 'tracers_%03d.hdf5'%(snap -i), 'r') as trace_past:
-                                IDs_past = trace_past['group']['TracerIDs'][start:end]
-                                indices_past = trace_past['group']['TracerIndices'][start:end]
-                                trace_past.close()
-                            break
-                    # if the subhalo isn't in the merger trees the past few snaps, move on
-                    if i == 4:
-                        IDs_past = indices_past = np.ones(1, dtype=int) * -1
-                        break
-                        
+                    IDs_past = tracers_past[i-1]['TracerIDs'][start:end]
+                    indices_past = tracers_past[i-1]['TracerIndices'][start:end]
+                    break
+                else:
+                    i += 1
+                # if the subhalo isn't in the merger trees the past few snaps, move on
+                if i == 4:
+                    IDs_past = indices_past = np.ones(1, dtype=int) * -1
+                    break
+            
             # reorder tracer_IDs and tracer_indices such that:
             # 1st: cold gas tracers found in both snapshots
             # 2nd: new cold gas tracers (not in the previous snapshot)
@@ -220,7 +197,7 @@ def match_tracers(snap):
             offsets_subhalo['SubhaloLengthColdGas_new'][subfind_i] = len(IDs_group2) # group 2
         
         # end cross match with previous snapshot(s)
-
+        
         start       = offsets_subhalo['SubhaloOffset'][subfind_i]
         length      = offsets_subhalo['SubhaloLength'][subfind_i]
         length_cgas = offsets_subhalo['SubhaloLengthColdGas'][subfind_i]
@@ -241,35 +218,16 @@ def match_tracers(snap):
         tracers_subhalo['ParentIndices'][start+length_cgas:start+length]  = np.ones((length - length_cgas), dtype=int) * -1
         tracers_subhalo['ParentPartType'][start+length_cgas:start+length] = np.ones((length - length_cgas), dtype=int) * -1
         tracers_subhalo['ParentGasTemp'][start+length_cgas:start+length]  = np.ones((length - length_cgas), dtype=float) * -1
-
+    
     # finish loop over subfindIDs    
 
     # reshape the tracers_subhalo arrays
     end = offsets_subhalo['SubhaloOffset'][-1] + offsets_subhalo['SubhaloLength'][-1]
     for key in tracers_subhalo.keys():
         tracers_subhalo[key] = tracers_subhalo[key][:end]
-
-    # close previous offsets and tracers files
-    if offsets_past:
-        offsets_past.close()
-        tracers_past.close()
         
-    # save the offsets and particles dictionaries
-    dicts  = [offsets_subhalo, tracers_subhalo]
-    fnames = ['offsets', 'tracers']
-    for d_i, d in enumerate(dicts):
-        fname    = fnames[d_i]
-        outfname = '%s_%03d.hdf5'%(fname, snap)
-
-        with h5py.File(outdirec + outfname, 'a') as outf:
-            group = outf.require_group('group')
-            for dset_key in d.keys():
-                dset = d[dset_key]
-                dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
-                dataset[:] = dset
-
-            outf.close()
-
+    save_catalogs(offsets_subhalo, tracers_subhalo, snap)
+            
     return
 
 
@@ -383,264 +341,6 @@ def match3(ar1, ar2, firstSorted=False, parallel=False):
         return None,None
 
     return ar1_inds, ar2_inds
-
-def match_subhalo_tracers(subfind_i, subfindID, snap, tracers, offsets_subhalo, tracers_subhalo,
-                          offsets_past=None, tracers_past=None):
-    """
-    Match the bound gas cells of a given subhalo to the tracerrs at snap.
-    Returns the offsets_subahlo, tracers_subhalo dictionaries.
-    """
-    
-    print('Working on %s snapshot %d subfindID %d'%(sim, snap, subfindID))
-    
-    # load offsets_past, tracers_past if snap > snapNum and not already done
-    if (snap > snapNum) and not offsets_past and not tracers_past:
-        offsets_past = h5py.File(outdirec + 'offsets_%03d.hdf5'%(snap - 1), 'r')
-        tracers_past = h5py.File(outdirec + 'tracers_%03d.hdf5'%(snap - 1), 'r')
-
-    if subfind_i == 0:
-        offsets_subhalo['SubhaloOffset'][subfind_i] = 0
-    else:
-        offsets_subhalo['SubhaloOffset'][subfind_i] = (offsets_subhalo['SubhaloOffset'][subfind_i-1]
-                                                       + offsets_subhalo['SubhaloLength'][subfind_i-1])
-    # check that the subhalo is identified at snapNum
-    if subfindID == -1:
-        return offsets_subhalo, tracers_subhalo
-    
-    a = time.time()
-    gas_cells = il.snapshot.loadSubhalo(basePath, snap, subfindID, gas_ptn, fields=gas_fields)
-    b = time.time()
-    print('match_subhalo_tracers: Load subhalo gas cells: %.2g s'%(b-a))
-    
-    # check if there are any gas cells
-    if gas_cells['count'] == 0:
-        return offsets_subhalo, tracers_subhalo
-            
-    gas_cells = ru.calc_temp_dict(gas_cells)
-    c = time.time()
-    print('match_subhalo_tracers: Calc gas cell temps: %.2g s'%(c-b))
-    
-    # find the local indices and load the global offset for these gas cells
-    cgas_indices = np.where(gas_cells['Temperature'] <= tcoldgas)[0]
-    if len(cgas_indices) == 0:
-        return offsets_subhalo, tracers_subhalo
-    d = time.time()
-    print('match_subhalo_tracers: Find cold gas cell indices: %.2g s'%(d-c))
-    
-    ParticleIDs = gas_cells['ParticleIDs'][cgas_indices]
-
-    # match the tracer ParentID with the cold gas cells ParticleIDs
-    isin_tracer = np.isin(tracers['ParentID'], ParticleIDs)
-    e = time.time()
-    print('match_subhalo_tracers: Match tracers with gas cells: %.2g s'%(e-d))
-
-    # save the tracerIDs and tracer indices at snapshot snapNum
-    tracer_IDs = tracers['TracerID'][isin_tracer]
-    tracer_indices = np.where(isin_tracer)[0]
-    
-    offsets_subhalo['SubhaloLength'][subfind_i]            = len(tracer_indices)
-    offsets_subhalo['SubhaloLengthColdGas'][subfind_i]     = len(tracer_indices)
-    offsets_subhalo['SubhaloLengthColdGas_new'][subfind_i] = len(tracer_indices)
-    f = time.time()
-    print('match_subhalo_tracers: Save offsets info: %.2g s'%(f-e))
-    
-    IDs = tracer_IDs
-    indices = tracer_indices
-    
-    if snap > snapNum:
-        ### check which cold gas cell tracers from previous snap are still here ###
-
-        # check if the subhalo was defined at the previous snap
-        if offsets_past['group']['SubfindID'][subfind_i] != -1:
-            start = offsets_past['group']['SubhaloOffset'][subfind_i]
-            end   = start + offsets_past['group']['SubhaloLengthColdGas'][subfind_i]
-
-        # if not, then try the previous snapshots
-        else:
-            i = 2
-            while ((snap - i) >= snapNum) & (i < 4):
-                with h5py.File(outdirec + 'offsets_%03d.hdf5'%(snap - i), 'r') as f:
-                    if f['group']['SubfindID'][subfind_i] == -1:
-                        f.close()
-                        i += 1
-                    else:
-                        start = f['group']['SubhaloOffset'][subfind_i]
-                        end   = start + f['group']['SubhaloLengthColdGas'][subfind_i]
-                        f.close()
-                        break
-                # if the subhalo isn't in the merger trees the past few snaps, move on
-                if i == 4:
-                    start = end = 0
-            
-        IDs_past = tracers_past['group']['TracerIDs'][start:end]
-        indices_past = tracers_past['group']['TracerIndices'][start:end]
-
-        isin_now  = np.isin(tracer_IDs, IDs_past)
-        isin_past = np.isin(IDs_past, tracer_IDs)
-
-        # reorder tracer_IDs and tracer_indices such that:
-        # 1st: cold gas tracers found in both snapshots
-        # 2nd: new cold gas tracers (not in the previous snapshot)
-        # 3rd: no longer cold gas tracers (was in previous snapshot but no longer)
-
-        # find the indices of group 3
-        isin_group3    = np.isin(tracers['TracerID'], IDs_past[~isin_past])
-        IDs_group3     = tracers['TracerID'][isin_group3]
-        indices_group3 = np.where(isin_group3)[0]
-
-        IDs = np.concatenate([tracer_IDs[isin_now],
-                              tracer_IDs[~isin_now],
-                              IDs_group3])
-                
-        indices = np.concatenate([tracer_indices[isin_now],
-                                  tracer_indices[~isin_now],
-                                  indices_group3])
-        
-        # save the offset information
-        offsets_subhalo['SubhaloLength'][subfind_i]            = len(IDs)
-        offsets_subhalo['SubhaloLengthColdGas'][subfind_i]     = len(tracer_IDs)
-        offsets_subhalo['SubhaloLengthColdGas_new'][subfind_i] = len(tracer_IDs[~isin_now])
-
-    
-    # save the tracer IDs and indices
-    start       = offsets_subhalo['SubhaloOffset'][subfind_i]
-    length      = offsets_subhalo['SubhaloLength'][subfind_i]
-    length_cgas = offsets_subhalo['SubhaloLengthColdGas'][subfind_i]
-    
-    # check that there are cold gas cells with tracers
-    if length_cgas == 0:
-        return offsets_subhalo, tracers_subhalo
-    
-    # for the cold gas cell tracers, save the parent IDs and tracers
-    # get the local cold gas indices with matched tracer particles and include the global offset
-    parent_IDs  = tracers['ParentID'][indices[:length_cgas]]
-    isin_gas    = np.isin(ParticleIDs, parent_IDs)
-
-    r           = il.snapshot.getSnapOffsets(basePath, snap, subfindID, "Subhalo")
-    offset      = r['offsetType'][gas_ptn]
-    gas_indices = offset + cgas_indices[isin_gas]
-
-    # note that some of these indices need to be repeated due to having multiple tracers with the same parent
-    gas_IDs        = ParticleIDs[isin_gas]
-    g = time.time()
-    print('match_subhalo_tracers: Start finding matched gas cell indices: %.2g s'%(g-f))
-
-    # find a way to optimize the following line... 
-    repeat_indices = np.where([parent_ID == gas_IDs for parent_ID in parent_IDs])[1]
-    h = time.time()
-    print('match_subhalo_tracers: Find repeat indices: %.2g s'%(h-g))
-    gas_indices    = gas_indices[repeat_indices]
-
-    # note that the parent type is always gas
-    parent_ptn = np.ones(len(gas_indices), dtype=int) * gas_ptn
-
-    temps = gas_cells['Temperature'][cgas_indices][isin_gas][repeat_indices]
-    
-    # fill in the particle dictionary for this subhalo
-    tracers_subhalo['TracerIDs'][start:start+length]     = IDs
-    tracers_subhalo['TracerIndices'][start:start+length] = indices
-
-    tracers_subhalo['ParentIndices'][start:start+length_cgas]  = gas_indices
-    tracers_subhalo['ParentPartType'][start:start+length_cgas] = parent_ptn
-    tracers_subhalo['ParentGasTemp'][start:start+length_cgas]  = temps
-
-    # for now, make the parent indices and parent part type -1
-    # then later load the other baryonic particles in the sim and match
-    # their particle IDs with all unmatched tracers
-    tracers_subhalo['ParentIndices'][start+length_cgas:start+length]  = np.ones((length - length_cgas), dtype=int) * -1
-    tracers_subhalo['ParentPartType'][start+length_cgas:start+length] = np.ones((length - length_cgas), dtype=int) * -1
-    tracers_subhalo['ParentGasTemp'][start+length_cgas:start+length]  = np.ones((length - length_cgas), dtype=float) * -1
-    i = time.time()
-    print('match_subhalo_tracers: Finish finding gas cell indices + save tracers: %.g s'%(i-h))
-    
-    return offsets_subhalo, tracers_subhalo
-
-
-def track_tracers(snap):
-    """
-    Finds the tracers whose parents are cold gas cells gravitationally 
-    bound to subhalos in subfindIDs at snapshot snap
-    
-    architecture: 
-    given the list of subhalo subfindIDs at snap
-    load the tracers at this snap
-    if snap > snapNum:
-        load the tracers from the past snapshot
-    for each subhalo in subfindIDs:
-        load subfind cold gas cells
-        cross match with tracers at this snap
-        if snap > snapNum:
-            cross match with tracers from previous snap
-        save matched tracers for the cold gas cells
-    save all info
-    return to main function and continue loop over snapshots 
-    """
-    a = time.time()
-    # load the subfindIDs from the offsets file
-    with h5py.File(outdirec + 'offsets_%03d.hdf5'%snap, 'r') as f:
-        subfindIDs = f['group']['SubfindID'][:]
-        f.close()
-    b = time.time()
-    print('track_tracers: Load subfindIDs: %.2g s'%(b-a))
-        
-    # initialize the outputs 
-    offsets_subhalo, tracers_subhalo = initialize_outputs(len(subfindIDs))
-    c = time.time()
-    print('track_tracers: Initalize outputs: %.2g s'%(c-b))
-    
-    # load every tracer particle in the simulation at this snapshot
-    tracers = il.snapshot.loadSubset(basePath, snap, tracer_ptn)
-    d = time.time()
-    print('track_tracers: Load tracers: %.2g s'%(d-c))
-
-    # load the offsets and tracers from the previous snapshot
-    if snap > snapNum:
-        offsets_past = h5py.File(outdirec + 'offsets_%03d.hdf5'%(snap - 1), 'r')
-        tracers_past = h5py.File(outdirec + 'tracers_%03d.hdf5'%(snap - 1), 'r')
-        
-    else:
-        offsets_past = None
-        tracers_past = None
-    
-    # begin loop over the subhalos at snapshot snap
-    for subfind_i, subfindID in enumerate(subfindIDs):
-        offsets_subhalo, tracers_subhalo = match_subhalo_tracers(subfind_i, subfindID, snap,
-                                                                 tracers, offsets_subhalo, tracers_subhalo,
-                                                                 offsets_past=offsets_past, tracers_past=tracers_past)
-    
-    e = time.time()
-    print('track_tracers: Finish loop over all subhalos: %.2g s'%(e-d))
-    # end loop over subhalos
-    # close previous offsets and tracers files
-    if offsets_past:
-        offsets_past.close()
-        tracers_past.close()
-    
-    # reshape the tracers_subhalo arrays
-    end = offsets_subhalo['SubhaloOffset'][-1] + offsets_subhalo['SubhaloLength'][-1]
-    for key in tracers_subhalo.keys():
-        tracers_subhalo[key] = tracers_subhalo[key][:end]
-        
-    # save the offsets and particles dictionaries
-    dicts  = [offsets_subhalo, tracers_subhalo]
-    fnames = ['offsets', 'tracers']
-    for d_i, d in enumerate(dicts):
-        fname    = fnames[d_i]
-        outfname = '%s_%03d.hdf5'%(fname, snap)
-
-        with h5py.File(outdirec + outfname, 'a') as outf:
-            group = outf.require_group('group')
-            for dset_key in d.keys():
-                dset = d[dset_key]
-                dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
-                dataset[:] = dset
-
-            outf.close()
-            
-    f = time.time()
-    print('track_tracers: Save all info: %.2g s'%(f-e))
-
-    return 
 
 
 def find_unmatched_tracers(snap):
@@ -817,6 +517,44 @@ def initialize_outputs(Nsubhalos):
     
     return offsets_subhalo, tracers_subhalo
 
+def load_catalogs(snap):
+    """
+    Load the offsets and tracers catalogs at snap.
+    Returns dicitonaries of the offsets, tracers catalogs.
+    """
+    result = {}
+    fnames = ['offsets', 'tracers']
+    for i, fname in enumerate(fnames):
+        result[fname] = {}
+        with h5py.File(outdirec + '%s_%03d.hdf5'%(fname, snap), 'r') as f:
+            group = f['group']
+            for key in group.keys():
+                result[fname][key] = group[key][:]
+        f.close()
+        
+    return result[fnames[0]], result[fnames[1]]    
+
+
+def save_catalogs(offsets, tracers, snap):
+    """
+    Save the offsets and tracers catalogs at snap.
+    """
+    dicts  = [offsets, tracers]
+    fnames = ['offsets', 'tracers']
+    for d_i, d in enumerate(dicts):
+        fname    = fnames[d_i]
+        outfname = '%s_%03d.hdf5'%(fname, snap)
+
+        with h5py.File(outdirec + outfname, 'a') as outf:
+            group = outf.require_group('group')
+            for dset_key in d.keys():
+                dset = d[dset_key]
+                dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+                dataset[:] = dset
+
+            outf.close()
+            
+    return
 
 
 create_tracertracks()
