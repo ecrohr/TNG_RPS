@@ -31,7 +31,7 @@ def create_tracertracks():
     global outdirec
     
     # define the global variables
-    sim        = 'TNG50-1'
+    sim        = 'TNG50-2'
     basePath   = ru.ret_basePath(sim)
     snapNum    = 33
     tcoldgas   = 10.**(4.5) # [K]
@@ -53,8 +53,8 @@ def create_tracertracks():
     big_array_length = int(1e8)
 
     # define the subhalos we care about at snapshot snapNum
-    #subfindIDs = range(10000)
-    subfindIDs = [30, 282800, 363014]
+    subfindIDs = range(10000)
+    #subfindIDs = [30, 282800, 363014]
     
     #outdirec = '../Output/%s_tracers_%d-%d/'%(sim,subfindIDs[0],subfindIDs[-1])
     outdirec = '../Output/%s_tracers_zooniverse/'%(sim)
@@ -63,15 +63,15 @@ def create_tracertracks():
         os.system('mkdir %s'%outdirec)
 
     # find the corresponding subfindIDs at the next snapshots
-    track_subfindIDs(subfindIDs)
+    #track_subfindIDs(subfindIDs)
     
     # now track tracers from snapNum until max_snap
-    for snap in range(snapNum, max_snap+1):
-        track_tracers(snap)
+    #for snap in range(snapNum, max_snap+1):
+    #    track_tracers(snap)
 
     # and find the unmatched tracers from snapNum + 1 until max_snap
-    #for snap in range(snapNum+1, max_snap+1):
-    #    find_unmatched_tracers(snap)
+    for snap in range(snapNum+1, max_snap+1):
+        find_unmatched_tracers(snap)
 
     return
 
@@ -349,94 +349,76 @@ def find_unmatched_tracers(snap):
     """
     For all unmatched tracers at snap, find their parents.
     """
-    
-    # load the tracers at snap
-    tracers = il.snapshot.loadSubset(basePath, snap, tracer_ptn)
-            
-    # load the tracers_subhalo catalog at this snap
-    tracers_subhalo = {}
-    fname = 'tracers'
-    outfname = '%s_%03d.hdf5'%(fname, snap)
 
-    with h5py.File(outdirec + outfname, 'a') as outf:
-        group = outf.require_group('group')
-        for dset_key in group.keys():
-            tracers_subhalo[dset_key] = group[dset_key][:]
-        outf.close()
+    # load the offsets, tracers at snap
+    a = time.time()
+    offsets_subhalo, tracers_subhalo = load_catalogs(snap)
+    b = time.time()
 
-    # find the parentIDs of the group 3 tracers, 
-    # i.e. the ones whose parents are no longer bound cold gas cells
-
+    # find the unmatched tracers
     unmatched_indices = tracers_subhalo['ParentPartType'] == -1
-    tracer_indices    = tracers_subhalo['TracerIndices'][unmatched_indices]
-    ParentIDs         = tracers['ParentID'][tracer_indices]
+    unmatched_TracerIDs = tracers_subhalo['TracerIDs'][unmatched_indices]
+    c = time.time()
 
-    # close the tracer snapshot data before loading in baryonic snapshot data
+    # load all tracers at snap
+    tracers = il.snapshot.loadSubset(basePath, snap, tracer_ptn)
+
+    # match unmatched tracerIDs to all tracers at snap to save indices and ParentIDs
+    # NB: unmatched_tracerIDs is not necessarily unique
+    tracers_indices, _ = match3(tracers['TracerID'], unmatched_TracerIDs)
+    unmatched_TracerIndices = tracers_indices
+    unmatched_ParentIDs = tracers['ParentID'][unmatched_TracerIndices]
+
+    # del simulation tracers before loading baryonic particles
     del tracers
 
-    # for each baryonic particle type, load the snapshot data
+    # loop over each baryonic particle type, searching for the parents
+
     for i, ptn in enumerate(bary_ptns):
 
-        if i == 0:
+        if ptn == gas_ptn:
             fields = gas_fields
         else:
             fields = part_fields
 
-        particles   = il.snapshot.loadSubset(basePath, snap, ptn, fields=fields, sq=False)
-        ParticleIDs = particles['ParticleIDs']
+        # load all particles at snap
+        Particles   = il.snapshot.loadSubset(basePath, snap, ptn, fields=fields, sq=False)
+        ParticleIDs = Particles['ParticleIDs']
 
-        isin_tracer    = np.isin(ParentIDs, ParticleIDs)
-        isin_particles = np.isin(ParticleIDs, ParentIDs)
+        # match ParentIDs with unmatched_ParentIDs
+        # reminder that unmatched_ParentIDs are not unique
+        Particle_indices, Parent_indices = match3(ParticleIDs, unmatched_ParentIDs)
 
-        # if there are no matches, then continue
-        if len(isin_tracer[isin_tracer]) == 0:
+        if Particle_indices is None:
+            print('Warning, no matched parents for part type %d. Continuing to the next bary_ptn'%ptn)
             continue
-        
-        parent_IDs       = ParentIDs[isin_tracer]
-        particle_indices = np.where(isin_particles)[0]
 
-        # note that some of these indices need to be repeated due to having multiple tracers with the same parent
-        particle_IDs   = ParticleIDs[isin_particles]
-        repeat_indices = np.where([parent_ID == particle_IDs for parent_ID in parent_IDs])[1]
+        parent_indices = Particle_indices
+        parent_ptn = np.ones(len(parent_indices), dtype=int) * ptn
 
-        parent_indices = particle_indices[repeat_indices]
-        parent_ptn     = np.ones(len(parent_indices), dtype=int) * ptn
-
-        # for gas cells, also calculate the temperature
-        if i == 0:
-            for key in particles.keys():
-                if key == 'count':
-                    particles[key] = len(parent_indices)
-                else:
-                    particles[key] = particles[key][parent_indices]
-
-            particles = ru.calc_temp_dict(particles)
-            temps = particles['Temperature']
-
+        # calculate the temperature for the gas cells
+        if ptn == gas_ptn:
+            for key in fields:
+                Particles[key] = Particles[key][parent_indices]
+            Particles['count'] = len(parent_indices)
+            Particles = ru.calc_temp_dict(Particles)
+            temps = Particles['Temperature']
         else:
-            temps = np.ones(len(parent_indices), dtype=float) * -1
+            temps = np.ones(len(parent_indices), dtype=float) * -1.
 
-        save_indices = np.where(unmatched_indices)[0][np.where(isin_tracer)[0]]
+        # calculate the tracer catalog indices for the unmatched tracers matched to this part type
+        save_indices = np.where([unmatched_indices])[0][Parent_indices]
 
-        # save the parent part types and indices, and the temperatures for parents that are gas cells
+        # save the parent part types, indices, and the temperatures (temps only for gas cells)
         tracers_subhalo['ParentIndices'][save_indices]  = parent_indices
         tracers_subhalo['ParentPartType'][save_indices] = parent_ptn
         tracers_subhalo['ParentGasTemp'][save_indices]  = temps
-    # finish loop finding the unmatched tracers
-
-    # save the offsets and tracers_subhalo dictionaries
-    d = tracers_subhalo
-    
-    with h5py.File(outdirec + outfname, 'a') as outf:
-        group = outf.require_group('group')
-        for dset_key in d.keys():
-            dset = d[dset_key]
-            dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
-            dataset[:] = dset
-
-        outf.close()
-
-    return 
+    # finish loop over bary_ptns
+        
+    # save catalogs and return 
+    save_catalogs(offsets_subhalo, tracers_subhalo, snap)
+        
+    return
 
 
 def track_subfindIDs(subfindIDs, z0_flag=True):
