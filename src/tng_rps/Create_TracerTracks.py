@@ -31,7 +31,7 @@ def create_tracertracks():
     global outdirec
     
     # define the global variables
-    sim        = 'TNG50-2'
+    sim        = 'TNG50-1'
     basePath   = ru.ret_basePath(sim)
     snapNum    = 33
     tcoldgas   = 10.**(4.5) # [K]
@@ -53,9 +53,11 @@ def create_tracertracks():
     big_array_length = int(1e8)
 
     # define the subhalos we care about at snapshot snapNum
-    subfindIDs = range(10000)
-
-    outdirec = '../Output/%s_tracers_%d-%d/'%(sim,subfindIDs[0],subfindIDs[-1])
+    #subfindIDs = range(10000)
+    subfindIDs = [30, 282800, 363014]
+    
+    #outdirec = '../Output/%s_tracers_%d-%d/'%(sim,subfindIDs[0],subfindIDs[-1])
+    outdirec = '../Output/%s_tracers_zooniverse/'%(sim)
     print(outdirec)
     if not os.path.isdir(outdirec):
         os.system('mkdir %s'%outdirec)
