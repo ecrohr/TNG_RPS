@@ -350,15 +350,13 @@ def find_unmatched_tracers(snap):
     For all unmatched tracers at snap, find their parents.
     """
 
+    print('Finding unmatched tracers for %s at snap %03d.'%(sim, snap))
     # load the offsets, tracers at snap
-    a = time.time()
     offsets_subhalo, tracers_subhalo = load_catalogs(snap)
-    b = time.time()
 
     # find the unmatched tracers
     unmatched_indices = tracers_subhalo['ParentPartType'] == -1
     unmatched_TracerIDs = tracers_subhalo['TracerIDs'][unmatched_indices]
-    c = time.time()
 
     # load all tracers at snap
     tracers = il.snapshot.loadSubset(basePath, snap, tracer_ptn)
@@ -375,6 +373,8 @@ def find_unmatched_tracers(snap):
     # loop over each baryonic particle type, searching for the parents
 
     for i, ptn in enumerate(bary_ptns):
+        
+        print('Checking part type %d'%ptn)
 
         if ptn == gas_ptn:
             fields = gas_fields
