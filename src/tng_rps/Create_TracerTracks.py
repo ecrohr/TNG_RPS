@@ -56,8 +56,8 @@ def create_tracertracks():
     subfindIDs = range(10000)
     #subfindIDs = [30, 282800, 363014]
     
-    #outdirec = '../Output/%s_tracers_%d-%d/'%(sim,subfindIDs[0],subfindIDs[-1])
-    outdirec = '../Output/%s_tracers_zooniverse/'%(sim)
+    outdirec = '../Output/%s_tracers_%d-%d/'%(sim,subfindIDs[0],subfindIDs[-1])
+    #outdirec = '../Output/%s_tracers_zooniverse/'%(sim)
     print(outdirec)
     if not os.path.isdir(outdirec):
         os.system('mkdir %s'%outdirec)
