@@ -66,7 +66,7 @@ def create_tracertracks():
     track_subfindIDs(subfindIDs)
     
     # now track tracers from snapNum until max_snap
-    for snap in range(min_snap, max_snap+1):
+    for snap in range(snapNum, max_snap+1):
         start = time.time()
         track_tracers(snap)
         end = time.time()
