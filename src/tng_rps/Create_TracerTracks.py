@@ -31,7 +31,7 @@ def create_tracertracks():
     global outdirec
     
     # define the global variables
-    sim        = 'TNG50-2'
+    sim        = 'TNG50-1'
     basePath   = ru.ret_basePath(sim)
     snapNum    = 33
     tcoldgas   = 10.**(4.5) # [K]
@@ -53,11 +53,11 @@ def create_tracertracks():
     big_array_length = int(1e8)
 
     # define the subhalos we care about at snapshot snapNum
-    subfindIDs = range(10000)
-    #subfindIDs = [30, 282800, 363014]
+    #subfindIDs = range(10000)
+    subfindIDs = [30, 282800, 363014]
     
-    outdirec = '../Output/%s_tracers_%d-%d/'%(sim,subfindIDs[0],subfindIDs[-1])
-    #outdirec = '../Output/%s_tracers_zooniverse/'%(sim)
+    #outdirec = '../Output/%s_tracers_%d-%d/'%(sim,subfindIDs[0],subfindIDs[-1])
+    outdirec = '../Output/%s_tracers_zooniverse/'%(sim)
     print(outdirec)
     if not os.path.isdir(outdirec):
         os.system('mkdir %s'%outdirec)
@@ -66,12 +66,14 @@ def create_tracertracks():
     #track_subfindIDs(subfindIDs)
     
     # now track tracers from snapNum until max_snap
-    #for snap in range(snapNum, max_snap+1):
-    #    track_tracers(snap)
+    for snap in range(92, max_snap+1):
+        track_tracers(snap)
+    for snap in range(34, 38):
+        track_tracers(snap)
 
     # and find the unmatched tracers from snapNum + 1 until max_snap
-    for snap in range(snapNum+1, max_snap+1):
-        find_unmatched_tracers(snap)
+    #for snap in range(snapNum+1, max_snap+1):
+    #    find_unmatched_tracers(snap)
 
     return
 
@@ -350,22 +352,23 @@ def find_unmatched_tracers(snap):
     For all unmatched tracers at snap, find their parents.
     """
 
-    print('Finding unmatched tracers for %s at snap %03d.'%(sim, snap))
     # load the offsets, tracers at snap
+    a = time.time()
     offsets_subhalo, tracers_subhalo = load_catalogs(snap)
+    b = time.time()
 
     # find the unmatched tracers
     unmatched_indices = tracers_subhalo['ParentPartType'] == -1
     unmatched_TracerIDs = tracers_subhalo['TracerIDs'][unmatched_indices]
+    c = time.time()
 
     # load all tracers at snap
     tracers = il.snapshot.loadSubset(basePath, snap, tracer_ptn)
 
     # match unmatched tracerIDs to all tracers at snap to save indices and ParentIDs
     # NB: unmatched_tracerIDs is not necessarily unique
-    tracers_indices, _ = match3(tracers['TracerID'], unmatched_TracerIDs)
-    unmatched_TracerIndices = tracers_indices
-    unmatched_ParentIDs = tracers['ParentID'][unmatched_TracerIndices]
+    tracers_indices, matched_unmatched_indices = match3(tracers['TracerID'], unmatched_TracerIDs)
+    unmatched_ParentIDs = tracers['ParentID'][tracers_indices]
 
     # del simulation tracers before loading baryonic particles
     del tracers
@@ -373,8 +376,6 @@ def find_unmatched_tracers(snap):
     # loop over each baryonic particle type, searching for the parents
 
     for i, ptn in enumerate(bary_ptns):
-        
-        print('Checking part type %d'%ptn)
 
         if ptn == gas_ptn:
             fields = gas_fields
@@ -407,13 +408,18 @@ def find_unmatched_tracers(snap):
             temps = np.ones(len(parent_indices), dtype=float) * -1.
 
         # calculate the tracer catalog indices for the unmatched tracers matched to this part type
-        save_indices = np.where([unmatched_indices])[0][Parent_indices]
+        save_indices = np.where(unmatched_indices)[0][matched_unmatched_indices][Parent_indices]
 
         # save the parent part types, indices, and the temperatures (temps only for gas cells)
         tracers_subhalo['ParentIndices'][save_indices]  = parent_indices
         tracers_subhalo['ParentPartType'][save_indices] = parent_ptn
         tracers_subhalo['ParentGasTemp'][save_indices]  = temps
     # finish loop over bary_ptns
+    
+    # test -- ensure that all part types were found
+    unfound_indices = tracers_subhalo['ParentPartType'] == -1
+    if len(unfound_indices[unfound_indices]) != 0:
+        print('Warning, not all parents found!')
         
     # save catalogs and return 
     save_catalogs(offsets_subhalo, tracers_subhalo, snap)
