@@ -245,119 +245,6 @@ def track_tracers(snap):
             
     return
 
-
-def find_coldgascells(subfindIDs, snap):
-    """
-    Find the cold gas cells bound to the subfindIDs at snap.
-    Loads all gas cells at snap, and then loops over the subfindIDs 
-    to find the appropriate slices.
-    Returns are come in two flavors: 
-    ParticleIDs, Particle_indices, and Temperatures contain information
-    on the cell by cell basis. i.e., when loading all gas cells in the sim., 
-    gas_cells['Particle_indices[i]'] has ParticleID ParticleIDs[i] and 
-    temperature Temperatures[i].
-    offsets, lengths contain information on the subhalo by subhalo basis. 
-    The cold gas cells belonging to subhalo subfindIDs[i] of the first 
-    three returns are the slice [offsets[i]:offsets[i]+lengths[i]]. 
-    
-    Returns ParticleIDs, Particle_indices, Temperatures, offsets, lengths.
-    """
-    
-    a = time.time()
-    gas_cells = il.snapshot.loadSubset(basePath, snap, gas_ptn, fields=gas_fields)
-    b = time.time()
-
-    gas_cells = ru.calc_temp_dict(gas_cells)
-
-    c = time.time()
-
-    dtype = int
-    offsets = np.zeros(len(subfindIDs), dtype=dtype)
-    lengths = np.zeros(len(subfindIDs), dtype=dtype)
-
-    dtype = gas_cells['ParticleIDs'].dtype
-    ParticleIDs = np.zeros(big_array_length, dtype=dtype)
-    Particle_indices = np.zeros(big_array_length, dtype=int)
-
-    tcoldgas = 10.**(4.5) # [K]
-
-    for i, subfindID in enumerate(subfindIDs):
-
-        if i > 0:
-            offsets[i] = offsets[i-1] + lengths[i-1]
-            
-        if subfindID == -1:
-            continue
-            
-        r = il.snapshot.getSnapOffsets(basePath, snap, subfindID, 'Subhalo')
-        start = r['offsetType'][gas_ptn]
-        end = r['lenType'][gas_ptn]
-
-        temps = gas_cells['Temperature'][start:start+end]
-        indices = temps <= tcoldgas
-
-        lengths[i] = len(indices[indices])
-
-        # check if there are any bound gas cells
-        if end == 0:
-            continue
-            
-        ParticleIDs[offsets[i]:offsets[i]+lengths[i]] = gas_cells['ParticleIDs'][start:start+end][indices]
-        Particle_indices[offsets[i]:offsets[i]+lengths[i]] = start + np.where(indices)[0]
-
-    stop = offsets[-1] + lengths[-1]
-    ParticleIDs = ParticleIDs[:stop]
-    Particle_indices = Particle_indices[:stop]
-    Temperatures = gas_cells['Temperature'][Particle_indices]
-    d = time.time()
-
-    if np.min(ParticleIDs) <= 0:
-        print('Warning')
-    
-    return ParticleIDs, Particle_indices, Temperatures, offsets, lengths
-
-
-# from Dylan Nelson
-def match3(ar1, ar2, firstSorted=False, parallel=False):
-    """ Returns index arrays i1,i2 of the matching elements between ar1 and ar2. While the elements of ar1 
-        must be unique, the elements of ar2 need not be. For every matched element of ar2, the return i1 
-        gives the index in ar1 where it can be found. For every matched element of ar1, the return i2 gives 
-        the index in ar2 where it can be found. Therefore, ar1[i1] = ar2[i2]. The order of ar2[i2] preserves 
-        the order of ar2. Therefore, if all elements of ar2 are in ar1 (e.g. ar1=all TracerIDs in snap, 
-        ar2=set of TracerIDs to locate) then ar2[i2] = ar2. The approach is one sort of ar1 followed by 
-        bisection search for each element of ar2, therefore O(N_ar1*log(N_ar1) + N_ar2*log(N_ar1)) ~= 
-        O(N_ar1*log(N_ar1)) complexity so long as N_ar2 << N_ar1. """
-    if not isinstance(ar1,np.ndarray): ar1 = np.array(ar1)
-    if not isinstance(ar2,np.ndarray): ar2 = np.array(ar2)
-    assert ar1.ndim == ar2.ndim == 1
-    
-    if not firstSorted:
-        # need a sorted copy of ar1 to run bisection against
-        if parallel:
-            index = p_argsort(ar1)
-        else:
-            index = np.argsort(ar1)
-        ar1_sorted = ar1[index]
-        ar1_sorted_index = np.searchsorted(ar1_sorted, ar2)
-        ar1_sorted = None
-        ar1_inds = np.take(index, ar1_sorted_index, mode="clip")
-        ar1_sorted_index = None
-        index = None
-    else:
-        # if we can assume ar1 is already sorted, then proceed directly
-        ar1_sorted_index = np.searchsorted(ar1, ar2)
-        ar1_inds = np.take(np.arange(ar1.size), ar1_sorted_index, mode="clip")
-
-    mask = (ar1[ar1_inds] == ar2)
-    ar2_inds = np.where(mask)[0]
-    ar1_inds = ar1_inds[ar2_inds]
-
-    if not len(ar1_inds):
-        return None,None
-
-    return ar1_inds, ar2_inds
-
-
 def find_unmatched_tracers(snap):
     """
     For all unmatched tracers at snap, find their parents.
@@ -436,6 +323,195 @@ def find_unmatched_tracers(snap):
     save_catalogs(offsets_subhalo, tracers_subhalo, snap)
         
     return
+
+
+def find_coldgascells(subfindIDs, snap):
+    """
+    Find the cold gas cells bound to the subfindIDs at snap.
+    Loads all gas cells at snap, and then loops over the subfindIDs 
+    to find the appropriate slices.
+    Returns are come in two flavors: 
+    ParticleIDs, Particle_indices, and Temperatures contain information
+    on the cell by cell basis. i.e., when loading all gas cells in the sim., 
+    gas_cells['Particle_indices[i]'] has ParticleID ParticleIDs[i] and 
+    temperature Temperatures[i].
+    offsets, lengths contain information on the subhalo by subhalo basis. 
+    The cold gas cells belonging to subhalo subfindIDs[i] of the first 
+    three returns are the slice [offsets[i]:offsets[i]+lengths[i]]. 
+    
+    Returns ParticleIDs, Particle_indices, Temperatures, offsets, lengths.
+    """
+    
+    a = time.time()
+    gas_cells = il.snapshot.loadSubset(basePath, snap, gas_ptn, fields=gas_fields)
+    b = time.time()
+
+    gas_cells = ru.calc_temp_dict(gas_cells)
+
+    c = time.time()
+
+    dtype = int
+    offsets = np.zeros(len(subfindIDs), dtype=dtype)
+    lengths = np.zeros(len(subfindIDs), dtype=dtype)
+
+    dtype = gas_cells['ParticleIDs'].dtype
+    ParticleIDs = np.zeros(big_array_length, dtype=dtype)
+    Particle_indices = np.zeros(big_array_length, dtype=int)
+
+    tcoldgas = 10.**(4.5) # [K]
+
+    for i, subfindID in enumerate(subfindIDs):
+
+        if i > 0:
+            offsets[i] = offsets[i-1] + lengths[i-1]
+            
+        if subfindID == -1:
+            continue
+            
+        r = il.snapshot.getSnapOffsets(basePath, snap, subfindID, 'Subhalo')
+        start = r['offsetType'][gas_ptn]
+        end = r['lenType'][gas_ptn]
+
+        temps = gas_cells['Temperature'][start:start+end]
+        indices = temps <= tcoldgas
+
+        lengths[i] = len(indices[indices])
+
+        # check if there are any bound gas cells
+        if end == 0:
+            continue
+            
+        ParticleIDs[offsets[i]:offsets[i]+lengths[i]] = gas_cells['ParticleIDs'][start:start+end][indices]
+        Particle_indices[offsets[i]:offsets[i]+lengths[i]] = start + np.where(indices)[0]
+
+    stop = offsets[-1] + lengths[-1]
+    ParticleIDs = ParticleIDs[:stop]
+    Particle_indices = Particle_indices[:stop]
+    Temperatures = gas_cells['Temperature'][Particle_indices]
+    d = time.time()
+
+    if np.min(ParticleIDs) <= 0:
+        print('Warning')
+    
+    return ParticleIDs, Particle_indices, Temperatures, offsets, lengths
+
+
+def create_bound_flags(snap):
+    """
+    Post-process the catalogs to add a still-bound flag to each tracer.
+    'Still-Bound' means that the tracer's parent is still gravitationally 
+    bound via Subfind to the relevant subhalo. 
+    True == 1 means yes; False == 0 means no; -1 means not checked.
+    Every tracer particle whose parent has been found should be checked.
+    NB: tracer parents with a False flag may still be bound, but they are bound
+    to a subhalo different from where it came. For example, many stripped gas cells
+    from satellite galaxies will no longer be bound to the satellite (flag == False),
+    but the cells will probably be bound to the central galaxies.
+    Saves the StillBound_flag to the tracers catalog. No returns.
+    """
+    
+    # load the catalogs at snap
+    offsets_subhalo, tracers_subhalo = load_catalogs(snap)
+
+    # initalize the ouput
+    still_bound = np.ones(len(tracers_subhalo['ParentPartType']), dtype=int) * -1
+
+    # begin loop over subfindIDs
+    for subfind_i, subfindID in enumerate(offsets_subhalo['SubfindID']):
+
+        if subfindID == -1:
+            continue
+
+        # first, all group 1 and 2 tracers are still bound by definition
+        start_groups12 = offsets_subhalo['SubhaloOffset'][subfind_i]
+        end_groups12 = start_groups12 + offsets_subhalo['SubhaloLengthColdGas'][subfind_i]
+        still_bound[start_groups12:end_groups12] = 1
+
+        # now let's check the group the group 3 tracers
+        start_group3 = start_groups12 + offsets_subhalo['SubhaloLengthColdGas'][subfind_i]
+        end_group3 = start_groups12 + offsets_subhalo['SubhaloLength'][subfind_i]
+
+        # load the relevant parent indices and parent part type
+        parent_indices = tracers_subhalo['ParentIndices'][start_group3:end_group3]
+        parent_parttype = tracers_subhalo['ParentPartType'][start_group3:end_group3]
+
+        # load the particle indices for the subahlo
+        r = il.snapshot.getSnapOffsets(basePath, snap, subfindID, 'Subhalo')
+
+        # loop over the baryon part types 
+        for i, ptn in enumerate(bary_ptns):
+            # find the starting and ending indices for the subhalo for the given part type
+            subhalo_start = r['offsetType'][ptn]
+            subhalo_end = subhalo_start + r['lenType'][ptn]
+
+            # find the relevant parent indices for the given part type
+            parent_indices_indices = parent_parttype == ptn
+
+            # find the bound indices
+            bound_indices = ((parent_indices[parent_indices_indices] >= subhalo_start) &
+                             (parent_indices[parent_indices_indices] < subhalo_end))
+
+            # save the bound and unbound flags
+            save_indices = np.arange(start_group3, end_group3)[np.where(parent_indices_indices)[0]]
+            save_bound_indices = save_indices[bound_indices]
+            save_unbound_indices = save_indices[~bound_indices]
+            still_bound[save_bound_indices] = 1
+            still_bound[save_unbound_indices] = 0
+        # finish loop over the baryon part types
+    # finish loop over subfindIDs
+
+    # check that all particles have a bound / unbound flag
+    if len(still_bound[still_bound == -1]) > 0:
+        print('Warning, not all particles were checked!')
+        orphan_indices = tracers_subhalo['ParentPartType'] == -1
+        print(len(still_bound[still_bound == -1]), len(orphan_indices[orphan_indices]))
+
+    # save the catalogs
+    tracers_subhalo['StillBound_flag'] = still_bound
+    save_catalogs(offsets_subhalo, tracers_subhalo, snap)
+    
+    return
+
+
+# from Dylan Nelson
+def match3(ar1, ar2, firstSorted=False, parallel=False):
+    """ Returns index arrays i1,i2 of the matching elements between ar1 and ar2. While the elements of ar1 
+        must be unique, the elements of ar2 need not be. For every matched element of ar2, the return i1 
+        gives the index in ar1 where it can be found. For every matched element of ar1, the return i2 gives 
+        the index in ar2 where it can be found. Therefore, ar1[i1] = ar2[i2]. The order of ar2[i2] preserves 
+        the order of ar2. Therefore, if all elements of ar2 are in ar1 (e.g. ar1=all TracerIDs in snap, 
+        ar2=set of TracerIDs to locate) then ar2[i2] = ar2. The approach is one sort of ar1 followed by 
+        bisection search for each element of ar2, therefore O(N_ar1*log(N_ar1) + N_ar2*log(N_ar1)) ~= 
+        O(N_ar1*log(N_ar1)) complexity so long as N_ar2 << N_ar1. """
+    if not isinstance(ar1,np.ndarray): ar1 = np.array(ar1)
+    if not isinstance(ar2,np.ndarray): ar2 = np.array(ar2)
+    assert ar1.ndim == ar2.ndim == 1
+    
+    if not firstSorted:
+        # need a sorted copy of ar1 to run bisection against
+        if parallel:
+            index = p_argsort(ar1)
+        else:
+            index = np.argsort(ar1)
+        ar1_sorted = ar1[index]
+        ar1_sorted_index = np.searchsorted(ar1_sorted, ar2)
+        ar1_sorted = None
+        ar1_inds = np.take(index, ar1_sorted_index, mode="clip")
+        ar1_sorted_index = None
+        index = None
+    else:
+        # if we can assume ar1 is already sorted, then proceed directly
+        ar1_sorted_index = np.searchsorted(ar1, ar2)
+        ar1_inds = np.take(np.arange(ar1.size), ar1_sorted_index, mode="clip")
+
+    mask = (ar1[ar1_inds] == ar2)
+    ar2_inds = np.where(mask)[0]
+    ar1_inds = ar1_inds[ar2_inds]
+
+    if not len(ar1_inds):
+        return None,None
+
+    return ar1_inds, ar2_inds
 
 
 def track_subfindIDs(subfindIDs, z0_flag=True):
@@ -517,6 +593,7 @@ def initialize_outputs(Nsubhalos):
     tracers_subhalo['ParentGasTemp']  = np.empty(big_array_length, dtype=float)
     
     return offsets_subhalo, tracers_subhalo
+
 
 def load_catalogs(snap):
     """
