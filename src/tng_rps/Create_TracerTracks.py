@@ -31,7 +31,7 @@ def create_tracertracks():
     global outdirec
     
     # define the global variables
-    sim        = 'TNG50-2'
+    sim        = 'TNG50-1'
     basePath   = ru.ret_basePath(sim)
     snapNum    = 33
     tcoldgas   = 10.**(4.5) # [K]
@@ -53,11 +53,11 @@ def create_tracertracks():
     big_array_length = int(1e8)
 
     # define the subhalos we care about at snapshot snapNum
-    subfindIDs = range(10000)
-    #subfindIDs = [30, 282800, 363014]
+    #subfindIDs = range(10000)
+    subfindIDs = [30, 282800, 363014]
     
-    outdirec = '../Output/%s_tracers_%d-%d/'%(sim,subfindIDs[0],subfindIDs[-1])
-    #outdirec = '../Output/%s_tracers_zooniverse/'%(sim)
+    #outdirec = '../Output/%s_tracers_%d-%d/'%(sim,subfindIDs[0],subfindIDs[-1])
+    outdirec = '../Output/%s_tracers_zooniverse/'%(sim)
     print(outdirec)
     if not os.path.isdir(outdirec):
         os.system('mkdir %s'%outdirec)
@@ -66,12 +66,19 @@ def create_tracertracks():
     track_subfindIDs(subfindIDs)
     
     # now track tracers from snapNum until max_snap
-    for snap in range(snapNum, max_snap+1):
+    """
+    for snap in range(34, 38):
         start = time.time()
         track_tracers(snap)
         end = time.time()
         print('%s snap %03d track_tracers: %.3g [s]'%(sim, snap, (end-start)))
-              
+    for snap in range(91, max_snap+1):
+        start = time.time()
+        track_tracers(snap)
+        end = time.time()
+        print('%s snap %03d track_tracers: %.3g [s]'%(sim, snap, (end-start)))
+    """
+    
     # and find the unmatched tracers from snapNum + 1 until max_snap
     for snap in range(snapNum+1, max_snap+1):
         start = time.time()
