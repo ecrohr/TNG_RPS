@@ -85,6 +85,14 @@ def create_tracertracks():
         find_unmatched_tracers(snap)
         end = time.time()
         print('%s snap %03d find_unmatched_tracers: %.3g [s]'%(sim, snap, (end-start)))
+        
+    # add bound flag for the tracer parents
+    for snap in range(snapNum+1, max_snap+1):
+        start = time.time()
+        create_bound_flags(snap)
+        end = time.time()
+        print('%s snap %03d create_bound_flags: %.3g [s]'%(sim, snap, (end-start)))
+    
 
     return
 
