@@ -8,6 +8,7 @@ from importlib import reload
 import glob
 import time
 import os
+import argparse
 
 global sim, basePath, snapNum, tcoldgas, max_snap
 global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
@@ -63,36 +64,45 @@ def create_tracertracks():
         os.system('mkdir %s'%outdirec)
 
     # find the corresponding subfindIDs at the next snapshots
-    track_subfindIDs(subfindIDs)
+    #track_subfindIDs(subfindIDs)
     
     # now track tracers from snapNum until max_snap
     """
-    for snap in range(34, 38):
-        start = time.time()
-        track_tracers(snap)
-        end = time.time()
-        print('%s snap %03d track_tracers: %.3g [s]'%(sim, snap, (end-start)))
-    for snap in range(91, max_snap+1):
+    for snap in range(snapNum, max_snap+1):
         start = time.time()
         track_tracers(snap)
         end = time.time()
         print('%s snap %03d track_tracers: %.3g [s]'%(sim, snap, (end-start)))
     """
+
+    # use the jobid to set the snaps we track
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--jobid", help="slurm job id")
+    args = parser.parse_args()
+    jobid = int(args.jobid)
+
+    # let's assume we can only track 8 snapshots per 24 hours
+    Nsnapsperday = 8
+    start_snap = 44 + Nsnapsperday * jobid
+    end_snap = start_snap + Nsnapsperday
+    if end_snap >= 100:
+        end_snap = 100
     
     # and find the unmatched tracers from snapNum + 1 until max_snap
-    for snap in range(snapNum+1, max_snap+1):
+    for snap in range(start_snap, end_snap):
         start = time.time()
         find_unmatched_tracers(snap)
         end = time.time()
         print('%s snap %03d find_unmatched_tracers: %.3g [s]'%(sim, snap, (end-start)))
         
     # add bound flag for the tracer parents
+    """
     for snap in range(snapNum+1, max_snap+1):
         start = time.time()
         create_bound_flags(snap)
         end = time.time()
         print('%s snap %03d create_bound_flags: %.3g [s]'%(sim, snap, (end-start)))
-    
+    """
 
     return
 
