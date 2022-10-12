@@ -522,7 +522,7 @@ def add_tracers():
     tracer_mass = header['MassTable'][tracer_ptn] * 1.0e10 / h
     
     # initialize results
-    SubhaloColdGasTracer_Mass       = np.ones((NsubfindIDs, len(snaps))) * -1.
+    SubhaloColdGasTracer_Mass      = np.ones((NsubfindIDs, len(snaps))) * -1.
     SubhaloColdGasTracer_new       = np.ones((NsubfindIDs, len(snaps))) * -1.
     SubhaloColdGasTracer_out       = np.ones((NsubfindIDs, len(snaps))) * -1.
     SubhaloColdGasTracer_StripTot  = np.ones((NsubfindIDs, len(snaps))) * -1.
@@ -569,7 +569,7 @@ def add_tracers():
                 
                 Ntot = len(np.where(strip_indices)[0])
                 Ncold = len(np.where(strip_indices & cold_indices)[0])
-                Nheat = len(np.where(~cold_indices)[0])
+                Nheat = len(np.where(~cold_indices & ~strip_indices)[0])
                 Nheat_check = len(np.where(~strip_indices)[0])
                 if Nheat != Nheat_check:
                     print('Warning for bound heated gas cells for %s %s subfindID %s'%(sim, snap, subfindID))
