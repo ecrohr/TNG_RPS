@@ -520,13 +520,14 @@ def add_tracers():
     tracer_mass = header['MassTable'][tracer_ptn] * 1.0e10 / h
     
     # initialize results
-    SubhaloColdGasTracer_Mass  = np.ones((NsubfindIDs, len(snaps))) * -1.
-    SubhaloColdGasTracer_new   = np.ones((NsubfindIDs, len(snaps))) * -1.
-    SubhaloColdGasTracer_out   = np.ones((NsubfindIDs, len(snaps))) * -1.
-    SubhaloColdGasTracer_Strip = np.ones((NsubfindIDs, len(snaps))) * -1.
-    SubhaloColdGasTracer_Heat  = np.ones((NsubfindIDs, len(snaps))) * -1.
-    SubhaloColdGasTracer_Star  = np.ones((NsubfindIDs, len(snaps))) * -1.
-    SubhaloColdGasTracer_BH    = np.ones((NsubfindIDs, len(snaps))) * -1.
+    SubhaloColdGasTracer_Mass       = np.ones((NsubfindIDs, len(snaps))) * -1.
+    SubhaloColdGasTracer_new       = np.ones((NsubfindIDs, len(snaps))) * -1.
+    SubhaloColdGasTracer_out       = np.ones((NsubfindIDs, len(snaps))) * -1.
+    SubhaloColdGasTracer_StripTot  = np.ones((NsubfindIDs, len(snaps))) * -1.
+    SubhaloColdGasTracer_StripCold = np.ones((NsubfindIDs, len(snaps))) * -1.
+    SubhaloColdGasTracer_Heat      = np.ones((NsubfindIDs, len(snaps))) * -1.
+    SubhaloColdGasTracer_Star      = np.ones((NsubfindIDs, len(snaps))) * -1.
+    SubhaloColdGasTracer_BH        = np.ones((NsubfindIDs, len(snaps))) * -1.
     
     for snap_i, snap in enumerate(snaps):
 
@@ -545,7 +546,7 @@ def add_tracers():
         if snap_i != (len(snaps) - 1):
 
             # loop over each subhalo at this snapshot to split the out sample into the various components
-            for subfind_i, _ in enumerate(offsets_group['SubfindID']):
+            for subfind_i, subfindID in enumerate(offsets_group['SubfindID']):
                 start = offsets_group['SubhaloOffset'][subfind_i] + offsets_group['SubhaloLengthColdGas'][subfind_i]
                 end   = offsets_group['SubhaloOffset'][subfind_i] + offsets_group['SubhaloLength'][subfind_i]
 
@@ -553,11 +554,30 @@ def add_tracers():
 
                 # first, gas particles: could be stripping + outflows or heating
                 gas_indices = ParentPartType == gas_ptn
-                ParentGasTemp = tracers_group['ParentGasTemp'][start:end][gas_indices]
-                coldgas_indices = ParentGasTemp <= tlim
+                still_bound = tracers_group['StillBound_flag'][start:end][gas_indices]
+                strip_indices = still_bound == 0
                 
-                SubhaloColdGasTracer_Strip[subfind_i,snap_i] = len(coldgas_indices[coldgas_indices]) * tracer_mass / time_diffs[snap_i]
-                SubhaloColdGasTracer_Heat[subfind_i,snap_i] = len(coldgas_indices[~coldgas_indices]) * tracer_mass / time_diffs[snap_i]
+                ParentGasTemp = tracers_group['ParentGasTemp'][start:end][gas_indices]
+                cold_indices = ParentGasTemp <= tlim
+                
+                # total stripping + outflows = number of unbound gas cells
+                # cold stripping + outflows = number of unbound cold gas cells
+                # gas heating = number of bound gas cells that are heated == number of still bound gas cells
+                # include a check that these three groups make up all gas parents
+                
+                Ntot = len(np.where(strip_indices)[0])
+                Ncold = len(np.where(strip_indices & cold_indices)[0])
+                Nheat = len(np.where(~cold_indices)[0])
+                Nheat_check = len(np.where(~strip_indices)[0])
+                if Nheat != Nheat_check:
+                    print('Warning for bound heated gas cells for %s %s subfindID %s'%(sim, snap, subfindID))
+                
+                SubhaloColdGasTracer_StripTot[subfind_i,snap_i] = Ntot * tracer_mass / time_diffs[snap_i]
+                SubhaloColdGasTracer_StripCold[subfind_i,snap_i] = Ncold * tracer_mass / time_diffs[snap_i]
+                SubhaloColdGasTracer_Heat[subfind_i,snap_i] = Nheat * tracer_mass / time_diffs[snap_i]
+                
+                #SubhaloColdGasTracer_Strip[subfind_i,snap_i] = len(coldgas_indices[coldgas_indices]) * tracer_mass / time_diffs[snap_i]
+                #SubhaloColdGasTracer_Heat[subfind_i,snap_i] = len(coldgas_indices[~coldgas_indices]) * tracer_mass / time_diffs[snap_i]
 
                 # second, star paticles: treating winds + stars identically here
                 star_indices = ParentPartType == star_ptn
@@ -578,7 +598,8 @@ def add_tracers():
     dset_keys = ['SubhaloColdGasTracer_Mass',
                  'SubhaloColdGasTracer_new',
                  'SubhaloColdGasTracer_out',
-                 'SubhaloColdGasTracer_Strip',
+                 'SubhaloColdGasTracer_StripTot',
+                 'SubhaloColdGasTracer_StripCold',
                  'SubhaloColdGasTracer_Heat',
                  'SubhaloColdGasTracer_Star',
                  'SubhaloColdGasTracer_BH']
@@ -586,7 +607,8 @@ def add_tracers():
     dsets     = [SubhaloColdGasTracer_Mass,
                  SubhaloColdGasTracer_new,
                  SubhaloColdGasTracer_out,
-                 SubhaloColdGasTracer_Strip,
+                 SubhaloColdGasTracer_StripTot,
+                 SubhaloColdGasTracer_StripCold,
                  SubhaloColdGasTracer_Heat,
                  SubhaloColdGasTracer_Star,
                  SubhaloColdGasTracer_BH]
