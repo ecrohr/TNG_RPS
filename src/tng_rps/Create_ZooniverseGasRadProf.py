@@ -53,6 +53,7 @@ bary_ptns   = [gas_ptn,
 
 def run_satelliteGRP():
 
+    """
     dics = []
     
     f = h5py.File(direc + fname, 'a')
@@ -87,6 +88,7 @@ def run_satelliteGRP():
             dataset[:] = dset
 
     f.close()
+    """
     
     # post process the gas radial profiles
     #add_memberflags()
@@ -95,7 +97,7 @@ def run_satelliteGRP():
     #add_Nperipass()
     #add_coldgasmasstau()
     #add_quenchtimes()
-    #add_tracers()
+    add_tracers()
 
     return
 
