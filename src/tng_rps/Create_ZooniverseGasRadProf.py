@@ -53,7 +53,6 @@ bary_ptns   = [gas_ptn,
 
 def run_satelliteGRP():
 
-    """
     dics = []
     
     f = h5py.File(direc + fname, 'a')
@@ -89,7 +88,6 @@ def run_satelliteGRP():
 
     f.close()
     
-    """
     # post process the gas radial profiles
     #add_memberflags()
     #add_times()
@@ -97,7 +95,7 @@ def run_satelliteGRP():
     #add_Nperipass()
     #add_coldgasmasstau()
     #add_quenchtimes()
-    add_tracers()
+    #add_tracers()
 
     return
 
@@ -605,7 +603,7 @@ def add_tracers():
     return
     
 
-sims = ['TNG50-3']
+sims = ['TNG50-2']
 for sim in sims:
     basePath = ru.ret_basePath(sim)
     #direc = '../Output/zooniverse/'
