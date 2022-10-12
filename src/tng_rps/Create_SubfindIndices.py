@@ -128,7 +128,7 @@ def initialize_subfindindices():
     Returns SnapNums, SubfindIDs
     """
 
-    SubfindIDs = np.arange(100)
+    SubfindIDs = np.arange(10000)
     SnapNums   = np.ones(len(SubfindIDs), dtype=int) * 99
 
     return SnapNums, SubfindIDs
@@ -306,9 +306,9 @@ def return_subfindindices(snap, subfindID, snapNum=33, max_snap=99):
     return result
 
 
-sims = ['TNG50-4']
+sims = ['TNG50-2']
 create_indices_flag = True
-mp_flag = False
+mp_flag = True
 zooniverse_flag = False
 
 for sim in sims:
