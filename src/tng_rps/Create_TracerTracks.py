@@ -277,6 +277,10 @@ def find_unmatched_tracers(snap):
     unmatched_indices = tracers_subhalo['ParentPartType'] == -1
     unmatched_TracerIDs = tracers_subhalo['TracerIDs'][unmatched_indices]
     c = time.time()
+    
+    if len(unmatched_tracerIDs) == 0:
+        print('Warning, no unmatched tracers. Returning.')
+        return
 
     # load all tracers at snap
     tracers = il.snapshot.loadSubset(basePath, snap, tracer_ptn)
