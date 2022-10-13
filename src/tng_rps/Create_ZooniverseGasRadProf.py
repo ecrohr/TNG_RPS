@@ -627,7 +627,7 @@ def add_tracers():
     return
     
 
-sims = ['TNG50-2']
+sims = ['TNG50-1']
 for sim in sims:
     basePath = ru.ret_basePath(sim)
     #direc = '../Output/zooniverse/'
