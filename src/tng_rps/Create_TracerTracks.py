@@ -53,64 +53,59 @@ def create_tracertracks():
 
     big_array_length = int(1e8)
 
-    # define the subhalos we care about at snapshot snapNum
-    #subfindIDs = range(10000)
-    subfindIDs = [30, 282800, 363014]
+    # define the subhalos we care about -- now the TNG50-1 inspected, cleaned branches
+    indirec = '../Output/zoonvierse/'
+    infname = 'zooniverse_TNG50-1_inspected_clean_tau.hdf5'
+    with h5py.File(indirec + infname, 'r'):
+        Group = f['Group']
+        subfindIDs = Group['SubfindID'][:]
+        f.close()
     
     #outdirec = '../Output/%s_tracers_%d-%d/'%(sim,subfindIDs[0],subfindIDs[-1])
-    outdirec = '../Output/%s_tracers/'%(sim)
+    outdirec = '../Output/%s_tracers_zooniverse/'%(sim)
     print(outdirec)
     if not os.path.isdir(outdirec):
         os.system('mkdir %s'%outdirec)
-
-    # find the corresponding subfindIDs at the next snapshots
-    #track_subfindIDs(subfindIDs)
-    
-    # now track tracers from snapNum until max_snap
-    """
-    for snap in range(snapNum, max_snap+1):
-        start = time.time()
-        track_tracers(snap)
-        end = time.time()
-        print('%s snap %03d track_tracers: %.3g [s]'%(sim, snap, (end-start)))
-    """
-
-    """
+        
     # use the jobid to set the snaps we track
     parser = argparse.ArgumentParser()
     parser.add_argument("--jobid", help="slurm job id")
     args = parser.parse_args()
     jobid = int(args.jobid)
    
-    # let's assume we can only track 8 snapshots per 24 hours
-    Nsnapsperday = 8
-    start_snap = 44 + Nsnapsperday * jobid
-    end_snap = start_snap + Nsnapsperday
-    if end_snap >= 100:
-        end_snap = 100
+    snap = jobid
+    if snap == snapNum:
+        track_subfindIDs(subfindIDs)
+    
+    a = time.time()
+    track_tracers(snap)
+    b = time.time()
+    print('TNG50-1 inspected branches track_tracers at snap %03d: %.3g [s]'%(snap, (b-a)))
+    
+    # find the corresponding subfindIDs at the next snapshots
+    #track_subfindIDs(subfindIDs)
+    
     """
+    # now track tracers from snapNum until max_snap
+    for snap in range(snapNum, max_snap+1):
+        start = time.time()
+        track_tracers(snap)
+        end = time.time()
+        print('%s snap %03d track_tracers: %.3g [s]'%(sim, snap, (end-start)))
 
-    """
     # and find the unmatched tracers from snapNum + 1 until max_snap
     for snap in range(start_snap, end_snap):
         start = time.time()
         find_unmatched_tracers(snap)
         end = time.time()
         print('%s snap %03d find_unmatched_tracers: %.3g [s]'%(sim, snap, (end-start)))
-    """    
 
     # add bound flag for the tracer parents
     snaps = range(snapNum+1, max_snap+1)
     Pool = mp.Pool(8)
     Pool.map(create_bound_flags, snaps)
-
     """
-    for snap in range(snapNum+1, max_snap+1):
-        start = time.time()
-        create_bound_flags(snap)
-        end = time.time()
-        print('%s snap %03d create_bound_flags: %.3g [s]'%(sim, snap, (end-start)))
-    """
+    
 
     return
 
