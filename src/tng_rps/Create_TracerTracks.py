@@ -52,15 +52,7 @@ def create_tracertracks():
     part_fields = ['ParticleIDs']
 
     big_array_length = int(1e8)
-
-    # define the subhalos we care about -- now the TNG50-1 inspected, cleaned branches
-    indirec = '../Output/zoonvierse/'
-    infname = 'zooniverse_TNG50-1_inspected_clean_tau.hdf5'
-    with h5py.File(indirec + infname, 'r'):
-        Group = f['Group']
-        subfindIDs = Group['SubfindID'][:]
-        f.close()
-    
+   
     #outdirec = '../Output/%s_tracers_%d-%d/'%(sim,subfindIDs[0],subfindIDs[-1])
     outdirec = '../Output/%s_tracers_zooniverse/'%(sim)
     print(outdirec)
@@ -75,6 +67,14 @@ def create_tracertracks():
    
     snap = jobid
     if snap == snapNum:
+        # define the subhalos we care about -- now the TNG50-1 inspected, cleaned branches
+        indirec = '../Output/zooniverse/'
+        infname = 'zooniverse_TNG50-1_inspected_clean_tau.hdf5'
+        with h5py.File(indirec + infname, 'r'):
+            Group = f['Group']
+            subfindIDs = Group['SubfindID'][:]
+            f.close()
+
         track_subfindIDs(subfindIDs)
     
     a = time.time()
