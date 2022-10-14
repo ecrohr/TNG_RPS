@@ -58,7 +58,7 @@ def create_tracertracks():
     subfindIDs = [30, 282800, 363014]
     
     #outdirec = '../Output/%s_tracers_%d-%d/'%(sim,subfindIDs[0],subfindIDs[-1])
-    outdirec = '../Output/%s_tracers_zooniverse/'%(sim)
+    outdirec = '../Output/%s_tracers/'%(sim)
     print(outdirec)
     if not os.path.isdir(outdirec):
         os.system('mkdir %s'%outdirec)
@@ -75,27 +75,35 @@ def create_tracertracks():
         print('%s snap %03d track_tracers: %.3g [s]'%(sim, snap, (end-start)))
     """
 
+    """
     # use the jobid to set the snaps we track
     parser = argparse.ArgumentParser()
     parser.add_argument("--jobid", help="slurm job id")
     args = parser.parse_args()
     jobid = int(args.jobid)
-
+   
     # let's assume we can only track 8 snapshots per 24 hours
     Nsnapsperday = 8
     start_snap = 44 + Nsnapsperday * jobid
     end_snap = start_snap + Nsnapsperday
     if end_snap >= 100:
         end_snap = 100
-    
+    """
+
+    """
     # and find the unmatched tracers from snapNum + 1 until max_snap
     for snap in range(start_snap, end_snap):
         start = time.time()
         find_unmatched_tracers(snap)
         end = time.time()
         print('%s snap %03d find_unmatched_tracers: %.3g [s]'%(sim, snap, (end-start)))
-        
+    """    
+
     # add bound flag for the tracer parents
+    snaps = range(snapNum+1, max_snap+1)
+    Pool = mp.Pool(8)
+    Pool.map(create_bound_flags, snaps)
+
     """
     for snap in range(snapNum+1, max_snap+1):
         start = time.time()
