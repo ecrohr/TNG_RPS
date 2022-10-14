@@ -77,7 +77,7 @@ def create_tracertracks():
             # define the subhalos we care about -- now the TNG50-1 inspected, cleaned branches
             indirec = '../Output/zooniverse/'
             infname = 'zooniverse_TNG50-1_inspected_clean_tau.hdf5'
-            with h5py.File(indirec + infname, 'r'):
+            with h5py.File(indirec + infname, 'r') as f:
                 Group = f['Group']
                 subfindIDs = Group['SubfindID'][:]
                 f.close()
