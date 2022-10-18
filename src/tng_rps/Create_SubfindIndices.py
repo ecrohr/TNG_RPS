@@ -261,9 +261,9 @@ def return_subfindindices(snap, subfindID, min_snap=33, max_snap=99):
                                     treeName='SubLink_gal', fields=host_fields, onlyMPB=True)
 
     # find the snapshots where both the subhalo and host have been identified
-    snap_indices, sub_indices, host_indices = find_common_snaps(snaps,
-                                                                sub_tree['SnapNum'],
-                                                                host_tree['SnapNum'])
+    snap_indices, sub_indices, host_indices = ru.find_common_snaps(snaps,
+                                                                   sub_tree['SnapNum'],
+                                                                   host_tree['SnapNum'])
 
     
     # calculate the host-centric distance
