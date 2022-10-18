@@ -93,14 +93,9 @@ def return_flags(subfindID):
     
     # subhalo exists in the mergertrees
     # at which snapshots does the MPB exist?
-    sub_indices = []
-    snap_indices = []
-    for snap_index, SnapNum in enumerate(SnapNums):
-        if (SnapNum in MPB_sub['SnapNum']):
-            sub_indices.append( np.where(SnapNum == MPB_sub['SnapNum'])[0])
-            snap_indices.append(snap_index)
-    sub_indices  = np.concatenate(sub_indices)
-    snap_indices = np.array(snap_indices)
+    snap_indices, sub_indices, _ = ru.find_common_snaps(SnapNums,
+                                                        MPB_sub['SnapNum'],
+                                                        MPB_sub['SnapNum'])
                     
     result[in_tree_key][snap_indices] = true_return[sub_indices] 
 
@@ -125,16 +120,12 @@ def return_flags(subfindID):
     # if the host MPB does not exist in the tree (shouldn't occur), then return 
     if (MPB_host is None):
         return result
+
         
-    # find the snaps at which both the sub and host branches exist 
-    sub_indices  = []
-    host_indices = []
-    snap_indices = []
-    for snap_index, SnapNum in enumerate(SnapNums):
-        if ((SnapNum in MPB_sub['SnapNum']) & (SnapNum in MPB_host['SnapNum'])):
-            sub_indices.append( np.where(SnapNum == MPB_sub['SnapNum'])[0])
-            host_indices.append(np.where(SnapNum == MPB_host['SnapNum'])[0])
-            snap_indices.append(snap_index)
+    # find the snaps at which both the sub and host branches exist
+    snap_indices, sub_indices, host_indices = ru.find_common_snaps(SnapNums,
+                                                                   MPB_sub['SnapNum'],
+                                                                   MPB_host['SnapNum'])
     
     # if there are no common snaps (shouldn't occur), then return
     if len(sub_indices) == 0:

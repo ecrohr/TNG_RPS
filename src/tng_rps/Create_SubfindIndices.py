@@ -16,18 +16,10 @@ from importlib import reload
 import glob
 
 global sim, basePath, SnapNums, BoxSizes, Times, h
-global jellyscore_min, ins_key
-global insIDs_dict, jelIDs_dict
 
-jellyscore_min = 16
-ins_key = 'inspected'
-insIDs_dict = jelIDs_dict = None
-
-def run_zooniverseindices(create_indices_flag=False, mp_flag=False, zooniverse_flag=False):
+def run_zooniverseindices(mp_flag=False, zooniverse_flag=False):
 
     global sim, basePath, SnapNums, BoxSizes, Times, h
-    global jellyscore_min, ins_key
-    global insIDs_dict, jelIDs_dict
     
     basePath = ru.ret_basePath(sim)
 
@@ -48,37 +40,10 @@ def run_zooniverseindices(create_indices_flag=False, mp_flag=False, zooniverse_f
     # using the zooniverse results?
     if (zooniverse_flag):
 
-        # no functionality here
-        """
-        # create the keys if they haven't already been created
-        if (create_indices_flag):
-            initialize_zooniverseindices()
-
-        # load the SubfindIDs and SnapNums from the zooniverse results
-        infname  = 'zooniverse_%s_%s_keys.hdf5'%(sim, ins_key)
-        indirec  = '../Output/zooniverse/'
+        SnapNum, SubfindID = initialize_zooniverseindices()
 
         outfname = 'zooniverse_%s_%s_branches.hdf5'%(sim, ins_key)
-        outdirec = indirec
-
-        with h5py.File(indirec + infname, 'a') as inf:
-            group = inf['%s'%ins_key]
-            SnapNum = group['SnapNum'][:]
-            SubfindID = group['SubfindID'][:]
-
-            inf.close()
-            
-        # run return_zooniverseindices
-        if mp_flag:
-            pool = mp.Pool(mp.cpu_count()) # should be 8 if running interactively
-            result_list = pool.starmap(return_zooniverseindices, zip(SnapNum,
-                                                                     SubfindID))
-        else:
-            result_list = []
-            for index, subfindID in enumerate(subfindID):
-                result_list.append(return_zooniverseindices(SnapNum[index],
-                                                            SubfindID))
-        """
+        outdirec = '../Output/%s_subfindGRP/'%sim
 
     # not using the zooniverse results -- define subfindIDs somehow else... 
     else:
@@ -87,17 +52,16 @@ def run_zooniverseindices(create_indices_flag=False, mp_flag=False, zooniverse_f
         outdirec = '../Output/%s_subfindGRP/'%sim
         outfname = 'subfind_%s_branches.hdf5'%(sim)
 
-        # run return_subfindindices
-        if mp_flag:
-            pool = mp.Pool(mp.cpu_count()) # should be 8 if running interactively
-            result_list = pool.starmap(return_subfindindices, zip(SnapNum,
+    # run return_subfindindices
+    if mp_flag:
+        pool = mp.Pool(mp.cpu_count()) # should be 8 if running interactively
+        result_list = pool.starmap(return_subfindindices, zip(SnapNum,
                                                                   SubfindID))
-        else:
-            result_list = []
-            for index, subfindID in enumerate(SubfindID):
-                result_list.append(return_subfindindices(SnapNum[index],
-                                                         subfindID))
-        
+    else:
+        result_list = []
+        for index, subfindID in enumerate(SubfindID):
+            result_list.append(return_subfindindices(SnapNum[index],
+                                                     subfindID))        
 
     # reformat result and save
     result = {}
@@ -124,7 +88,6 @@ def run_zooniverseindices(create_indices_flag=False, mp_flag=False, zooniverse_f
 def initialize_subfindindices():
     """
     Define SubfindIDs and SnapNums to be tracked.
-    Currently runs for the first 10 SubfindIDs at snapshot 99.
     Returns SnapNums, SubfindIDs
     """
 
@@ -134,45 +97,107 @@ def initialize_subfindindices():
     return SnapNums, SubfindIDs
 
 
-def return_subfindindices(snap, subfindID, snapNum=33, max_snap=99):
+def initialize_zooniverseindices():
     """
-    Given the snap and subfindID, load the MPB/MDB between snapNum and max_snap.
+    Load all zooniverse output catalogs for the given simulation and determine 
+    which galaxies have been inspected at multiple snapshots. Then tabulates the last 
+    snapshot at which the galaxy was inspected, and the subfindID at that snapshot. 
+    Returns SnapNums, SubfindIDs
+    """
+
+    # load the inspected IDs dictionary
+    insIDs_dict = load_zooniverseIDs()
+
+    # create empty lists 
+    snapnums   = []
+    subfindids = []
+
+    # initialize dictionary with empty lists that will hold the SubfindIDs, 
+    # corresponding to branches that have already been cataloged 
+    out_dict = {}
+    for i in range(0, 100):
+        out_dict['%03d'%i] = []
+    
+    # load in each file consecutively, and check for every done subhalo whether
+    # it has already been cataloged. if not, add the key to the empty lists
+    # start at snap 99 and work backwards, such that we only need to load the MPBs
+    for snap_key in insIDs_dict.keys():
+
+        out_dict_snap = out_dict[snap_key]
+        subfindIDs    = insIDs_dict[snap_key]
+
+        for i, subfindID in enumerate(subfindIDs):
+            subfindID_key = '%08d'%subfindID
+
+            # check if this subfindID at this snap has already been cataloged
+            if subfindID_key in out_dict_snap:
+                continue
+            
+            else:
+                # load sublink_gal MPB and tabulate
+                fields = ['SnapNum', 'SubfindID']
+                MPB    = il.sublink.loadTree(basePath, int(snap_key), subfindID,
+                                             fields=fields, onlyMPB=True, treeName='SubLink_gal')
+
+                if MPB is None:
+                    print('No MPB for %s snap %s subhaloID %s. Continuing'%(sim, snap_key, subfindID))
+                    continue
+
+                for j in range(MPB['count']):
+                    snapkey       = '%03d'%MPB['SnapNum'][j]
+                    subfindid     = MPB['SubfindID'][j]
+                    subfindid_key = '%08d'%MPB['SubfindID'][j]
+                    out_dict[snapkey].append(subfindid_key)
+                # finish loop over the MPB
+
+                snapnums.append(int(snap_key))
+                subfindids.append(int(subfindID_key))
+                
+    # finish loop over the insIDs and save the keys
+    snapnums   = np.array(snapnums, dtype=type(snapnums[0]))
+    subfindids = np.array(subfindids, dtype=type(subfindids[0]))
+
+    return snapnums, subfindids
+
+
+def load_zooniverseIDs():
+    """
+    Load all zooniverse catalogs. Create a dictionary with each snapshot as the key,
+    and the entries are the subfindIDs of all inspected galaxies at that snapshot.
+    Returns the dictionary.
+    """
+    
+    # load in the filenames for each snapshot, starting at the last snap
+    indirec  = '../IllustrisTNG/%s/postprocessing/Zooniverse_CosmologicalJellyfish/flags/'%sim
+    infname  = 'cosmic_jellyfish_flags_*.hdf5'
+    infnames = glob.glob(indirec + infname)
+    infnames.sort(reverse=True)
+
+    # create dictionaries with snapnum as the key and lists of subfindIDs as the entires
+    insIDs_dict = {}
+    for filename in infnames:
+        snap_key = filename[-8:-5]
+        f        = h5py.File(filename, 'r')
+        done     = f['done'][0]
+        Score    = f['Score'][0]
+        
+        insIDs_dict[snap_key] = np.where(done == 1)[0]
+
+        f.close()
+    # finish loop over files
+    
+    return insIDs_dict
+
+
+def return_subfindindices(snap, subfindID, min_snap=33, max_snap=99):
+    """
+    Given the snap and subfindID, load the MPB/MDB between min_snap and max_snap.
     Then record various properties at each of these snaps.
     Returns dictionary of these properties.
     """
 
-    # helper function to check if the MDB has issues or not, given the subMPB
-    def return_subtree(subMPB):
-
-        subMDB = il.sublink.loadTree(basePath, snap, subfindID, treeName='SubLink_gal',
-                                     fields=sub_fields, onlyMDB=True)
-        
-        # check if there's an issue with the MDB -- if the MDB reaches z=0
-        # if so, then only use the MPB
-        if (subMDB['count'] + snap) > (max_snap + 1):
-            print('Issue with MDB for %s snap %d subfindID %d'%(sim, snap, subfindID))
-
-            # find where the MDB stops
-            stop  = -(max_snap - snapNum + 1)
-            start = np.max(np.where((subMDB['SnapNum'][1:] - subMDB['SnapNum'][:-1]) >= 0)) + 1
-
-            for key in sub_fields:
-                subMDB[key] = subMDB[key][start:stop]
-            subMDB['count'] = len(subMDB[key])
-
-            
-        # if the MDB is clean (reaches z=0), combine the MPB and MDB trees
-        sub_tree = {}
-        for key in subMPB.keys():
-            if key == 'count':
-                sub_tree[key] = subMDB[key] + subMPB[key] - 1
-            else:
-                sub_tree[key] = np.concatenate([subMDB[key][:-1], subMPB[key]])
-
-        return sub_tree
-
     # initialize results
-    snaps = np.arange(max_snap, snapNum-1, -1)
+    snaps = np.arange(max_snap, min_snap-1, -1)
     
     return_key = '%03d_%08d'%(snap, subfindID)
 
@@ -230,38 +255,18 @@ def return_subfindindices(snap, subfindID, snapNum=33, max_snap=99):
                    'SubhaloHalfmassRadType', 'SubhaloPos', 'SubhaloGrNr',
                    'SubhaloVel', 'Group_M_Crit200', 'Group_R_Crit200']
     
-    # load the subhalo MPB
-    subMPB = il.sublink.loadTree(basePath, snap, subfindID, treeName='SubLink_gal',
-                                 fields=sub_fields, onlyMPB=True)
-
-    # check if the subhalo is in the tree
-    if not subMPB:
-        return result
-        
-    # if snap < 99, load the MDB and combine with the MPB
-    if snap < 99:
-        sub_tree = return_subtree(subMPB)
-    else: 
-        sub_tree = subMPB
+    # load the full subhalo branch
+    sub_tree = ru.loadMainTreeBranch(sim, snap, subfindID, fields=sub_fields, min_snap=33)
     
     # load the host_tree MPB using the GroupFirstSub from the last identified snap of the subhalo        
     host_tree = il.sublink.loadTree(basePath, sub_tree['SnapNum'][0], sub_tree['GroupFirstSub'][0],
                                     treeName='SubLink_gal', fields=host_fields, onlyMPB=True)
 
     # find the snapshots where both the subhalo and host have been identified
-    sub_indices  = []
-    host_indices = []
-    snap_indices = []
-    for snap_index, SnapNum in enumerate(snaps):
-        if ((SnapNum in sub_tree['SnapNum']) & (SnapNum in host_tree['SnapNum'])):
-            sub_indices.append(np.where(SnapNum == sub_tree['SnapNum'])[0])
-            host_indices.append(np.where(SnapNum == host_tree['SnapNum'])[0])
-            snap_indices.append(snap_index)
-    # note that sub, host indicies are lists of arrays, while
-    # snap indices is a list of ints 
-    sub_indices  = np.concatenate(sub_indices)
-    host_indices = np.concatenate(host_indices)
-    snap_indices = np.array(snap_indices)
+    snap_indices, sub_indices, host_indices = find_common_snaps(snaps,
+                                                                sub_tree['SnapNum'],
+                                                                host_tree['SnapNum'])
+
     
     # calculate the host-centric distance
     a                    = Times[snap_indices]
@@ -307,15 +312,11 @@ def return_subfindindices(snap, subfindID, snapNum=33, max_snap=99):
 
 
 sims = ['TNG50-1']
-create_indices_flag = True
 mp_flag = True
-zooniverse_flag = False
+zooniverse_flag = True
 
 for sim in sims:
     sim = sim
-    run_zooniverseindices(create_indices_flag=create_indices_flag,
-                          mp_flag=mp_flag,
+    run_zooniverseindices(mp_flag=mp_flag,
                           zooniverse_flag=zooniverse_flag)
     
-    insIDs_dict = jelIDs_dict = None
-

@@ -100,7 +100,6 @@ def create_zooniverseindices():
         load_zooniverseIDs()
 
     # create empty lists to hold the three sets of keys
-    full_keys  = []
     snapnums   = []
     subfindids = []
 
@@ -145,7 +144,6 @@ def create_zooniverseindices():
                 # full_key is the snapshot + subfindID at the last snapshot where
                 # the branch was inspected in zooniverse. Note that the MDB may
                 # reach a later time.
-                full_keys.append(snap_key + '_' +  subfindID_key)
                 snapnums.append(int(snap_key))
                 subfindids.append(int(subfindID_key))
                 
@@ -397,96 +395,4 @@ for sim in sims:
     run_zooniverseindices(create_indices_flag=create_indices_flag, mp_flag=mp_flag)
     insIDs_dict = jelIDs_dict = None
 
-
-# attempt to examine the bad MDBs, but unsuccessful 
-"""
-sim = 'TNG50-1'
-key = 'control'
-basePath = '../../IllustrisTNG/TNG50-1/output'
-
-infname = 'zooniverse_%s_%s_branches.hdf5'%(sim, key)
-
-inf = h5py.File('../../Output/' + infname, 'r')
-keys = np.array(list(inf.keys()))
-
-tree_flags = np.zeros(len(keys))
-for index, key in enumerate(keys):
-    tree_flags[index] = inf[key]['tree_flag'][0]
-
-bad_keys = keys[tree_flags == 0]
-D_flags = np.zeros(len(bad_keys), dtype = int)
-
-onlyMDB  = True
-treeName = 'Sublink_gal'
-
-for index, key in enumerate(bad_keys):
-    snapNum = int(key[:3])
-    id = int(key[4:])
-
-    # get RowNum, LastProgID, and SubhaloID
-    with h5py.File(offsetPath(basePath, snapNum), 'r') as f:
-        groupFileOffsets = f['FileOffsets/Subhalo'][()]
-        f.close()
-        
-    offsetFile = offsetPath(basePath, snapNum)
-    prefix = 'Subhalo/' + treeName + '/'
-
-    groupOffset = id
-
-    with h5py.File(offsetFile, 'r') as f:
-        # load the merger tree offsets of this subgroup
-        RowNum     = f[prefix+'RowNum'][groupOffset]
-        LastProgID = f[prefix+'LastProgenitorID'][groupOffset]
-        SubhaloID  = f[prefix+'SubhaloID'][groupOffset]
-        f.close()
-        
-    rowStart = RowNum
-    rowEnd   = RowNum + (LastProgID - SubhaloID)
-
-    # get offsets
-    cache = True
-    offsetCache = dict()
-    cache = offsetCache
-
-    search_path = treePath(basePath, treeName, '*')
-    numTreeFiles = len(glob.glob(search_path))
-    if numTreeFiles == 0:
-        raise ValueError("No tree files found! for path '{}'".format(search_path))
-    offsets = np.zeros(numTreeFiles, dtype='int64')
-
-    for i in range(numTreeFiles-1):
-        with h5py.File(treePath(basePath, treeName, i), 'r') as f:
-            offsets[i+1] = offsets[i] + f['SubhaloID'].shape[0]
-            f.close()
-
-    rowOffsets = rowStart - offsets
-
-    fileNum = np.max(np.where(rowOffsets >= 0))
-
-    fileOff = rowOffsets[fileNum]
-
-    treef = h5py.File(treePath(basePath, treeName, fileNum), 'r')
-
-    # find the subfindID and snapNum of the descendant
-    DescendantID = treef['DescendantID'][fileOff]
-    index_descendant = np.where(treef['SubhaloID'][:] == DescendantID)[0]
-
-    SubfindID_descendant = treef['SubfindID'][index_descendant]
-    SnapNum_descendant   = treef['SnapNum'][index_descendant]
-
-    # load the MPB from the root descendant
-    index_RD  = int(np.where(treef['SubhaloID'][:] == treef['RootDescendantID'][fileOff])[0])
-    index_max = index_RD + (99 - snapNum)
-    index_D   = index_RD + np.where(treef['SnapNum'][index_RD:index_max] == SnapNum_descendant)[0]
-
-    SubfindID_D = treef['SubfindID'][index_D]
-
-    treef.close()
-
-    if SubfindID_descendant == SubfindID_D: # descendant is on MPB -- not helpful
-        D_flags[index] = 0
-    else:
-        D_flags[index] = 1
-             
-"""    
     

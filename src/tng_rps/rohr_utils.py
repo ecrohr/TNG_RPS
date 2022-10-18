@@ -1113,7 +1113,7 @@ def loadHeader(basePath, snapNum):
 
     return header
 
-def loadMainTreeBranch(snap, subfindID, sim='TNG50-1', fields=None, treeName='SubLink_gal',
+def loadMainTreeBranch(sim, snap, subfindID, fields=None, treeName='SubLink_gal',
                        min_snap=0, max_snap=99):
     """
     Return the entire main branch (progenitor + descendant) of a given subhalo.
@@ -1167,4 +1167,32 @@ def loadMainTreeBranch(snap, subfindID, sim='TNG50-1', fields=None, treeName='Su
     tree['count'] = len(indices)
     
     return tree
+
+
+def find_common_snaps(snaps, SnapNum_1, SnapNum_2):
+    """
+    Find the common snapshots in snaps where both object1 and object2,
+    identified at snapshots SnapNum_1 and SnapNum_2 respectively, are identified.
+    Returns the indices into snaps, SnapNum_1, and SnapNum_2, that the objects were identifed.
+    NB: currently optimized for a maximum number of 100 snaps, 
+    i.e., what the normal TNG boxes use; i.e., not optimized.
+    For zooms or higher cadence snaps, consider optimizing.
+    """
+
+    # find the snapshots where both the subhalo and host have been identified
+    indices_1 = []
+    indices_2 = []
+    indices_snaps = []
+    for snap_index, SnapNum in enumerate(snaps):
+        if ((SnapNum in SnapNum_1) & (SnapNum in SnapNum_2)):
+            indices_1.append(np.where(SnapNum == SnapNum_1)[0])
+            indices_2.append(np.where(SnapNum == SnapNum_2)[0])
+            indices_snaps.append(snap_index)
+    # note that sub, host indicies are lists of arrays, while
+    # snap indices is a list of ints 
+    indices_1 = np.concatenate(indices_1)
+    indices_2 = np.concatenate(indices_2)
+    indices_snaps = np.array(indices_snaps)
+
+    return indices_snaps, indices_1, indices_2
 
