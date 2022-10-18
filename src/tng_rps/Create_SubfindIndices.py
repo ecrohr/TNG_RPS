@@ -42,6 +42,8 @@ def run_zooniverseindices(mp_flag=False, zooniverse_flag=False):
 
         SnapNum, SubfindID = initialize_zooniverseindices()
 
+        ins_key = 'inspected'
+
         outfname = 'zooniverse_%s_%s_branches.hdf5'%(sim, ins_key)
         outdirec = '../Output/%s_subfindGRP/'%sim
 
@@ -77,10 +79,6 @@ def run_zooniverseindices(mp_flag=False, zooniverse_flag=False):
                 dataset[:] = dset
             
         outf.close()
-
-    if (zooniverse_flag):
-        # add jellyfish and inspected flags
-        add_flags()
     
     return
 
