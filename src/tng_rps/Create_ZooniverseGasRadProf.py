@@ -397,8 +397,10 @@ def add_dmin():
         dmin_norm = np.zeros(len(HostCentricDistance_norm), dtype=HostCentricDistance_norm.dtype)
 
         for i, _ in enumerate(HostCentricDistance_phys):
-            dmin_phys[i] = np.min(HostCentricDistance_phys[i:])
-            dmin_norm[i] = np.min(HostCentricDistance_norm[i:])
+            indices = group['SubfindID'][i:] != -1
+            
+            dmin_phys[i] = np.min(HostCentricDistance_phys[i:][indices])
+            dmin_norm[i] = np.min(HostCentricDistance_norm[i:][indices])
 
         dsets = [dmin_norm, dmin_phys]
         for dset_index, dset_key in enumerate(keys):
