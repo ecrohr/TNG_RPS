@@ -53,7 +53,6 @@ bary_ptns   = [gas_ptn,
 
 def run_satelliteGRP():
 
-    """
     dics = []
     
     f = h5py.File(direc + fname, 'a')
@@ -88,16 +87,15 @@ def run_satelliteGRP():
             dataset[:] = dset
 
     f.close()
-    """
     
     # post process the gas radial profiles
-    #add_memberflags()
-    #add_times()
-    #add_dmin()
-    #add_Nperipass()
-    #add_coldgasmasstau()
-    #add_quenchtimes()
-    add_tracers()
+    add_memberflags()
+    add_times()
+    add_dmin()
+    add_Nperipass()
+    add_coldgasmasstau()
+    add_quenchtimes()
+    #add_tracers()
 
     return
 
@@ -281,6 +279,80 @@ def add_memberflags():
     f.close()
 
     return
+
+
+def add_zooniverseflags():
+    """
+    Load the zooniverse catalogs and add inspected + jellyfish flags to the branches.
+    Saves the flags directly to the GRP catalogs. No returns.
+    """
+
+    # load the inpsected and jellyfish ID dictionaries
+    insIDs_dict, jelIDs_dict = load_zooniverseIDs()
+
+    f = h5py.File(direc + fname, 'a')
+
+    keys = ['ins_flags', 'jel_flags']
+
+    for group_key in f.keys():
+        group     = f[group_key]
+        SnapNum   = group['SnapNum'][:]
+        SubfindID = group['SubfindID'][:]
+        ins_flags = np.zeros(len(SnapNum), dtype=int)
+        jel_flags = np.zeros(len(SnapNum), dtype=int)
+
+        for index, snap in enumerate(SnapNum):
+            snap_key = '%03d'%snap
+            try:
+                if SubfindID[index] in insIDs_dict[snap_key]:
+                    ins_flags[index] = 1
+                    if SubfindID[index] in jelIDs_dict[snap_key]:
+                        jel_flags[index] = 1
+            except KeyError: # no zooniverse classifications as this snap
+                continue
+
+        # finish loop over SnapNum
+        dsets = [ins_flags, jel_flags]
+        for i, key in enumerate(keys):
+            dset       = dsets[i]
+            dataset    = group.require_dataset(key, shape=dset.shape, dtype=dset.dtype)
+            dataset[:] = dset
+
+    # finish loop over groups
+    f.close()
+
+    return
+
+def load_zooniverseIDs():
+    """
+    Load all zooniverse catalogs. Create a dictionary with each snapshot as the key,
+    and the entries are the subfindIDs of all inspected galaxies at that snapshot.
+    Creates a second dictionary for when the galaxy is a jellyfish.
+    Returns the dictionaries.
+    """
+    
+    # load in the filenames for each snapshot, starting at the last snap
+    indirec  = '../IllustrisTNG/%s/postprocessing/Zooniverse_CosmologicalJellyfish/flags/'%sim
+    infname  = 'cosmic_jellyfish_flags_*.hdf5'
+    infnames = glob.glob(indirec + infname)
+    infnames.sort(reverse=True)
+
+    # create dictionaries with snapnum as the key and lists of subfindIDs as the entires
+    insIDs_dict = {}
+    jelIDs_dict = {}
+    for filename in infnames:
+        snap_key = filename[-8:-5]
+        f        = h5py.File(filename, 'r')
+        done     = f['done'][0]
+        Score    = f['Score'][0]
+        
+        insIDs_dict[snap_key] = np.where(done == 1)[0]
+        jelIDs_dict[snap_key] = np.where(Score >= jellyscore_min)[0]
+
+        f.close()
+
+    return insIDs_dict, jelIDs_dict
+    
 
 # add redshift, cosmic time, and scale factor
 def add_times():
@@ -631,10 +703,10 @@ sims = ['TNG50-1']
 for sim in sims:
     basePath = ru.ret_basePath(sim)
     #direc = '../Output/zooniverse/'
-    #fname = 'zooniverse_%s_%s_branches.hdf5'%(sim, key)
+    fname = 'zooniverse_%s_%s_branches.hdf5'%(sim, key)
 
     direc = '../Output/%s_subfindGRP/'%sim
-    fname = 'subfind_%s_branches.hdf5'%sim
+    #fname = 'subfind_%s_branches.hdf5'%sim
 
     run_satelliteGRP()
 
