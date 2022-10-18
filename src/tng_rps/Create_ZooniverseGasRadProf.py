@@ -90,6 +90,7 @@ def run_satelliteGRP():
     
     # post process the gas radial profiles
     add_memberflags()
+    add_zooniverseflags()
     add_times()
     add_dmin()
     add_Nperipass()
