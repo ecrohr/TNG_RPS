@@ -94,12 +94,12 @@ def run_satelliteGRP():
     """
     
     # post process the gas radial profiles
-    add_memberflags()
-    add_zooniverseflags()
-    add_times()
-    add_dmin()
-    add_Nperipass()
-    add_coldgasmasstau()
+    #add_memberflags()
+    #add_zooniverseflags()
+    #add_times()
+    #add_dmin()
+    #add_Nperipass()
+    #add_coldgasmasstau()
     add_quenchtimes()
     #add_tracers()
 
@@ -260,20 +260,23 @@ def add_memberflags():
         # flag when the subhalo was a central galaxy
         # i.e., it's the primrary subhalo in the group
         centralflags = flags.copy()
-        central_indices = np.where(SubfindID == SubGroupFirstSub)[0]
+        central_indices = np.where((SubfindID == SubGroupFirstSub) &
+                                   (SubfindID != -1))[0]
         centralflags[central_indices] = 1
 
         # flag when the subhalo was preprocessed
         # i.e., it's a satellite of a FoF that's NOT it's last identified host
         preprocflags = flags.copy()
         preproc_indices = np.where((SubhaloGrNr != HostSubhaloGrNr) &
-                                   (SubfindID != SubGroupFirstSub))[0]
+                                   (SubfindID != SubGroupFirstSub) &
+                                   (SubfindID != -1))[0]
         preprocflags[preproc_indices] = 1
 
         # flag when the subhalo was in its last identified FoF
         # note that min(inLIFoF_indices) is the infall time
         inLIFoFflags = flags.copy()
-        inLIFoF_indices = np.where(SubhaloGrNr == HostSubhaloGrNr)[0]
+        inLIFoF_indices = np.where((SubhaloGrNr == HostSubhaloGrNr) &
+                                   (SubfindID != -1))[0]
         inLIFoFflags[inLIFoF_indices] = 1
 
         dsets = [centralflags, preprocflags, inLIFoFflags]
@@ -360,8 +363,10 @@ def load_zooniverseIDs():
     return insIDs_dict, jelIDs_dict
     
 
-# add redshift, cosmic time, and scale factor
 def add_times():
+    """
+    Add redshift, cosmic time, and scale factor.
+    """
 
     # tabulate redshift, scale factor, and calculate cosmic time
     # as functions of the snap number
@@ -386,9 +391,10 @@ def add_times():
     return
 
 
-# add the min distance to the host
 def add_dmin():
-
+    """
+    add the min distance to the host.
+    """
     f = h5py.File(direc+fname, 'a')
     keys = ['min_HostCentricDistance_norm', 'min_HostCentricDistance_phys']
 
@@ -422,22 +428,27 @@ def add_dmin():
         
     
 
-# add flags for pericenter passages
 def add_Nperipass(mindist_phys=1000.0, mindist_norm=2.0):
-
+    """
+    add flags for pericenter passages.
+    """
+    
     f = h5py.File(direc+fname, 'a')
     keys = ['Nperipass', 'min_Dperi_norm', 'min_Dperi_phys']
     
     for group_key in f.keys():
         group = f[group_key]
 
+        SubfindID = group['SubfindID']
+        
         HostCentricDistance_phys = group['HostCentricDistance_phys'][:]    
         min_indices_phys = argrelextrema(HostCentricDistance_phys, np.less)[0]
     
         HostCentricDistance_norm = group['HostCentricDistance_norm'][:]
     
         indices = np.where((HostCentricDistance_phys[min_indices_phys] < mindist_phys) 
-                           & (HostCentricDistance_norm[min_indices_phys] < mindist_norm))[0]
+                           & (HostCentricDistance_norm[min_indices_phys] < mindist_norm)
+                           & (SubfindID != -1))[0]
     
         peri_indices = min_indices_phys[indices]
         Dperi_phys = HostCentricDistance_phys[peri_indices]
@@ -471,25 +482,33 @@ def add_Nperipass(mindist_phys=1000.0, mindist_norm=2.0):
 
     return 
 
-
-# add the peak cold gas mass time and the respective tau 
+ 
 def add_coldgasmasstau():
+    """
+    add the peak cold gas mass time and the respective tau
+    """
+    
+    def return_tau(peak_index, dset):
+        """
+        Calculate and return tau given the peak_index and the dset
+        """
+        tau = np.ones(len(dset), dtype=float) * -1.
 
-    # must be called after defining SubhaloColdGasMass
-    def return_tau(peak_index):
-        peak = SubhaloColdGasMass[peak_index]
+        peak = dset[peak_index]
+        tau[peak_index] = 0.
+
         # if a subhalo is its own LI host, then peak_index occurs at the first snapshot,
         # and its cold gas mass may be zero -- if so, then return a list of -1.
         # or if M_coldgas(infall) = 0, then return 0 at peak_index and -1 elsewhere.
         if peak == 0:
-            tau =  np.ones(len(SubhaloColdGasMass), dtype=float) * -1.
-            tau[peak_index] = 0.
+            return tau
+
+        # if the peak is at the latest (first) snapshot, then don't calculate tau
+        if peak_index == 0:
             return tau
         
-        tau = np.zeros(len(SubhaloColdGasMass), dtype=float)
-        tau[:peak_index+1] = (peak - SubhaloColdGasMass[:peak_index+1]) / peak * 100.
-        tau[peak_index+1:] = -1
-
+        tau[:peak_index+1] = (peak - dset[:peak_index+1]) / peak * 100.
+            
         return tau
 
     f = h5py.File(direc+fname, 'a')
@@ -503,39 +522,42 @@ def add_coldgasmasstau():
 
     for group_index, group_key in enumerate(f_keys):
         group = f[group_key]
-        SubhaloColdGasMass = group['SubhaloColdGasMass'][:]
+
+        result = np.ones(len(group['SnapNum'][:]), dtype=float) * -1.
+        
+        # find the indices that the subbhalo was identified at
+        SCGM_indices = np.where(group['SubfindID'][:] != -1)[0]        
+        SubhaloColdGasMass = group['SubhaloColdGasMass'][SCGM_indices]
 
         # absolute maximum of the cold gas mass
+        rawpeak_tau = result.copy()
         rawpeak_SCGM_index = np.argmax(SubhaloColdGasMass)
-        rawpeak_tau = return_tau(rawpeak_SCGM_index)
+        rawpeak_tau[SCGM_indices] = return_tau(rawpeak_SCGM_index, SubhaloColdGasMass)
 
         # running median maximum of the cold gas mass
         # ensure that there are enough snaps to calc the running median
         # galaxies that do not reach z=0 will be ignored later anyways
-        if len(SubhaloColdGasMass) < N_RM:
-            strings = (sim, key, group_key)
-            print('%s %s group_key %s does not have enough snaps to calc tau.'%strings)
-            for dset_index, dset_key in enumerate(keys):
-                dset = np.ones(len(SubhaloColdGasMass)) * -1.
-                dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
-                dataset[:] = dset
-            continue
-            
-        med_SCGM = ru.RunningMedian(SubhaloColdGasMass, N_RM)
-        # if there are multiple maxima of the running median, choose the latest time
-        medpeak_SCGM_index = np.min(np.argwhere(med_SCGM == max(med_SCGM))) + int((N_RM - 1) / 2)
-        medpeak_tau = return_tau(medpeak_SCGM_index)
+        medpeak_tau = result.copy()
+        if len(SubhaloColdGasMass) >=  N_RM:
+            med_SCGM = ru.RunningMedian(SubhaloColdGasMass, N_RM)
+            # if there are multiple maxima of the running median, choose the latest time
+            medpeak_SCGM_index = np.min(np.argwhere(med_SCGM == max(med_SCGM))) + int((N_RM - 1) / 2)
+            medpeak_tau[SCGM_indices] = return_tau(medpeak_SCGM_index, SubhaloColdGasMass)
 
-        # infall time
-        infall_tau_index = np.max(np.argwhere(group['memberlifof_flags'][:] == 1))
-        infall_tau = return_tau(infall_tau_index)
+        # first infall time
+        infall_tau = result.copy()
+        infall_index = np.max(np.argwhere(group['memberlifof_flags'][:] == 1))
+        infall_tau_index = np.where(group['SnapNum'][SCGM_indices] == group['SnapNum'][infall_index])[0][0]
+        infall_tau[SCGM_indices] = return_tau(infall_tau_index, SubhaloColdGasMass)
 
         dsets = [rawpeak_tau, medpeak_tau, infall_tau]
         for dset_index, dset_key in enumerate(keys):
             dset = dsets[dset_index]
             dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
             dataset[:] = dset
-
+        
+    # finish loop over branches
+    
     f.close()
         
     return

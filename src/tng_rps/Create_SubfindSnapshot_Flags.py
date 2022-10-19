@@ -131,12 +131,6 @@ def return_flags(subfindID):
     if len(sub_indices) == 0:
         return result
     
-    # note that sub, host indicies are lists of arrays, while
-    # snap indices is a list of ints 
-    sub_indices  = np.concatenate(sub_indices)
-    host_indices = np.concatenate(host_indices)
-    snap_indices = np.array(snap_indices)
-    
     # check when the subhalo was a member of its z=0 host
     in_z0_host_flags = MPB_sub['SubhaloGrNr'][sub_indices] == MPB_host['SubhaloGrNr'][host_indices]
     result[in_z0_host_key][snap_indices] = in_z0_host_flags
