@@ -20,7 +20,7 @@ global sim, basePath, ins_key, jel_key, non_key
 global snap_first, Nsnaps_PreProcessed, M200c0_lolim
 global nonz0_key, beforesnapfirst_key, backsplash_key
 global preprocessed_key, clean_key, out_keys
-global outdirec
+global outfname, outdirec
 
 ins_key = 'inspected'
 jel_key = 'jellyfish'
@@ -42,6 +42,7 @@ out_keys = [nonz0_key, beforesnapfirst_key, backsplash_key,
 
 def clean_zooniverseGRP(savekeys=False):
 
+    """
     dic        = load_dict(ins_key)
     keys_dic   = run_clean_zooniverseGRP(dic)
     final_keys = keys_dic[clean_key]
@@ -50,9 +51,9 @@ def clean_zooniverseGRP(savekeys=False):
     if (savekeys):
         for out_key in out_keys:
             keys     = keys_dic[out_key]
-            outfname = 'zooniverse_%s_%s_%s.txt'%(sim, ins_key, out_key)
-            print('Writing file %s'%(outdirec + outfname))
-            with open(outdirec + outfname, 'w') as f:
+            fname = 'zooniverse_%s_%s_%s.txt'%(sim, ins_key, out_key)
+            print('Writing file %s'%(outdirec + fname))
+            with open(outdirec + fname, 'w') as f:
                 for key in keys:
                     f.write('%s\n'%key)
                 f.close()
@@ -65,8 +66,8 @@ def clean_zooniverseGRP(savekeys=False):
         new_key = '%08d'%(group['SubfindID'][0])
         result[new_key] = group
 
-    outfname = 'zooniverse_%s_%s_branches_clean.hdf5'%(sim, ins_key)
-    with h5py.File(outdirec + outfname, 'a') as outf:
+    fname = outfname[:-5] + '_clean.hdf5'
+    with h5py.File(outdirec + fname, 'a') as outf:
         for group_key in result.keys():
             group = outf.require_group(group_key)
             for dset_key in result[group_key].keys():
@@ -75,6 +76,8 @@ def clean_zooniverseGRP(savekeys=False):
                 dataset[:] = dset
                 
         outf.close()
+    """
+
     # now split the inspected branches into jellyfish, if there's a jellyfish classificaiton
     # at snap >= snap_first, and into nonjellyf, if there are no jelly classiifications at snap >= snap_first
     # this means that some of the branches with a jellyfish classification may become nonjellyf branches!
@@ -223,11 +226,12 @@ def load_dict(key, clean=False):
     # key == [inspected, jellyfish, nonjellyf] -- otherwise file doesn't exist
     
     result = {}
-    fname = 'zooniverse_%s_%s_branches.hdf5'%(sim, key)
 
     if (clean):
-        fname = 'zooniverse_%s_%s_branches_clean.hdf5'%(sim, key)
-
+        fname = outfname[:-5] + '_clean.hdf5'
+    else:
+        fname = outfname
+        
     with h5py.File(outdirec + fname, 'a') as f:
         for group_key in f.keys():
             result[group_key] = {}
@@ -399,8 +403,8 @@ def return_taudict(key):
                          / tauresult['HostGroup_M_Crit200_z0'])
     
     # save the tau dictionary
-    outfname = 'zooniverse_%s_%s_clean_tau.hdf5'%(sim, key)
-    with h5py.File(outdirec + outfname, 'a') as outf:
+    fname = 'zooniverse_%s_%s_clean_tau.hdf5'%(sim, key)
+    with h5py.File(outdirec + fname, 'a') as outf:
         group = outf.require_group('Group')        
         for dset_key in tauresult.keys():  
             dset = tauresult[dset_key]
@@ -452,9 +456,12 @@ def combine_taudicts():
     return
 
 #outdirec = '../Output/zooniverse/'
+#outfname = 'zooniverse_%s_%s_branches_clean.hdf5'%(sim, ins_key)
 
 for sim in ['TNG50-1']:
     outdirec = '../Output/%s_subfindGRP/'%sim
+    outfname = 'subfind_%s_branches.hdf5'%sim
+    
     clean_zooniverseGRP(savekeys=True)
 
 #combine_taudicts()

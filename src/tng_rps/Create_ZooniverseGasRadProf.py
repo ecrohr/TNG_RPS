@@ -94,14 +94,14 @@ def run_satelliteGRP():
     """
     
     # post process the gas radial profiles
-    #add_memberflags()
+    add_memberflags()
     add_zooniverseflags()
-    #add_times()
-    #add_dmin()
-    #add_Nperipass()
-    #add_coldgasmasstau()
-    #add_quenchtimes()
-    #add_tracers()
+    add_times()
+    add_dmin()
+    add_Nperipass()
+    add_coldgasmasstau()
+    add_quenchtimes()
+    add_tracers()
 
     return
 
@@ -737,10 +737,10 @@ sims = ['TNG50-1']
 for sim in sims:
     basePath = ru.ret_basePath(sim)
     #direc = '../Output/zooniverse/'
-    fname = 'zooniverse_%s_%s_branches.hdf5'%(sim, key)
+    #fname = 'zooniverse_%s_%s_branches.hdf5'%(sim, key)
 
     direc = '../Output/%s_subfindGRP/'%sim
-    #fname = 'subfind_%s_branches.hdf5'%sim
+    fname = 'subfind_%s_branches.hdf5'%sim
 
     run_satelliteGRP()
 
