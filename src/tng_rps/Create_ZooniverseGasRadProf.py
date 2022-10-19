@@ -13,6 +13,7 @@ from scipy.signal import argrelextrema
 import h5py
 import rohr_utils as ru 
 import os
+import glob
 import multiprocessing as mp
 from importlib import reload
 
@@ -21,6 +22,7 @@ global tlim, radii_binwidth, key
 global scalar_keys, dset_keys
 global rmin_norm, rmax_norm, radii_bins_norm, radii_bincents_norm, nbins
 global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
+global jellyscore_min
 
 tlim = 10.**(4.5) # K; cutoff between cold and hot CGM gas
 radii_binwidth = 0.1
@@ -50,9 +52,11 @@ bary_ptns   = [gas_ptn,
                star_ptn,
                bh_ptn]
 
+jellyscore_min = 16
 
 def run_satelliteGRP():
 
+    """
     dics = []
     
     f = h5py.File(direc + fname, 'a')
@@ -87,6 +91,7 @@ def run_satelliteGRP():
             dataset[:] = dset
 
     f.close()
+    """
     
     # post process the gas radial profiles
     add_memberflags()
@@ -398,6 +403,8 @@ def add_dmin():
 
         for i, _ in enumerate(HostCentricDistance_phys):
             indices = group['SubfindID'][i:] != -1
+            if len(indices[indices]) == 0:
+                continue
             
             dmin_phys[i] = np.min(HostCentricDistance_phys[i:][indices])
             dmin_norm[i] = np.min(HostCentricDistance_norm[i:][indices])
