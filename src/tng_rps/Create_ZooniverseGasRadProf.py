@@ -583,7 +583,9 @@ def add_quenchtimes():
     for i, key in enumerate(keys):
         quench_snap = np.array([-1], dtype=int)
         group = f[key]
-        SnapNum = group['SnapNum']
+        indices = np.where(group['SubfindID'][:] != -1)[0]
+        
+        SnapNum = group['SnapNum'][indices]
         if np.max(SnapNum) == 99:
             subfindID = group['SubfindID'][0]
             if flag[subfindID] == 1:

@@ -20,6 +20,7 @@ global sim, basePath, ins_key, jel_key, non_key
 global snap_first, Nsnaps_PreProcessed, M200c0_lolim
 global nonz0_key, beforesnapfirst_key, backsplash_key
 global preprocessed_key, clean_key, out_keys
+global outdirec
 
 ins_key = 'inspected'
 jel_key = 'jellyfish'
@@ -42,13 +43,10 @@ out_keys = [nonz0_key, beforesnapfirst_key, backsplash_key,
 def clean_zooniverseGRP(savekeys=False):
 
     """
-
     dic        = load_dict(ins_key)
     keys_dic   = run_clean_zooniverseGRP(dic)
     final_keys = keys_dic[clean_key]
     
-    outdirec = '../Output/zooniverse/'
-
     # save each set of dic keys
     if (savekeys):
         for out_key in out_keys:
@@ -83,6 +81,7 @@ def clean_zooniverseGRP(savekeys=False):
     # this means that some of the branches with a jellyfish classification may become nonjellyf branches!
     split_inspected_branches()
     """
+    
     # reorganize each of the three sets of branches [inspected, jellyfish, nonjellyf] into tau dictionaries
 
     keys = ['inspected', 'jellyfish', 'nonjellyf']
@@ -113,13 +112,16 @@ def run_clean_zooniverseGRP(dic):
     for key in keys:
         group = dic[key]
 
-        SnapNum            = group['SnapNum']
-        SubfindID          = group['SubfindID']
-        jel_flags          = group['jel_flags']
-        ins_flags          = group['ins_flags']
-        central_flags      = group['central_flags']
-        memberlifof_flags  = group['memberlifof_flags']
-        preprocessed_flags = group['preprocessed_flags']
+        # ignore the snaps where the subahlo was not identified
+        indices = group['SubfindID'] != -1
+
+        SnapNum            = group['SnapNum'][indices]
+        SubfindID          = group['SubfindID'][indices]
+        jel_flags          = group['jel_flags'][indices]
+        ins_flags          = group['ins_flags'][indices]
+        central_flags      = group['central_flags'][indices]
+        memberlifof_flags  = group['memberlifof_flags'][indices]
+        preprocessed_flags = group['preprocessed_flags'][indices]
 
         # 1. the MDB must reach z=0 (snap 99)
         if max(SnapNum) < 99:
@@ -136,13 +138,11 @@ def run_clean_zooniverseGRP(dic):
         SubfindID_z0  = SubfindID[0]
         subfind_flags = subfindsnapshot_flags['%08d'%SubfindID_z0]
         in_tree       = subfind_flags['in_tree']
-        
-        # ignore the snaps where the subahlo was not in the tree
-        indices = np.where(in_tree)[0]
-        
-        central    = subfind_flags['central'][indices]
-        host_m200c = subfind_flags['host_m200c'][indices] >= M200c0_lolim
-        in_z0_host = subfind_flags['in_z0_host'][indices]
+        intree_indices = in_tree == 1
+                
+        central    = subfind_flags['central'][intree_indices]
+        host_m200c = subfind_flags['host_m200c'][intree_indices] >= M200c0_lolim
+        in_z0_host = subfind_flags['in_z0_host'][intree_indices]
         
         # 3. no backsplash galaxies -- must not be a central at z=0 (snap 99)
         if (central[0]):
@@ -230,7 +230,7 @@ def load_dict(key, clean=False):
     if (clean):
         fname = 'zooniverse_%s_%s_branches_clean.hdf5'%(sim, key)
 
-    with h5py.File('../Output/zooniverse/' + fname, 'a') as f:
+    with h5py.File(outdirec + fname, 'a') as f:
         for group_key in f.keys():
             result[group_key] = {}
             for dset_key in f[group_key].keys():
@@ -243,11 +243,10 @@ def load_dict(key, clean=False):
 # split the inspected branches into jellyfish and nonjellyf
 def split_inspected_branches():
     
-    direc = '../Output/zooniverse/'
     keys = ['inspected', 'jellyfish', 'nonjellyf']
     fnames = []
     for key in keys:
-        fname = direc + 'zooniverse_%s_%s_branches_clean.hdf5'%(sim, key)
+        fname = outdirec + 'zooniverse_%s_%s_branches_clean.hdf5'%(sim, key)
         fnames.append(fname)
         
         # if the jellyfish and nonjellyf files exist, delete them 
@@ -286,7 +285,6 @@ def split_inspected_branches():
     return
 
 
-
 # reorganize the evolutionary tracks into 1D arrays with scalars at specific times
 # we want an array of scalar quantities at important times for various plots.
 # namely, we care about times tau0, tau10, and tau90 defined by infall and peak MCgas, at z=0, and quenching time
@@ -319,20 +317,20 @@ def return_taudict(key):
                     for tau_val in tau_vals:
                         tauresult_key = grp_key + '_' + tau_key + '%d'%tau_val
                         tauresult[tauresult_key] = np.zeros(len(result_keys), 
-                                                            dtype=group[grp_key].dtype)
+                                                            dtype=group[grp_key].dtype) - 1
                 tauresult_key = grp_key + '_z0'
                 tauresult[tauresult_key] = np.zeros(len(result_keys),
-                                                    dtype=group[grp_key].dtype)
+                                                    dtype=group[grp_key].dtype) - 1
 
                 tauresult_key = grp_key + '_quench'
                 tauresult[tauresult_key] = np.zeros(len(result_keys),
-                                                    dtype=group[grp_key].dtype)
+                                                    dtype=group[grp_key].dtype) - 1
 
             # also calculate tau at the quenching time
             for tau_key in tau_keys:
                 tauresult_key = tau_key + '_quench'
                 tauresult[tauresult_key] = np.zeros(len(result_keys),
-                                                    dtype=group[tau_key].dtype)
+                                                    dtype=group[tau_key].dtype) - 1
                     
         tauresult['SubfindID'][group_index] = int(float(group_key))
     
@@ -340,12 +338,7 @@ def return_taudict(key):
         for tau_key in tau_keys:
             tau = group[tau_key]
             for tau_val in tau_vals:
-                if max(tau) < tau_val:
-                    for grp_key in grp_keys:
-                        tauresult_key = grp_key + '_' + tau_key + '%d'%tau_val
-                        tauresult[tauresult_key][group_index] = -1
-
-                else: 
+                if max(tau) >= tau_val:
                     tau_index = max(np.argwhere((tau - tau_val) >= 0))
                     for grp_key in grp_keys:
                         tauresult_key = grp_key + '_' + tau_key + '%d'%tau_val
@@ -357,26 +350,20 @@ def return_taudict(key):
             tauresult[tauresult_key][group_index] = group[grp_key][0]
 
         # and at the quenching time, if this exists
-        quench_snap = group['quenching_snap']
-        if quench_snap < 0:
-            for grp_key in grp_keys:
-                tauresult_key = grp_key + '_quench'
-                tauresult[tauresult_key][group_index] = -1.
-            for tau_key in tau_keys:
-                tauresult_key = tau_key + '_quench'
-                tauresult[tauresult_key][group_index] = -1.
-        else:
+        quench_snap = group['quenching_snap'][0]
+        if quench_snap >= 0:
             SnapNum = group['SnapNum']
             quench_index = np.where(quench_snap == SnapNum)[0]
-            for grp_key in grp_keys:
-                tauresult_key = grp_key + '_quench'
-                tauresult[tauresult_key][group_index] = group[grp_key][quench_index]
+            # check that the quenching snap is after min(SnapNum)
+            if len(quench_index) > 0:
+                for grp_key in grp_keys:
+                    tauresult_key = grp_key + '_quench'
+                    tauresult[tauresult_key][group_index] = group[grp_key][quench_index]
 
-            # also calculate the tau values at quenching
-            for tau_key in tau_keys:
-                tauresult_key = tau_key + '_quench'
-                tauresult[tauresult_key][group_index] = group[tau_key][quench_index]
-
+                # also calculate the tau values at quenching
+                for tau_key in tau_keys:
+                    tauresult_key = tau_key + '_quench'
+                    tauresult[tauresult_key][group_index] = group[tau_key][quench_index]
 
     # finish loop over the branches
 
@@ -415,7 +402,7 @@ def return_taudict(key):
     
     # save the tau dictionary
     outfname = 'zooniverse_%s_%s_clean_tau.hdf5'%(sim, key)
-    with h5py.File('../Output/zooniverse/' + outfname, 'a') as outf:
+    with h5py.File(outdirec + outfname, 'a') as outf:
         group = outf.require_group('Group')        
         for dset_key in tauresult.keys():  
             dset = tauresult[dset_key]
@@ -436,24 +423,23 @@ def combine_taudicts():
     # load both tau files
     sims = ['TNG50-1', 'TNG100-1']
     keys = ['jellyfish', 'nonjellyf', 'inspected']
-    direc = '../Output/zooniverse/'
 
     for key in keys:
 
         print(key)
 
         fname = 'zooniverse_%s_%s_clean_tau.hdf5'%(sims[0], key)
-        f0 = h5py.File(direc + fname, 'r')
+        f0 = h5py.File(outdirec + fname, 'r')
         group0 = f0['Group']
 
         fname = 'zooniverse_%s_%s_clean_tau.hdf5'%(sims[1], key)
-        f1 = h5py.File(direc + fname, 'r')
+        f1 = h5py.File(outdirec + fname, 'r')
         group1 = f1['Group']
 
 
         sim = sims[0] + '+' + sims[1]
         outfname = 'zooniverse_%s_%s_clean_tau.hdf5'%(sim, key)
-        with h5py.File(direc + outfname, 'a') as outf:
+        with h5py.File(outdirec + outfname, 'a') as outf:
             group = outf.require_group('Group')
             for dset_key in group0.keys():
                 dset = np.concatenate([group0[dset_key], group1[dset_key]])
@@ -467,7 +453,10 @@ def combine_taudicts():
 
     return
 
-for sim in ['TNG50-1', 'TNG100-1']:
+#outdirec = '../Output/zooniverse/'
+
+for sim in ['TNG50-1']:
+    outdirec = '../Output/%s_subfindGRP/'%sim
     clean_zooniverseGRP(savekeys=True)
 
-combine_taudicts()
+#combine_taudicts()
