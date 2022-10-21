@@ -51,7 +51,7 @@ def create_tracertracks():
 
     part_fields = ['ParticleIDs']
 
-    big_array_length = int(1e8)
+    big_array_length = int(1e9)
    
     #outdirec = '../Output/%s_tracers_%d-%d/'%(sim,subfindIDs[0],subfindIDs[-1])
     outdirec = '../Output/%s_tracers_zooniverse/'%(sim)
@@ -92,7 +92,7 @@ def create_tracertracks():
     # find the corresponding subfindIDs at the next snapshots
     #track_subfindIDs(subfindIDs)
     
-    """
+    
     # now track tracers from snapNum until max_snap
     for snap in range(snapNum, max_snap+1):
         start = time.time()
@@ -101,18 +101,19 @@ def create_tracertracks():
         print('%s snap %03d track_tracers: %.3g [s]'%(sim, snap, (end-start)))
 
     # and find the unmatched tracers from snapNum + 1 until max_snap
-    for snap in range(start_snap, end_snap):
+    for snap in range(first_snap, last_snap):
         start = time.time()
         find_unmatched_tracers(snap)
         end = time.time()
         print('%s snap %03d find_unmatched_tracers: %.3g [s]'%(sim, snap, (end-start)))
 
-    # add bound flag for the tracer parents
-    snaps = range(snapNum+1, max_snap+1)
-    Pool = mp.Pool(8)
-    Pool.map(create_bound_flags, snaps)
-    """
-    
+        if snap == last_snap:
+            # add bound flag for the tracer parents
+            snaps = range(snapNum+1, max_snap+1)
+            Pool = mp.Pool(8)
+            Pool.map(create_bound_flags, snaps)
+            Pool.close()
+            Pool.join()
 
     return
 
