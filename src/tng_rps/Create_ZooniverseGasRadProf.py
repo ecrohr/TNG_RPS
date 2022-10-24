@@ -813,7 +813,7 @@ def add_coldgasmasstracerstau():
 
         # save the output
         dsets = [tau_RPS_cumsum_infall]
-        for dset_index, dset_key in keys:
+        for dset_index, dset_key in enumerate(keys):
             dset = dsets[dset_index]
             dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
             dataset[:] = dset        
