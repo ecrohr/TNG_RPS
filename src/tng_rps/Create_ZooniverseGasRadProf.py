@@ -482,6 +482,46 @@ def add_Nperipass(mindist_phys=1000.0, mindist_norm=2.0):
 
     return 
 
+
+def add_quenchtimes():
+    """
+    Use the quenching and stellar assembly times catalog to add the
+    quenching time (if the subhalo is quenched) for each subhalo. 
+    """
+
+    f = h5py.File(direc + fname, 'a')
+    keys = np.array(list(f.keys()))
+    
+    # load the quenching catalog
+    quench_direc = '../IllustrisTNG/%s/postprocessing/QuenchingStellarAssemblyTimes/'%sim
+    with h5py.File(quench_direc + 'quenching_099.hdf5', 'r') as quench_cat:
+        flag = quench_cat['Subhalo']['flag'][:]
+        quenching_snap = quench_cat['Subhalo']['quenching_snap'][:]
+
+        quench_cat.close()
+
+    for i, key in enumerate(keys):
+        quench_snap = np.array([-1], dtype=int)
+        group = f[key]
+        indices = np.where(group['SubfindID'][:] != -1)[0]
+        
+        SnapNum = group['SnapNum'][indices]
+        if np.max(SnapNum) == 99:
+            subfindID = group['SubfindID'][0]
+            if flag[subfindID] == 1:
+                quench_snap = np.array([quenching_snap[subfindID]], dtype=int)
+
+        # save the quench snap
+        dataset = group.require_dataset('quenching_snap', shape=quench_snap.shape,
+                                       dtype=quench_snap.dtype)
+        dataset[:] = quench_snap
+
+    # finish loop over keys
+    f.close()
+
+    return
+
+
  
 def add_coldgasmasstau():
     """
@@ -731,6 +771,57 @@ def add_tracers():
     f.close()
 
     return
+
+def add_coldgasmasstracerstau():
+    """
+    add tau clock definitions based on the tracer quantities.
+    must be called after adding time and tracer datasets.
+    """
+    
+    f = h5py.File(direc+fname, 'a')
+
+    keys = ['tau_RPS_cumsum_infall']
+
+    f_keys = list(f.keys())
+
+    for group_index, group_key in enumerate(f_keys):
+        group = f[group_key]
+        indices = group['SubfindID'][:] != -1
+
+        # calculate the integral of the RPS + outflows across all time
+        RPS_key = 'SubhaloColdGasTracer_StripTot'
+        CosmicTimes = group['CosmicTime'][:]
+        time_diffs = np.ones(len(CosmicTimes), dtype=float) 
+        time_diffs[:-1] = (CosmicTimes[:-1] - CosmicTimes[1:]) * 1.0e9
+        RPS_cumsum = np.cumsum((group[RPS_key][indices] * time_diffs[indices])[::-1])[::-1]
+
+        # start with the last snapshot that the galaxy was a central 
+        # this is the same as one snapshot before infall 
+        infall_index = np.max(np.argwhere(group['memberlifof_flags'][:] == 1)) + 1
+        infall_tau_index = np.where(group['SnapNum'][indices] == group['SnapNum'][infall_index])[0][0]
+
+        # now let's start the clock at the infall 
+        dset = RPS_cumsum - RPS_cumsum[infall_index]
+        dset[infall_index+1:] = -1
+
+        # now let's calculate tau based on the dset and the max index
+        # because dset is a cumulative sum going backwards in time, 
+        # the 0th index is by definition the maximum
+        max_dset = dset[0]
+        tau_RPS_cumsum_infall = np.ones(len(CosmicTimes), dtype=float) * -1.
+        tau_RPS_cumsum_infall[:infall_index+1] = dset[:infall_index+1] / max_dset * 100.
+
+        # save the output
+        dsets = [tau_RPS_cumsum_infall]
+        for dset_index, dset_key in keys:
+            dset = dsets[dset_index]
+            dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+            dataset[:] = dset        
+    # finish loop over branches
+    
+    f.close()
+        
+    return
     
 
 sims = ['TNG50-1']
@@ -742,7 +833,8 @@ for sim in sims:
     direc = '../Output/%s_subfindGRP/'%sim
     fname = 'subfind_%s_branches.hdf5'%sim
 
-    run_satelliteGRP()
+    #run_satelliteGRP()
+    add_coldgasmasstracerstau()
 
 
 
