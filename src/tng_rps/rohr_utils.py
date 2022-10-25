@@ -783,19 +783,29 @@ def latex_float(f, num):
         return float_str
 
 
-def RunningMedian(x,N):
+def RunningMedian(x, N):
     """
-    calculate running median of Mx1 array x over N elements.
+    Calculate the symmetric running median of Mx1 array x over N elements.
+    For example with N = 3, calculates the median based on the current,
+    immediately previous, and immediately following values.
+    N must be a positive odd integer >= 3.
     based on code found at https://stackoverflow.com/questions/37671432/how-to-calculate-running-median-efficiently
     """
+    result = np.zeros(len(x), dtype=x.dtype) - 1
+
+    if (N < 3) or (N % 2 != 1) or (type(N) != int):
+        print('Error, N must be a positive odd integer >= 3. Returning')
+        return result
     
-    indices = np.arange(N) + np.arange(len(x)-N+1)[:,None] 
-    result = np.zeros(len(x))
-    result[:-N + 1] = np.array(list(map(np.median,x[indices])))
-    for i in range(1, N):
-        result[-N+i] = np.median(x[-N+i:])
+    start = int((N - 1) / 2)
+    indices = np.arange(N) + np.arange(len(x)-N+1)[:,None]
+    result[start:-start] = np.array(list(map(np.median,x[indices])))
+    for i in range(start):
+        result[i] = np.median(x[:2*i+1])
+        result[-(i+1)] = np.median(x[-(2*i+1):])
+        
     return result
-    
+
 
 ########################################################
 ###### functions related to hdf5 I/O ###############
