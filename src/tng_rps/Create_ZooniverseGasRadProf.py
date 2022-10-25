@@ -580,8 +580,9 @@ def add_coldgasmasstau():
         medpeak_tau = result.copy()
         if len(SubhaloColdGasMass) >=  N_RM:
             med_SCGM = ru.RunningMedian(SubhaloColdGasMass, N_RM)
-            # if there are multiple maxima of the running median, choose the latest time
-            medpeak_SCGM_index = np.min(np.argwhere(med_SCGM == max(med_SCGM))) + int((N_RM - 1) / 2)
+            # choose the median x value corresponding to the max, as this is the peak
+            medpeak_SCGM_index = int(np.median(np.argwhere(med_SCGM == max(med_SCGM)).T))
+            #medpeak_SCGM_index = np.min(np.argwhere(med_SCGM == max(med_SCGM))) + int((N_RM - 1) / 2)
             medpeak_tau[SCGM_indices] = return_tau(medpeak_SCGM_index, SubhaloColdGasMass)
 
         # first infall time
