@@ -56,7 +56,7 @@ jellyscore_min = 16
 
 def run_satelliteGRP():
 
-    """
+    
     dics = []
     
     f = h5py.File(direc + fname, 'a')
@@ -91,7 +91,7 @@ def run_satelliteGRP():
             dataset[:] = dset
 
     f.close()
-    """
+    
     
     # post process the gas radial profiles
     add_memberflags()
@@ -101,8 +101,9 @@ def run_satelliteGRP():
     add_Nperipass()
     add_coldgasmasstau()
     add_quenchtimes()
-    add_tracers()
-
+    #add_tracers()
+    #add_coldgasmasstracerstau()
+    
     return
 
 
@@ -829,13 +830,12 @@ sims = ['TNG50-1']
 for sim in sims:
     basePath = ru.ret_basePath(sim)
     #direc = '../Output/zooniverse/'
-    #fname = 'zooniverse_%s_%s_branches.hdf5'%(sim, key)
+    fname = 'zooniverse_%s_%s_branches.hdf5'%(sim, key)
 
     direc = '../Output/%s_subfindGRP/'%sim
-    fname = 'subfind_%s_branches.hdf5'%sim
+    #fname = 'subfind_%s_branches.hdf5'%sim
 
-    #run_satelliteGRP()
-    add_coldgasmasstracerstau()
+    run_satelliteGRP()
 
 
 
