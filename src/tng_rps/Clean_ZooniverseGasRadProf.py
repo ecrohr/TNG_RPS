@@ -41,7 +41,7 @@ out_keys = [nonz0_key, beforesnapfirst_key, backsplash_key,
 
 def clean_zooniverseGRP(savekeys=False):
 
-    """
+    
     dic        = load_dict(ins_key)
     keys_dic   = run_clean_zooniverseGRP(dic)
     final_keys = keys_dic[clean_key]
@@ -75,7 +75,7 @@ def clean_zooniverseGRP(savekeys=False):
                 dataset[:] = dset
                 
         outf.close()
-    """
+    
 
     # now split the inspected branches into jellyfish, if there's a jellyfish classificaiton
     # at snap >= snap_first, and into nonjellyf, if there are no jelly classiifications at snap >= snap_first
