@@ -56,7 +56,7 @@ jellyscore_min = 16
 
 def run_satelliteGRP():
 
-    
+    """
     dics = []
     
     f = h5py.File(direc + fname, 'a')
@@ -91,18 +91,18 @@ def run_satelliteGRP():
             dataset[:] = dset
 
     f.close()
-    
+    """
     
     # post process the gas radial profiles
-    add_memberflags()
-    add_zooniverseflags()
-    add_times()
-    add_dmin()
-    add_Nperipass()
-    add_coldgasmasstau()
-    add_quenchtimes()
-    #add_tracers()
-    #add_coldgasmasstracerstau()
+    #add_memberflags()
+    #add_zooniverseflags()
+    #add_times()
+    #add_dmin()
+    #add_Nperipass()
+    #add_coldgasmasstau()
+    #add_quenchtimes()
+    add_tracers()
+    add_coldgasmasstracerstau()
     
     return
 
@@ -649,10 +649,7 @@ def add_tracers():
     Add tracer particle post-processing datasets to the GRP catalog.
     """
 
-    off_direc = '../Output/%s_tracers/'%sim
-    
-    direc = '../Output/%s_subfindGRP/'%sim
-    fname = 'subfind_%s_branches.hdf5'%sim
+    off_direc = '../Output/%s_tracers_zooniverse/'%sim
 
     f = h5py.File(direc + fname, 'a')
     keys = np.array(list(f.keys()))
@@ -678,6 +675,11 @@ def add_tracers():
     SubhaloColdGasTracer_Heat      = np.ones((NsubfindIDs, len(snaps))) * -1.
     SubhaloColdGasTracer_Star      = np.ones((NsubfindIDs, len(snaps))) * -1.
     SubhaloColdGasTracer_BH        = np.ones((NsubfindIDs, len(snaps))) * -1.
+
+    # tabulate all GRP subfindIDs at each snap
+    all_subfindIDs = np.zeros((snaps.size, keys.size), dtype=int) - 1
+    for key_i, key in enumerate(keys):
+        all_subfindIDs[:,key_i] = f[key]['SubfindID'][:]
     
     for snap_i, snap in enumerate(snaps):
 
@@ -687,18 +689,29 @@ def add_tracers():
         offsets_group = offsets['group']
         tracers_group = tracers['group']
 
-        SubhaloColdGasTracer_Mass[:,snap_i] = offsets_group['SubhaloLengthColdGas'] * tracer_mass
-        SubhaloColdGasTracer_new[:,snap_i] = offsets_group['SubhaloLengthColdGas_new'] * tracer_mass
-        SubhaloColdGasTracer_out[:,snap_i] = ((offsets_group['SubhaloLength'][:] - offsets_group['SubhaloLengthColdGas'][:])
+        # find the overlapping indices between the tracers and the subfind_GRP catalogs
+        tracers_indices, GRP_indices = ru.match3(offsets_group['SubfindID'][:], all_subfindIDs[snap_i])
+        
+        SubhaloColdGasTracer_Mass[GRP_indices,snap_i] = offsets_group['SubhaloLengthColdGas'][:][tracers_indices] * tracer_mass
+        SubhaloColdGasTracer_new[GRP_indices,snap_i] = offsets_group['SubhaloLengthColdGas_new'][:][tracers_indices] * tracer_mass
+        SubhaloColdGasTracer_out[GRP_indices,snap_i] = ((offsets_group['SubhaloLength'][:][tracers_indices] - offsets_group['SubhaloLengthColdGas'][:][tracers_indices])
                                                       * tracer_mass)
 
         # for every snap except min_snap (the last one), calculate the tracer derivatives
         if snap_i != (len(snaps) - 1):
 
             # loop over each subhalo at this snapshot to split the out sample into the various components
-            for subfind_i, subfindID in enumerate(offsets_group['SubfindID']):
-                start = offsets_group['SubhaloOffset'][subfind_i] + offsets_group['SubhaloLengthColdGas'][subfind_i]
-                end   = offsets_group['SubhaloOffset'][subfind_i] + offsets_group['SubhaloLength'][subfind_i]
+            for subfind_i, subfindID in enumerate(offsets_group['SubfindID'][:][tracers_indices]):
+
+                # if the subhalo is not identified at this snpap, continue
+                if subfindID == -1:
+                    continue
+
+                tracer_index = tracers_indices[subfind_i]
+                GRP_index = GRP_indices[subfind_i]
+                                                  
+                start = offsets_group['SubhaloOffset'][tracer_index] + offsets_group['SubhaloLengthColdGas'][tracer_index]
+                end   = offsets_group['SubhaloOffset'][tracer_index] + offsets_group['SubhaloLength'][tracer_index]
 
                 ParentPartType = tracers_group['ParentPartType'][start:end]
 
@@ -722,20 +735,17 @@ def add_tracers():
                 if Nheat != Nheat_check:
                     print('Warning for bound heated gas cells for %s %s subfindID %s'%(sim, snap, subfindID))
                 
-                SubhaloColdGasTracer_StripTot[subfind_i,snap_i] = Ntot * tracer_mass / time_diffs[snap_i]
-                SubhaloColdGasTracer_StripCold[subfind_i,snap_i] = Ncold * tracer_mass / time_diffs[snap_i]
-                SubhaloColdGasTracer_Heat[subfind_i,snap_i] = Nheat * tracer_mass / time_diffs[snap_i]
+                SubhaloColdGasTracer_StripTot[GRP_index,snap_i] = Ntot * tracer_mass / time_diffs[snap_i]
+                SubhaloColdGasTracer_StripCold[GRP_index,snap_i] = Ncold * tracer_mass / time_diffs[snap_i]
+                SubhaloColdGasTracer_Heat[GRP_index,snap_i] = Nheat * tracer_mass / time_diffs[snap_i]
                 
-                #SubhaloColdGasTracer_Strip[subfind_i,snap_i] = len(coldgas_indices[coldgas_indices]) * tracer_mass / time_diffs[snap_i]
-                #SubhaloColdGasTracer_Heat[subfind_i,snap_i] = len(coldgas_indices[~coldgas_indices]) * tracer_mass / time_diffs[snap_i]
-
                 # second, star paticles: treating winds + stars identically here
                 star_indices = ParentPartType == star_ptn
-                SubhaloColdGasTracer_Star[subfind_i,snap_i] = len(star_indices[star_indices]) * tracer_mass / time_diffs[snap_i]
+                SubhaloColdGasTracer_Star[GRP_index,snap_i] = len(star_indices[star_indices]) * tracer_mass / time_diffs[snap_i]
 
                 # lastly, black holes
                 bh_indices = ParentPartType == bh_ptn
-                SubhaloColdGasTracer_BH[subfind_i,snap_i] = len(bh_indices[bh_indices]) * tracer_mass / time_diffs[snap_i]
+                SubhaloColdGasTracer_BH[GRP_index,snap_i] = len(bh_indices[bh_indices]) * tracer_mass / time_diffs[snap_i]
 
             # finish loop over subhalos at the given snapshot
 
