@@ -101,7 +101,7 @@ def run_satelliteGRP():
     #add_Nperipass()
     #add_coldgasmasstau()
     #add_quenchtimes()
-    add_tracers()
+    #add_tracers()
     add_coldgasmasstracerstau()
     
     return
@@ -800,6 +800,9 @@ def add_coldgasmasstracerstau():
         group = f[group_key]
         indices = group['SubfindID'][:] != -1
 
+        # initalize result
+        tau_RPS_cumsum_infall = np.ones(len(indices), dtype=float) * -1.
+
         # calculate the integral of the RPS + outflows across all time
         RPS_key = 'SubhaloColdGasTracer_StripTot'
         CosmicTimes = group['CosmicTime'][:]
@@ -809,19 +812,21 @@ def add_coldgasmasstracerstau():
 
         # start with the last snapshot that the galaxy was a central 
         # this is the same as one snapshot before infall 
-        infall_index = np.max(np.argwhere(group['memberlifof_flags'][:] == 1)) + 1
-        infall_tau_index = np.where(group['SnapNum'][indices] == group['SnapNum'][infall_index])[0][0]
+        infall_index = np.max(np.argwhere(group['memberlifof_flags'][indices] == 1)) + 1
+        save_indices = np.where(indices)[0][:infall_index+1]
+        
+        # check that there is a well defined infall time and some snaps afterwards 
+        if (infall_index < len(indices[indices])) & (len(save_indices) > 1):
 
-        # now let's start the clock at the infall 
-        dset = RPS_cumsum - RPS_cumsum[infall_index]
-        dset[infall_index+1:] = -1
+            # now let's start the clock at the infall
+            dset = RPS_cumsum - RPS_cumsum[infall_index]
+            dset[infall_index+1:] = -1
 
-        # now let's calculate tau based on the dset and the max index
-        # because dset is a cumulative sum going backwards in time, 
-        # the 0th index is by definition the maximum
-        max_dset = dset[0]
-        tau_RPS_cumsum_infall = np.ones(len(CosmicTimes), dtype=float) * -1.
-        tau_RPS_cumsum_infall[:infall_index+1] = dset[:infall_index+1] / max_dset * 100.
+            # now let's calculate tau based on the dset and the max index
+            # because dset is a cumulative sum going backwards in time, 
+            # the 0th index is by definition the maximum
+            max_dset = dset[0]
+            tau_RPS_cumsum_infall[save_indices] = dset[:infall_index+1] / max_dset * 100.
 
         # save the output
         dsets = [tau_RPS_cumsum_infall]
