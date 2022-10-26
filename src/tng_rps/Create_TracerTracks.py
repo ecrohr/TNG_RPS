@@ -161,7 +161,7 @@ def track_tracers(snap):
     tracers = il.snapshot.loadSubset(basePath, snap, tracer_ptn)
     
     # match the ParticleIDs to the tracer ParentIDs
-    indices1, indices2 = match3(ParticleIDs, tracers['ParentID'])
+    indices1, indices2 = ru.match3(ParticleIDs, tracers['ParentID'])
     
     # slice the the relevant arrays
     tracer_IDs = tracers['TracerID'][indices2]
@@ -298,7 +298,7 @@ def find_unmatched_tracers(snap):
 
     # match unmatched tracerIDs to all tracers at snap to save indices and ParentIDs
     # NB: unmatched_tracerIDs is not necessarily unique
-    tracers_indices, matched_unmatched_indices = match3(tracers['TracerID'], unmatched_TracerIDs)
+    tracers_indices, matched_unmatched_indices = ru.match3(tracers['TracerID'], unmatched_TracerIDs)
     unmatched_ParentIDs = tracers['ParentID'][tracers_indices]
 
     # del simulation tracers before loading baryonic particles
@@ -319,7 +319,7 @@ def find_unmatched_tracers(snap):
 
         # match ParentIDs with unmatched_ParentIDs
         # reminder that unmatched_ParentIDs are not unique
-        Particle_indices, Parent_indices = match3(ParticleIDs, unmatched_ParentIDs)
+        Particle_indices, Parent_indices = ru.match3(ParticleIDs, unmatched_ParentIDs)
 
         if Particle_indices is None:
             print('Warning, no matched parents for part type %d. Continuing to the next bary_ptn'%ptn)
@@ -504,47 +504,6 @@ def create_bound_flags(snap):
     save_catalogs(offsets_subhalo, tracers_subhalo, snap)
     
     return
-
-
-# from Dylan Nelson
-def match3(ar1, ar2, firstSorted=False, parallel=False):
-    """ Returns index arrays i1,i2 of the matching elements between ar1 and ar2. While the elements of ar1 
-        must be unique, the elements of ar2 need not be. For every matched element of ar2, the return i1 
-        gives the index in ar1 where it can be found. For every matched element of ar1, the return i2 gives 
-        the index in ar2 where it can be found. Therefore, ar1[i1] = ar2[i2]. The order of ar2[i2] preserves 
-        the order of ar2. Therefore, if all elements of ar2 are in ar1 (e.g. ar1=all TracerIDs in snap, 
-        ar2=set of TracerIDs to locate) then ar2[i2] = ar2. The approach is one sort of ar1 followed by 
-        bisection search for each element of ar2, therefore O(N_ar1*log(N_ar1) + N_ar2*log(N_ar1)) ~= 
-        O(N_ar1*log(N_ar1)) complexity so long as N_ar2 << N_ar1. """
-    if not isinstance(ar1,np.ndarray): ar1 = np.array(ar1)
-    if not isinstance(ar2,np.ndarray): ar2 = np.array(ar2)
-    assert ar1.ndim == ar2.ndim == 1
-    
-    if not firstSorted:
-        # need a sorted copy of ar1 to run bisection against
-        if parallel:
-            index = p_argsort(ar1)
-        else:
-            index = np.argsort(ar1)
-        ar1_sorted = ar1[index]
-        ar1_sorted_index = np.searchsorted(ar1_sorted, ar2)
-        ar1_sorted = None
-        ar1_inds = np.take(index, ar1_sorted_index, mode="clip")
-        ar1_sorted_index = None
-        index = None
-    else:
-        # if we can assume ar1 is already sorted, then proceed directly
-        ar1_sorted_index = np.searchsorted(ar1, ar2)
-        ar1_inds = np.take(np.arange(ar1.size), ar1_sorted_index, mode="clip")
-
-    mask = (ar1[ar1_inds] == ar2)
-    ar2_inds = np.where(mask)[0]
-    ar1_inds = ar1_inds[ar2_inds]
-
-    if not len(ar1_inds):
-        return None,None
-
-    return ar1_inds, ar2_inds
 
 
 def track_subfindIDs(subfindIDs, z0_flag=True):
