@@ -854,7 +854,7 @@ def add_coldgasmasstracerstau():
                 out = group[RPS_key][indices][infall_index:-1]
                 calc_indices = (SFR > 0) & (out > 0)
 
-                if len(calc_indices[calc_indices]) < 0:
+                if len(calc_indices[calc_indices]) > 0:
                     eta = np.median(out[calc_indices] / SFR[calc_indices])
 
                     out_est = eta * group[SFR_key][indices][:infall_index]
