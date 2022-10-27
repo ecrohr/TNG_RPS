@@ -41,6 +41,7 @@ out_keys = [nonz0_key, beforesnapfirst_key, backsplash_key,
 
 def clean_zooniverseGRP(savekeys=False):
 
+    """
     dic        = load_dict(ins_key)
     keys_dic   = run_clean_zooniverseGRP(dic)
     final_keys = keys_dic[clean_key]
@@ -80,7 +81,8 @@ def clean_zooniverseGRP(savekeys=False):
     # at snap >= snap_first, and into nonjellyf, if there are no jelly classiifications at snap >= snap_first
     # this means that some of the branches with a jellyfish classification may become nonjellyf branches!
     split_inspected_branches()
-
+    """
+    
     # reorganize each of the three sets of branches [inspected, jellyfish, nonjellyf] into tau dictionaries
 
     keys = ['inspected', 'jellyfish', 'nonjellyf']
@@ -466,5 +468,5 @@ for sim in ['TNG50-1']:
     outfname = 'zooniverse_%s_%s_branches.hdf5'%(sim, ins_key)
     
     clean_zooniverseGRP(savekeys=True)
-
+    
 #combine_taudicts()
