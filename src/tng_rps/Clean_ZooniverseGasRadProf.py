@@ -294,7 +294,7 @@ def return_taudict(key):
     result = load_dict(key, clean=True)
 
     tauresult = {}
-    tau_vals = [0., 10., 90.]
+    tau_vals = [0., 10., 90., 99.]
     grp_keys = ['SnapNum', 'CosmicTime', 'HostCentricDistance_norm', 'HostGroup_M_Crit200',
                 'HostGroup_R_Crit200', 'HostSubhalo_Mstar_Rgal', 'SubhaloMass',
                 'Subhalo_Mstar_Rgal',
@@ -302,7 +302,7 @@ def return_taudict(key):
                 'Nperipass', 'min_Dperi_norm', 'min_Dperi_phys',
                 'min_HostCentricDistance_norm', 'min_HostCentricDistance_phys']
     
-    tau_keys = ['tau_infall', 'tau_medpeak']
+    tau_keys = ['tau_infall', 'tau_medpeak', 'tau_RPS_est_infall', 'tau_RPS_tot_infall']
 
     result_keys = list(result.keys())
     result_keys.sort()
@@ -339,7 +339,9 @@ def return_taudict(key):
             tau = group[tau_key]
             for tau_val in tau_vals:
                 if max(tau) >= tau_val:
-                    tau_index = max(np.argwhere((tau - tau_val) >= 0))
+                    tau_index = np.max(np.argwhere((tau - tau_val) >= 0))
+                    if (tau_key == 'tau_RPS_est_infall') & (tau_val == 0):
+                        tau_index = np.min(np.where(tau == 0)[0])
                     for grp_key in grp_keys:
                         tauresult_key = grp_key + '_' + tau_key + '%d'%tau_val
                         tauresult[tauresult_key][group_index] = group[grp_key][tau_index]
@@ -369,8 +371,10 @@ def return_taudict(key):
 
     # hard code the characteristic cold gas loss timescales
     for tau_key in tau_keys:
-        tau_x1 = 10
+        tau_x1 = 0
         tau_x2 = 90
+        if tau_key == 'tau_medpeak':
+            tau_x1 = 10
         key_x1 = 'CosmicTime_%s%d'%(tau_key, tau_x1)
         key_x2 = 'CosmicTime_%s%d'%(tau_key, tau_x2)
         x1 = tauresult[key_x1]
