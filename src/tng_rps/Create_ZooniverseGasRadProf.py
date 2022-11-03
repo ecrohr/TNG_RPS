@@ -885,10 +885,8 @@ def add_coldgasmasstracerstau():
             indices = np.where(group['SubfindID'] != -1)[0][:-1]
             SCGM = group[SCGM_key][indices]
             SCGM_indices = SCGM > 0
-            print('hi')
 
             if SCGM.size > N_RM:
-                print('hi')
                 # if SCGM reaches 0, only consider times before this 
                 SCGM_RM = ru.RunningMedian(SCGM, N_RM)
                 if 0 in SCGM_RM:
@@ -896,7 +894,6 @@ def add_coldgasmasstracerstau():
                     indices = indices[start_index:]
                     SCGM = SCGM[start_index:]
                     SCGM_indices = SCGM_indices[start_index:]
-                    print('SCGM_RM reaches 0')
 
                 RPS = group[RPS_key][indices]
                 RPS_indices = RPS > 0
