@@ -812,7 +812,7 @@ def add_coldgasmasstracerstau():
     f = h5py.File(direc+fname, 'a')
 
     keys = ['tau_RPS_tot_infall',
-            'tau_RPS_est_infall'
+            'tau_RPS_est_infall',
             'tau_RPS_sRPS']
 
     f_keys = list(f.keys())
@@ -885,8 +885,10 @@ def add_coldgasmasstracerstau():
             indices = np.where(group['SubfindID'] != -1)[0][:-1]
             SCGM = group[SCGM_key][indices]
             SCGM_indices = SCGM > 0
+            print('hi')
 
             if SCGM.size > N_RM:
+                print('hi')
                 # if SCGM reaches 0, only consider times before this 
                 SCGM_RM = ru.RunningMedian(SCGM, N_RM)
                 if 0 in SCGM_RM:
