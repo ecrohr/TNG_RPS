@@ -800,18 +800,29 @@ def add_coldgasmasstracerstau():
     between the estimated outflows and the measured RPS + outflows
     is the RPS. integrate this from infall until z=0 and use the
     same tau_x clock as definition (i).
+    (iii) tau_RPS_sRPS
+    find the peak in the (RPS + outflows) / M_ColdGas after infall,
+    and then define tau_0 as when RPS + outflows = the average 
+    (RPS + outflows) before infall, and tau_100 as the first of:
+    a) (RPS + outflows) / M_ColdGas < 1 / t_H, t_H = Hubble Time
+    b) M_ColdGas reaches 0;
+    c) z=0
     """
     
     f = h5py.File(direc+fname, 'a')
 
     keys = ['tau_RPS_tot_infall',
-            'tau_RPS_est_infall']
+            'tau_RPS_est_infall'
+            'tau_RPS_sRPS']
 
     f_keys = list(f.keys())
     result = np.ones(f[f_keys[0]]['SnapNum'].size, dtype=float) * -1.
 
     # define the number of points to use for smoothing via running median
     N_RM = 7
+    
+    # define 1 / Hubble Time
+    tH_inv = 7.0e-11 # [yr^-1]
 
     RPS_key = 'SubhaloColdGasTracer_StripTot'
     SFR_key = 'SubhaloSFR'
@@ -828,6 +839,7 @@ def add_coldgasmasstracerstau():
         # initalize results
         tau_RPS_tot_infall = result.copy()
         tau_RPS_est_infall = result.copy()
+        tau_RPS_sRPS = result.copy()
         
         # start with the last snapshot that the galaxy was a central 
         # this is the same as one snapshot before infall 
@@ -865,10 +877,70 @@ def add_coldgasmasstracerstau():
                     RPS_est_cumsum = np.cumsum(RPS_est[::-1] * time_diffs[indices][:infall_index])[::-1]
                     tau_RPS_est_infall[save_indices] = (RPS_est_cumsum) / RPS_est_cumsum[0] * 100.
                     tau_RPS_est_infall[indices[infall_index]] = 0.
+                    
+        # only use snapshots where the subhalo was defined
+        # also ignore the first snapshot since there is no defined RPS
+        indices = np.where(group['SubfindID'] != -1)[0][:-1]
+        SCGM = group[SCGM_key][indices]
+        SCGM_indices = SCGM > 0
+
+        # if SCGM reaches 0, only consider times before this 
+        SCGM_RM = ru.RunningMedian(SCGM, N_RM)
+        if 0 in SCGM_RM:
+            start_index = np.where(SCGM_RM == 0)[0].argmax() 
+            indices = indices[start_index:]
+            SCGM = SCGM[start_index:]
+            SCGM_indices = SCGM_indices[start_index:]
+            print('SCGM_RM reaches 0')
+
+        RPS = group[RPS_key][indices]
+        RPS_indices = RPS > 0
+
+        calc_indices_bool = SCGM_indices & RPS_indices
+        calc_indices = np.where(calc_indices_bool)[0]
+
+        dset = RPS[calc_indices] / SCGM[calc_indices]
+
+        dset_RM = ru.RunningMedian(dset, 5)
+
+        # find the first infall time
+        infall_index = np.where(group['memberlifof_flags'][indices][calc_indices] == 1)[0].max()
+
+        # calculate the average outflow rate before infall 
+        avg_outf = np.median(dset_RM[infall_index:])
+
+        # find the peak RPS+outflows before infall 
+        dset_RM_peak_index = dset_RM[:infall_index+1].argmax()
+        peak_index = indices[calc_indices][dset_RM_peak_index]
+
+        # find when the RPS + outflows reaches the average before infall 
+        dset_diff = dset_RM[dset_RM_peak_index:] - avg_outf
+        tau0_index = indices[calc_indices][dset_RM_peak_index:][np.where(dset_diff < 0)[0].min()]
+
+        # find tau100 as either:
+        # (i) when SCGM reaches 0
+        # (ii) when dset < 1 / Hubble time
+        # (ii) z=0
+        tH_indices = np.where(dset_RM[:dset_RM_peak_index+1] <= ht_inv)[0]
+
+        if 0 in SCGM_RM:
+            tau100_index = indices[np.where(SCGM == 0)[0].max()]
+            if tH_indices.size > 0:
+                tau100_index = indices[tH_indices.argmax()]
+        elif tH_indices.size > 0:
+            tau100_index = indices[tH_indices.argmax()]
+        else:
+            tau100_index = 0
+            
+        tau_RPS_sRPS[:tau100_index+1] = 100.
+        tau_RPS_sRPS[tau100_index+1:tau0_index] = 50.
+        tau_RPS_sRPS[tau0_index] = 0.
+  
 
         # save the output
         dsets = [tau_RPS_tot_infall,
-                 tau_RPS_est_infall]
+                 tau_RPS_est_infall,
+                 tau_RPS_sRPS]
         
         for dset_index, dset_key in enumerate(keys):
             dset = dsets[dset_index]
