@@ -826,6 +826,7 @@ def add_coldgasmasstracerstau():
 
     RPS_key = 'SubhaloColdGasTracer_StripTot'
     SFR_key = 'SubhaloSFR'
+    SCGM_key = 'SubhaloColdGasMass'
 
     # calculate the time between snapshots in yrs
     CosmicTimes = f[f_keys[0]]['CosmicTime'][:]
@@ -878,63 +879,65 @@ def add_coldgasmasstracerstau():
                     tau_RPS_est_infall[save_indices] = (RPS_est_cumsum) / RPS_est_cumsum[0] * 100.
                     tau_RPS_est_infall[indices[infall_index]] = 0.
                     
-        # only use snapshots where the subhalo was defined
-        # also ignore the first snapshot since there is no defined RPS
-        indices = np.where(group['SubfindID'] != -1)[0][:-1]
-        SCGM = group[SCGM_key][indices]
-        SCGM_indices = SCGM > 0
 
-        # if SCGM reaches 0, only consider times before this 
-        SCGM_RM = ru.RunningMedian(SCGM, N_RM)
-        if 0 in SCGM_RM:
-            start_index = np.where(SCGM_RM == 0)[0].argmax() 
-            indices = indices[start_index:]
-            SCGM = SCGM[start_index:]
-            SCGM_indices = SCGM_indices[start_index:]
-            print('SCGM_RM reaches 0')
+            # only use snapshots where the subhalo was defined
+            # also ignore the first snapshot since there is no defined RPS
+            indices = np.where(group['SubfindID'] != -1)[0][:-1]
+            SCGM = group[SCGM_key][indices]
+            SCGM_indices = SCGM > 0
 
-        RPS = group[RPS_key][indices]
-        RPS_indices = RPS > 0
+            if SCGM.size > N_RM:
+                # if SCGM reaches 0, only consider times before this 
+                SCGM_RM = ru.RunningMedian(SCGM, N_RM)
+                if 0 in SCGM_RM:
+                    start_index = np.where(SCGM_RM == 0)[0].argmax() 
+                    indices = indices[start_index:]
+                    SCGM = SCGM[start_index:]
+                    SCGM_indices = SCGM_indices[start_index:]
+                    print('SCGM_RM reaches 0')
 
-        calc_indices_bool = SCGM_indices & RPS_indices
-        calc_indices = np.where(calc_indices_bool)[0]
+                RPS = group[RPS_key][indices]
+                RPS_indices = RPS > 0
 
-        dset = RPS[calc_indices] / SCGM[calc_indices]
+                calc_indices_bool = SCGM_indices & RPS_indices
+                calc_indices = np.where(calc_indices_bool)[0]
 
-        dset_RM = ru.RunningMedian(dset, 5)
+                dset = RPS[calc_indices] / SCGM[calc_indices]
 
-        # find the first infall time
-        infall_index = np.where(group['memberlifof_flags'][indices][calc_indices] == 1)[0].max()
+                dset_RM = ru.RunningMedian(dset, 5)
 
-        # calculate the average outflow rate before infall 
-        avg_outf = np.median(dset_RM[infall_index:])
+                # find the first infall time
+                infall_index = np.where(group['memberlifof_flags'][indices][calc_indices] == 1)[0].max()
 
-        # find the peak RPS+outflows before infall 
-        dset_RM_peak_index = dset_RM[:infall_index+1].argmax()
-        peak_index = indices[calc_indices][dset_RM_peak_index]
+                # calculate the average outflow rate before infall 
+                avg_outf = np.median(dset_RM[infall_index:])
 
-        # find when the RPS + outflows reaches the average before infall 
-        dset_diff = dset_RM[dset_RM_peak_index:] - avg_outf
-        tau0_index = indices[calc_indices][dset_RM_peak_index:][np.where(dset_diff < 0)[0].min()]
+                # find the peak RPS+outflows before infall 
+                dset_RM_peak_index = dset_RM[:infall_index+1].argmax()
+                peak_index = indices[calc_indices][dset_RM_peak_index]
 
-        # find tau100 as either:
-        # (i) when SCGM reaches 0
-        # (ii) when dset < 1 / Hubble time
-        # (ii) z=0
-        tH_indices = np.where(dset_RM[:dset_RM_peak_index+1] <= ht_inv)[0]
+                # find when the RPS + outflows reaches the average before infall 
+                dset_diff = dset_RM[dset_RM_peak_index:] - avg_outf
+                tau0_index = indices[calc_indices][dset_RM_peak_index:][np.where(dset_diff < 0)[0].min()]
 
-        if 0 in SCGM_RM:
-            tau100_index = indices[np.where(SCGM == 0)[0].max()]
-            if tH_indices.size > 0:
-                tau100_index = indices[tH_indices.argmax()]
-        elif tH_indices.size > 0:
-            tau100_index = indices[tH_indices.argmax()]
-        else:
-            tau100_index = 0
-            
-        tau_RPS_sRPS[:tau100_index+1] = 100.
-        tau_RPS_sRPS[tau100_index+1:tau0_index] = 50.
-        tau_RPS_sRPS[tau0_index] = 0.
+                # find tau100 as either:
+                # (i) when SCGM reaches 0
+                # (ii) when dset < 1 / Hubble time
+                # (ii) z=0
+                tH_indices = np.where(dset_RM[:dset_RM_peak_index+1] <= ht_inv)[0]
+
+                if 0 in SCGM_RM:
+                    tau100_index = indices[np.where(SCGM == 0)[0].max()]
+                    if tH_indices.size > 0:
+                        tau100_index = indices[tH_indices.argmax()]
+                elif tH_indices.size > 0:
+                    tau100_index = indices[tH_indices.argmax()]
+                else:
+                    tau100_index = 0
+
+                tau_RPS_sRPS[:tau100_index+1] = 100.
+                tau_RPS_sRPS[tau100_index+1:tau0_index] = 50.
+                tau_RPS_sRPS[tau0_index] = 0.
   
 
         # save the output
