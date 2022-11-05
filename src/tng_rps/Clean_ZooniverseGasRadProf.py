@@ -41,7 +41,7 @@ out_keys = [nonz0_key, beforesnapfirst_key, backsplash_key,
 
 def clean_zooniverseGRP(savekeys=False):
 
-
+    """
     dic        = load_dict(ins_key)
     keys_dic   = run_clean_zooniverseGRP(dic)
     final_keys = keys_dic[clean_key]
@@ -87,8 +87,7 @@ def clean_zooniverseGRP(savekeys=False):
 
     keys = ['inspected', 'jellyfish', 'nonjellyf']
     for key in keys:
-        _ = return_taudict(key)        
-    """
+        _ = return_taudict(key)
     
     return
 
@@ -311,10 +310,10 @@ def return_taudict(key):
                 tau_RPS_sRPS_key]
 
     tauvals_dict = {}
-    tauvals_dict[tau_infall_key] = np.array([0., 10., 90.])
+    tauvals_dict[tau_infall_key] = np.array([0., 90.])
     tauvals_dict[tau_medpeak_key] = np.array([0., 10., 90.])
-    tauvals_dict[tau_RPS_est_infall_key] = np.array([0., 90., 99.])
-    tauvals_dict[tau_RPS_tot_infall_key] = np.array([0., 90., 99.])
+    tauvals_dict[tau_RPS_est_infall_key] = np.array([0., 90.])
+    tauvals_dict[tau_RPS_tot_infall_key] = np.array([0., 90.])
     tauvals_dict[tau_RPS_sRPS_key] = np.array([0., 100.])
             
     grp_keys = ['SnapNum', 'CosmicTime', 'HostCentricDistance_norm', 'HostGroup_M_Crit200',
@@ -408,7 +407,7 @@ def return_taudict(key):
         tstrip_key = 'Tstrip_%s_tau%d-tau%d'%(tau_key, tau_lo, tau_hi)
         tauresult[tstrip_key] = tstrip
 
-        # now hard code the quenching time: time of last quenching - tau_*_10
+        # now hard code the quenching time: time of last quenching - tau_*_lo
         key_hi = 'CosmicTime_quench'
         hi = tauresult[key_hi]
         indices = (lo > 0) & (hi > 0)
