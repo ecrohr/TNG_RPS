@@ -41,7 +41,7 @@ out_keys = [nonz0_key, beforesnapfirst_key, backsplash_key,
 
 def clean_zooniverseGRP(savekeys=False):
 
-    """
+
     dic        = load_dict(ins_key)
     keys_dic   = run_clean_zooniverseGRP(dic)
     final_keys = keys_dic[clean_key]
@@ -88,7 +88,8 @@ def clean_zooniverseGRP(savekeys=False):
     keys = ['inspected', 'jellyfish', 'nonjellyf']
     for key in keys:
         _ = return_taudict(key)        
-            
+    """
+    
     return
 
 

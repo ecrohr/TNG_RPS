@@ -882,7 +882,7 @@ def add_coldgasmasstracerstau():
 
             # only use snapshots where the subhalo was defined
             # also ignore the first snapshot since there is no defined RPS
-            indices = np.where(group['SubfindID'] != -1)[0][:-1]
+            indices = np.where(group['SubfindID'][:] != -1)[0][:-1]
             SCGM = group[SCGM_key][indices]
             SCGM_indices = SCGM > 0
 
@@ -903,40 +903,43 @@ def add_coldgasmasstracerstau():
 
                 dset = RPS[calc_indices] / SCGM[calc_indices]
 
-                dset_RM = ru.RunningMedian(dset, 5)
+                if dset.size >= N_RM:
+                    dset_RM = ru.RunningMedian(dset, N_RM)
 
-                # find the first infall time
-                infall_index = np.where(group['memberlifof_flags'][indices][calc_indices] == 1)[0].max()
+                    # find the first infall time
+                    infall_index = np.where(group['memberlifof_flags'][indices][calc_indices] == 1)[0].max()
 
-                # calculate the average outflow rate before infall 
-                avg_outf = np.median(dset_RM[infall_index:])
+                    # calculate the average outflow rate before infall 
+                    avg_outf = np.median(dset_RM[infall_index:])
 
-                # find the peak RPS+outflows before infall 
-                dset_RM_peak_index = dset_RM[:infall_index+1].argmax()
-                peak_index = indices[calc_indices][dset_RM_peak_index]
+                    # find the peak RPS+outflows before infall 
+                    dset_RM_peak_index = dset_RM[:infall_index+1].argmax()
+                    peak_index = indices[calc_indices][dset_RM_peak_index]
 
-                # find when the RPS + outflows reaches the average before infall 
-                dset_diff = dset_RM[dset_RM_peak_index:] - avg_outf
-                tau0_index = indices[calc_indices][dset_RM_peak_index:][np.where(dset_diff < 0)[0].min()]
+                    # find when the RPS + outflows reaches the average before infall 
+                    dset_diff = dset_RM[dset_RM_peak_index:] - avg_outf
+                    dset_diff_indices = np.where(dset_diff < 0)[0]
+                    if dset_diff_indices.size > 0:
+                        tau0_index = indices[calc_indices][dset_RM_peak_index:][dset_diff_indices.min()]
 
-                # find tau100 as either:
-                # (i) when SCGM reaches 0
-                # (ii) when dset < 1 / Hubble time
-                # (ii) z=0
-                tH_indices = np.where(dset_RM[:dset_RM_peak_index+1] <= ht_inv)[0]
+                        # find tau100 as either:
+                        # (i) when SCGM reaches 0
+                        # (ii) when dset < 1 / Hubble time
+                        # (ii) z=0
+                        tH_indices = np.where(dset_RM[:dset_RM_peak_index+1] <= tH_inv)[0]
 
-                if 0 in SCGM_RM:
-                    tau100_index = indices[np.where(SCGM == 0)[0].max()]
-                    if tH_indices.size > 0:
-                        tau100_index = indices[tH_indices.argmax()]
-                elif tH_indices.size > 0:
-                    tau100_index = indices[tH_indices.argmax()]
-                else:
-                    tau100_index = 0
+                        if 0 in SCGM_RM:
+                            tau100_index = indices[np.where(SCGM == 0)[0].max()]
+                            if tH_indices.size > 0:
+                                tau100_index = indices[tH_indices.argmax()]
+                        elif tH_indices.size > 0:
+                            tau100_index = indices[tH_indices.argmax()]
+                        else:
+                            tau100_index = 0
 
-                tau_RPS_sRPS[:tau100_index+1] = 100.
-                tau_RPS_sRPS[tau100_index+1:tau0_index] = 50.
-                tau_RPS_sRPS[tau0_index] = 0.
+                        tau_RPS_sRPS[:tau100_index+1] = 100.
+                        tau_RPS_sRPS[tau100_index+1:tau0_index] = 50.
+                        tau_RPS_sRPS[tau0_index] = 0.
 
 
         # save the output
