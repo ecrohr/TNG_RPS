@@ -293,11 +293,30 @@ def split_inspected_branches():
 # namely, we care about times tau0, tau10, and tau90 defined by infall and peak MCgas, at z=0, and quenching time
 
 def return_taudict(key):
+            
+    def return_tauresult_key(grp_key, tau_key, tau_val):
+        return (grp_key + '_' + tau_key + '%d'%tau_val)
 
     result = load_dict(key, clean=True)
+    result_keys = list(result.keys())
+    result_keys.sort()
 
     tauresult = {}
-    tau_vals = [0., 10., 90., 99.]
+    tau_infall_key = 'tau_infall'
+    tau_medpeak_key = 'tau_medpeak'
+    tau_RPS_est_infall_key = 'tau_RPS_est_infall'
+    tau_RPS_tot_infall_key = 'tau_RPS_tot_infall'
+    tau_RPS_sRPS_key = 'tau_RPS_sRPS'
+    tau_keys = [tau_infall_key, tau_medpeak_key, tau_RPS_est_infall_key, tau_RPS_tot_infall_key,
+                tau_RPS_sRPS_key]
+
+    tauvals_dict = {}
+    tauvals_dict[tau_infall_key] = np.array([0., 10., 90.])
+    tauvals_dict[tau_medpeak_key] = np.array([0., 10., 90.])
+    tauvals_dict[tau_RPS_est_infall_key] = np.array([0., 90., 99.])
+    tauvals_dict[tau_RPS_tot_infall_key] = np.array([0., 90., 99.])
+    tauvals_dict[tau_RPS_sRPS_key] = np.array([0., 100.])
+            
     grp_keys = ['SnapNum', 'CosmicTime', 'HostCentricDistance_norm', 'HostGroup_M_Crit200',
                 'HostGroup_R_Crit200', 'HostSubhalo_Mstar_Rgal', 'SubhaloMass',
                 'Subhalo_Mstar_Rgal',
@@ -305,10 +324,6 @@ def return_taudict(key):
                 'Nperipass', 'min_Dperi_norm', 'min_Dperi_phys',
                 'min_HostCentricDistance_norm', 'min_HostCentricDistance_phys']
     
-    tau_keys = ['tau_infall', 'tau_medpeak', 'tau_RPS_est_infall', 'tau_RPS_tot_infall']
-
-    result_keys = list(result.keys())
-    result_keys.sort()
     for group_index, group_key in enumerate(result_keys):
         group = result[group_key]
     
@@ -317,8 +332,9 @@ def return_taudict(key):
             tauresult['SubfindID'] = np.zeros(len(result_keys), dtype=int)
             for grp_key in grp_keys:
                 for tau_key in tau_keys:
+                    tau_vals = tauvals_dict[tau_key]
                     for tau_val in tau_vals:
-                        tauresult_key = grp_key + '_' + tau_key + '%d'%tau_val
+                        tauresult_key = return_tauresult_key(grp_key, tau_key, tau_val)
                         tauresult[tauresult_key] = np.zeros(len(result_keys), 
                                                             dtype=group[grp_key].dtype) - 1
                 tauresult_key = grp_key + '_z0'
@@ -340,15 +356,16 @@ def return_taudict(key):
         # for each of the definitions of tau, let's tabulate important properties at tau_X 
         for tau_key in tau_keys:
             tau = group[tau_key]
+            tau_vals = tauvals_dict[tau_key]
             for tau_val in tau_vals:
-                if max(tau) >= tau_val:
-                    tau_index = np.max(np.argwhere((tau - tau_val) >= 0))
-                    if (tau_key == 'tau_RPS_est_infall') & (tau_val == 0):
-                        tau_index = np.min(np.where(tau == 0)[0])
+                if tau.max() >= tau_val:
+                    tau_index = np.where((tau - tau_val) >= 0)[0].max()
+                    if (tau_key == tau_RPS_est_infall_key) & (tau_val == tau_vals[0]):
+                        tau_index = np.where(tau == tau_val)[0].min()
                     for grp_key in grp_keys:
-                        tauresult_key = grp_key + '_' + tau_key + '%d'%tau_val
+                        tauresult_key = return_tauresult_key(grp_key, tau_key, tau_val)
                         tauresult[tauresult_key][group_index] = group[grp_key][tau_index]
-        
+                        
         # and at z=0 -- this is always the first element in the arrays 
         for grp_key in grp_keys:
             tauresult_key = grp_key + '_z0'
@@ -360,7 +377,7 @@ def return_taudict(key):
             SnapNum = group['SnapNum']
             quench_index = np.where(quench_snap == SnapNum)[0]
             # check that the quenching snap is after min(SnapNum)
-            if len(quench_index) > 0:
+            if quench_index.size > 0:
                 for grp_key in grp_keys:
                     tauresult_key = grp_key + '_quench'
                     tauresult[tauresult_key][group_index] = group[grp_key][quench_index]
@@ -374,31 +391,30 @@ def return_taudict(key):
 
     # hard code the characteristic cold gas loss timescales
     for tau_key in tau_keys:
-        tau_x1 = 0
-        tau_x2 = 90
-        if tau_key == 'tau_medpeak':
-            tau_x1 = 10
-        key_x1 = 'CosmicTime_%s%d'%(tau_key, tau_x1)
-        key_x2 = 'CosmicTime_%s%d'%(tau_key, tau_x2)
-        x1 = tauresult[key_x1]
-        x2 = tauresult[key_x2]
-        indices = np.where(x2 > 0)[0]
+        tau_vals = tauvals_dict[tau_key]
+        tau_lo = tau_vals.min()
+        tau_hi = tau_vals.max()
+        if tau_key == tau_medpeak_key:
+            tau_lo = tau_vals[1]
+        key_lo = 'CosmicTime_%s%d'%(tau_key, tau_lo)
+        key_hi = 'CosmicTime_%s%d'%(tau_key, tau_hi)
+        lo = tauresult[key_lo]
+        hi = tauresult[key_hi]
+        indices = hi > 0
         
-        tstrip = np.ones(len(x1), dtype=x1.dtype) * -1.
-        tstrip[indices] = x2[indices] - x1[indices]
+        tstrip = np.zeros(lo.size, dtype=lo.dtype) - 1
+        tstrip[indices] = hi[indices] - lo[indices]
         
-        tstrip_key = 'Tstrip_%s_tau%d-tau%d'%(tau_key, tau_x2, tau_x1)
+        tstrip_key = 'Tstrip_%s_tau%d-tau%d'%(tau_key, tau_lo, tau_hi)
         tauresult[tstrip_key] = tstrip
 
         # now hard code the quenching time: time of last quenching - tau_*_10
-        key_x1 = 'CosmicTime_%s10'%tau_key
-        key_x2 = 'CosmicTime_quench'
-        x1 = tauresult[key_x1]
-        x2 = tauresult[key_x2]
-        indices = (x1 > 0) & (x2 > 0)
+        key_hi = 'CosmicTime_quench'
+        hi = tauresult[key_hi]
+        indices = (lo > 0) & (hi > 0)
         
-        tquench = np.ones(len(x1), dtype=x1.dtype) * -1.
-        tquench[indices] = x2[indices] - x1[indices]
+        tquench = np.zeros(lo.size, dtype=lo.dtype) -1
+        tquench[indices] = hi[indices] - lo[indices]
         
         tquench_key = 'Tquench_%s'%tau_key
         tauresult[tquench_key] = tquench
@@ -416,8 +432,7 @@ def return_taudict(key):
             dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
             dataset[:] = dset
 
-        outf.close()
-        
+        outf.close()        
     
     return tauresult
 
