@@ -956,6 +956,61 @@ def add_coldgasmasstracerstau():
     f.close()
         
     return
+
+
+def add_tracers_postprocessing():
+    """
+    post process the tracer quantities
+    """
+    f = h5py.File(direc+fname, 'a')
+
+    keys = ['RPS_int_tot',
+            'sRPS',
+            'sSFR']
+
+    f_keys = list(f.keys())
+    result = np.ones(f[f_keys[0]]['SnapNum'].size, dtype=float) * -1.
+
+    RPS_key = 'SubhaloColdGasTracer_StripTot'
+    SFR_key = 'SubhaloSFR'
+    SCGM_key = 'SubhaloColdGasMass'
+    
+    for group_index, group_key in enumerate(f_keys):
+        group = f[group_key]
+
+        subhalo_indices = np.where(group['SubfindID'] != -1)[0]
+
+        CosmicTimes = group['CosmicTime'][subhalo_indices]
+        RPS = group[RPS_key][subhalo_indices]
+        SFR = group[SFR_key][subhalo_indices]
+        SCGM = group[SCGM_key][subhalo_indices]
+
+        calc_indices = RPS != -1
+        time_diffs = (CosmicTimes[:-1] - CosmicTimes[1:]) * 1.0e9
+
+        # calculate the integral of RPS + outflows over all time
+        RPS_int_tot = result.copy()
+        RPS_int_tot[subhalo_indices[calc_indices]] = np.cumsum((RPS[calc_indices] * time_diffs)[::-1])[::-1]
+
+        # calculate the specific RPS + outflows; SFR rate over all time
+        calc_indices = (RPS > 0) & (SCGM > 0)
+        sRPS = result.copy()
+        sRPS[subhalo_indices[calc_indices]] = RPS[calc_indices] / SCGM[calc_indices]
+
+        calc_indices = SCGM > 0
+        sSFR = result.copy()
+        sSFR[subhalo_indices[calc_indices]] = SFR[calc_indices] / SCGM[calc_indices]
+        
+        dsets = [RPS_int_tot, sRPS, sSFR]
+        for dset_index, dset_key in enumerate(keys):
+            dset = dsets[dset_index]
+            dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+            dataset[:] = dset
+            
+    f.close()
+    
+    return
+
     
 
 sims = ['TNG50-1']
@@ -967,7 +1022,8 @@ for sim in sims:
     direc = '../Output/%s_subfindGRP/'%sim
     #fname = 'subfind_%s_branches.hdf5'%sim
 
-    run_satelliteGRP()
+    #run_satelliteGRP()
+    add_tracers_postprocessing()
 
 
 
