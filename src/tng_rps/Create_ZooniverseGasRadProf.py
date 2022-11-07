@@ -822,7 +822,7 @@ def add_coldgasmasstracerstau():
     N_RM = 7
     
     # define 1 / Hubble Time
-    tH_inv = 7.0e-11 # [yr^-1]
+    tH_inv = 7.246e-11 # [yr^-1]
 
     RPS_key = 'SubhaloColdGasTracer_StripTot'
     SFR_key = 'SubhaloSFR'
@@ -982,30 +982,31 @@ def add_tracers_postprocessing():
         sRPS = result.copy()
         sSFR = result.copy()
         
-        subhalo_indices = np.where(group['SubfindID'] != -1)[0]
+        subhalo_indices = np.where(group['SubfindID'][:] != -1)[0]
 
-        if len(subhalo_indices[subhalo_indices]) > 1:
+        if subhalo_indices.size > 1:
 
             CosmicTimes = group['CosmicTime'][subhalo_indices]
             RPS = group[RPS_key][subhalo_indices]
             SFR = group[SFR_key][subhalo_indices]
             SCGM = group[SCGM_key][subhalo_indices]
 
-            time_diffs = (CosmicTimes[:-1] - CosmicTimes[1:]) * 1.0e9
-
             # calculate the integral of RPS + outflows over all time
-            calc_indices = RPS != -1
-            if len(calc_indices[calc_indices]) > 0:
-                RPS_int_tot[subhalo_indices[calc_indices]] = np.cumsum((RPS[calc_indices] * time_diffs)[::-1])[::-1]
+            if RPS.size > 1:
+                time_diffs = (CosmicTimes[:-1] - CosmicTimes[1:]) * 1.0e9
+                save_indices = subhalo_indices[:-1]
+                RPS_int_tot[save_indices] = np.cumsum((RPS[:-1] * time_diffs)[::-1])[::-1]
 
             # calculate the specific RPS + outflows; SFR rate over all time
             calc_indices = (RPS > 0) & (SCGM > 0)
             if len(calc_indices[calc_indices]) > 0:
-                sRPS[subhalo_indices[calc_indices]] = RPS[calc_indices] / SCGM[calc_indices]
+                save_indices = subhalo_indices[calc_indices]
+                sRPS[save_indices] = RPS[calc_indices] / SCGM[calc_indices]
 
             calc_indices = SCGM > 0
             if len(calc_indices[calc_indices]) > 0:
-                sSFR[subhalo_indices[calc_indices]] = SFR[calc_indices] / SCGM[calc_indices]
+                save_indices = subhalo_indices[calc_indices]
+                sSFR[save_indices] = SFR[calc_indices] / SCGM[calc_indices]
         
         dsets = [RPS_int_tot, sRPS, sSFR]
         for dset_index, dset_key in enumerate(keys):
