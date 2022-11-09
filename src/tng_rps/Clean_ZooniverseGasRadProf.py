@@ -19,7 +19,7 @@ global sim, basePath, ins_key, jel_key, non_key
 global snap_first, Nsnaps_PreProcessed, M200c0_lolim
 global nonz0_key, beforesnapfirst_key, backsplash_key
 global preprocessed_key, clean_key, out_keys
-global outfname, outdirec
+global outfname, outdirec, zooniverse
 
 ins_key = 'inspected'
 jel_key = 'jellyfish'
@@ -222,6 +222,7 @@ def load_subfindsnapshot_flags():
 def load_dict(key, clean=False):
     
     # key == [inspected, jellyfish, nonjellyf] -- otherwise file doesn't exist
+    outfname = return_outfname(sim=sim, key=key, zooniverse=zooniverse, clean=clean)
     
     result = {}
 
@@ -469,16 +470,27 @@ def combine_taudicts():
         f0.close()
         f1.close()
 
-
     return
 
-#outdirec = '../Output/zooniverse/'
-#outfname = 'zooniverse_%s_%s_branches_clean.hdf5'%(sim, ins_key)
+def return_outfname(sim='TNG50-1', key='inspected', zooniverse=True, clean=False):
+    """
+    return the output filename.
+    """
+    if not zooniverse:
+        outfname = 'subfind_%s_branches.hdf5'%sim
+        return outfname
+    else:
+        outfname = 'zooniverse_%s_%s_branches'%(sim, key)
+        if clean:
+            outfname += '_clean.hdf5'
+        else:
+            outfname += '.hdf5'
+        return outfname
 
+zooniverse = True
 for sim in ['TNG50-1']:
     outdirec = '../Output/%s_subfindGRP/'%sim
-    #outfname = 'subfind_%s_branches.hdf5'%sim
-    outfname = 'zooniverse_%s_%s_branches.hdf5'%(sim, ins_key)
+    outfname = return_outfname(sim=sim, key=ins_key, zooniverse=zooniverse, clean=False)
     
     clean_zooniverseGRP(savekeys=True)
     
