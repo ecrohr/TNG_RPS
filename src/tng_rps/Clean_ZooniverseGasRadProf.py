@@ -64,7 +64,7 @@ def clean_zooniverseGRP(savekeys=False):
         new_key = '%08d'%(group['SubfindID'][0])
         result[new_key] = group
 
-    fname = outfname[:-5] + '_clean.hdf5'
+    fname = return_outfname(clean=True)
     with h5py.File(outdirec + fname, 'a') as outf:
         for group_key in result.keys():
             group = outf.require_group(group_key)
@@ -225,11 +225,6 @@ def load_dict(key, clean=False):
     outfname = return_outfname(sim=sim, key=key, zooniverse=zooniverse, clean=clean)
     
     result = {}
-
-    if (clean):
-        fname = outfname[:-5] + '_clean.hdf5'
-    else:
-        fname = outfname
         
     with h5py.File(outdirec + fname, 'a') as f:
         for group_key in f.keys():
