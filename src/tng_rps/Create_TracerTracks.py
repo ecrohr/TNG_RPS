@@ -526,10 +526,10 @@ def track_subfindIDs(subfindIDs, z0_flag=True):
     for i, subfindID in enumerate(subfindIDs):
         
         if (z0_flag):
-            tree = ru.loadMainTreeBranch(max_snap, subfindID, sim=sim, treeName=treeName,
+            tree = ru.loadMainTreeBranch(sim, max_snap, subfindID, treeName=treeName,
                                          fields=fields, min_snap=snapNum, max_snap=max_snap)
         else:
-            tree = ru.loadMainTreeBranch(snapNum, subfindID, sim=sim, treeName=treeName,
+            tree = ru.loadMainTreeBranch(sim, snapNum, subfindID, treeName=treeName,
                                          fields=fields, min_snap=snapNum, max_snap=max_snap)
             
         if not tree:
