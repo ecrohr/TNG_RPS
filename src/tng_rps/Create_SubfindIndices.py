@@ -17,7 +17,7 @@ import glob
 
 global sim, basePath, SnapNums, BoxSizes, Times, h
 
-def run_zooniverseindices(mp_flag=False, zooniverse_flag=False):
+def run_subfindindices(mp_flag=False, zooniverse_flag=False):
 
     global sim, basePath, SnapNums, BoxSizes, Times, h
     
@@ -315,6 +315,6 @@ zooniverse_flag = True
 
 for sim in sims:
     sim = sim
-    run_zooniverseindices(mp_flag=mp_flag,
-                          zooniverse_flag=zooniverse_flag)
+    run_subfindindices(mp_flag=mp_flag,
+                       zooniverse_flag=zooniverse_flag)
     
