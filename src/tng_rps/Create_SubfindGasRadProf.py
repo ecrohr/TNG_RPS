@@ -54,9 +54,8 @@ bary_ptns   = [gas_ptn,
 
 jellyscore_min = 16
 
-def run_satelliteGRP():
+def run_subfindGRP():
 
-    """
     dics = []
     
     f = h5py.File(direc + fname, 'a')
@@ -70,7 +69,7 @@ def run_satelliteGRP():
 
     Pool = mp.Pool(8) # should be 8 when running interactively; mp.cpu_count() for SLURM
 
-    result_list = Pool.map(create_satelliteGRP, dics)
+    result_list = Pool.map(create_subfindGRP, dics)
 
     Pool.close()
     Pool.join()
@@ -91,23 +90,22 @@ def run_satelliteGRP():
             dataset[:] = dset
 
     f.close()
-    """
     
     # post process the gas radial profiles
-    #add_memberflags()
-    #add_zooniverseflags()
-    #add_times()
-    #add_dmin()
-    #add_Nperipass()
-    #add_coldgasmasstau()
-    #add_quenchtimes()
+    add_memberflags()
+    add_zooniverseflags()
+    add_times()
+    add_dmin()
+    add_Nperipass()
+    add_coldgasmasstau()
+    add_quenchtimes()
     #add_tracers()
-    add_coldgasmasstracerstau()
+    #add_coldgasmasstracerstau()
     
     return
 
 
-def create_satelliteGRP(dic):
+def create_subfindGRP(dic):
     
     # create a directory for the given jellyfish,
     # named after its subfindID at last Zooniverse inspection
@@ -121,7 +119,7 @@ def create_satelliteGRP(dic):
     for snapnum_index, snapnum in enumerate(SnapNum):
         subfindID = SubfindID[snapnum_index]
     
-        dict_list.append(return_satelliteGRP(snapnum, subfindID))
+        dict_list.append(return_subfindGRP(snapnum, subfindID))
     
     radii_dict = {}
     for d in dict_list:
@@ -147,7 +145,7 @@ def create_satelliteGRP(dic):
     return result
 
 
-def return_satelliteGRP(snapnum, subfindID):
+def return_subfindGRP(snapnum, subfindID):
     
     print('Working on %s snap %s subfindID %d'%(sim, snapnum, subfindID))
     
@@ -1029,8 +1027,7 @@ for sim in sims:
     direc = '../Output/%s_subfindGRP/'%sim
     #fname = 'subfind_%s_branches.hdf5'%sim
 
-    #run_satelliteGRP()
-    add_tracers_postprocessing()
+    #run_subfindGRP()
 
 
 
