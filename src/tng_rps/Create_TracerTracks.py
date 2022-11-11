@@ -34,7 +34,7 @@ def create_tracertracks():
     # define the global variables
     sim        = 'TNG50-1'
     basePath   = ru.ret_basePath(sim)
-    snapNum    = 33
+    snapNum    = 0
     tcoldgas   = 10.**(4.5) # [K]
     max_snap   = 99
 
@@ -69,8 +69,8 @@ def create_tracertracks():
     Nsnapsperjob = 5
     first_snap = snapNum + Nsnapsperjob * jobid
     last_snap = first_snap + Nsnapsperjob
-    if last_snap > 100:
-        last_snap = 100
+    if last_snap > 34:
+        last_snap = 34
         
     for snap in range(first_snap, last_snap):
         if snap == snapNum:
@@ -87,19 +87,18 @@ def create_tracertracks():
         a = time.time()
         track_tracers(snap)
         b = time.time()
-        print('TNG50-1 inspected branches track_tracers at snap %03d: %.3g [s]'%(snap, (b-a)))
+        print('TNG50-1 inspected branches track_tracers at snap %03d: %.3g [s]'%(snap, (b-a)))    
     
-    # find the corresponding subfindIDs at the next snapshots
-    #track_subfindIDs(subfindIDs)
-    
-    
+    """
     # now track tracers from snapNum until max_snap
     for snap in range(snapNum, max_snap+1):
         start = time.time()
         track_tracers(snap)
         end = time.time()
         print('%s snap %03d track_tracers: %.3g [s]'%(sim, snap, (end-start)))
+    """
 
+    """
     # and find the unmatched tracers from snapNum + 1 until max_snap
     for snap in range(first_snap, last_snap):
         start = time.time()
@@ -114,6 +113,7 @@ def create_tracertracks():
             Pool.map(create_bound_flags, snaps)
             Pool.close()
             Pool.join()
+    """
 
     return
 
