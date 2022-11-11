@@ -187,7 +187,7 @@ def load_zooniverseIDs():
     return insIDs_dict
 
 
-def return_subfindindices(snap, subfindID, min_snap=33, max_snap=99):
+def return_subfindindices(snap, subfindID, min_snap=0, max_snap=99):
     """
     Given the snap and subfindID, load the MPB/MDB between min_snap and max_snap.
     Then record various properties at each of these snaps.
@@ -254,7 +254,7 @@ def return_subfindindices(snap, subfindID, min_snap=33, max_snap=99):
                    'SubhaloVel', 'Group_M_Crit200', 'Group_R_Crit200']
     
     # load the full subhalo branch
-    sub_tree = ru.loadMainTreeBranch(sim, snap, subfindID, fields=sub_fields, min_snap=33)
+    sub_tree = ru.loadMainTreeBranch(sim, snap, subfindID, fields=sub_fields, min_snap=min_snap)
     
     # load the host_tree MPB using the GroupFirstSub from the last identified snap of the subhalo        
     host_tree = il.sublink.loadTree(basePath, sub_tree['SnapNum'][0], sub_tree['GroupFirstSub'][0],
