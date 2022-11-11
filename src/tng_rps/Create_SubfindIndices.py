@@ -23,9 +23,6 @@ def run_subfindindices(mp_flag=False, zooniverse_flag=False):
     
     basePath = ru.ret_basePath(sim)
 
-    print(sim, basePath)
-    print()
-
     Header = il.groupcat.loadHeader(basePath, 99)
     h = Header['HubbleParam']
 
