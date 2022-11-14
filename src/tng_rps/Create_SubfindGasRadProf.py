@@ -680,6 +680,10 @@ def add_tracers():
     
     for snap_i, snap in enumerate(snaps):
 
+        print(snap_i, snap)
+        if snap <= 33:
+            continue
+
         offsets = h5py.File(off_direc + 'offsets_%03d.hdf5'%snap, 'r')
         tracers = h5py.File(off_direc + 'tracers_%03d.hdf5'%snap, 'r')
 
