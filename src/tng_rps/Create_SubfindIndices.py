@@ -306,7 +306,7 @@ def return_subfindindices(snap, subfindID, min_snap=0, max_snap=99):
     return result
 
 
-sims = ['TNG50-1']
+sims = ['TNG100-1']
 mp_flag = True
 zooniverse_flag = True
 

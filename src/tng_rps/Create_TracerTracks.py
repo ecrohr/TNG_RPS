@@ -199,6 +199,7 @@ def track_tracers(snap):
         if snap > snapNum:
             ### check which cold gas cell tracers from previous snap are still here ###
             i = 1
+            IDs_past = np.array([])
             while ((snap - i) >= snapNum) & (i < 4):
                 if offsets_past[i-1]['SubfindID'][subfind_i] != -1:
                     start = offsets_past[i-1]['SubhaloOffset'][subfind_i]

@@ -1018,7 +1018,7 @@ def add_tracers_postprocessing():
 
     
 
-sims = ['TNG50-1']
+sims = ['TNG100-1']
 for sim in sims:
     basePath = ru.ret_basePath(sim)
     #direc = '../Output/zooniverse/'
@@ -1027,7 +1027,7 @@ for sim in sims:
     direc = '../Output/%s_subfindGRP/'%sim
     #fname = 'subfind_%s_branches.hdf5'%sim
 
-    #run_subfindGRP()
+    run_subfindGRP()
 
 
 
