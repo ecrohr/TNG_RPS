@@ -992,6 +992,7 @@ def add_tracers_postprocessing():
     f_keys = list(f.keys())
     result = np.ones(f[f_keys[0]]['SnapNum'].size, dtype=float) * -1.
 
+    tracer_key = 'SubhaloColdgasTracer_Mass'
     RPS_key = 'SubhaloColdGasTracer_StripTot'
     SFR_key = 'SubhaloSFR'
     SCGM_key = 'SubhaloColdGasMass'
@@ -1003,7 +1004,7 @@ def add_tracers_postprocessing():
         sRPS = result.copy()
         sSFR = result.copy()
         
-        subhalo_indices = np.where(group['SubfindID'][:] != -1)[0]
+        subhalo_indices = np.where((group['SubfindID'][:] != -1) & (group[tracer_key][:] != -1))[0]
 
         if subhalo_indices.size > 1:
 
