@@ -658,7 +658,6 @@ def add_tracers():
     min_snap = np.min(group['SnapNum'])
     snaps = np.arange(max_snap, min_snap-1, -1)
     CosmicTimes = group['CosmicTime'][:]
-    time_diffs = (CosmicTimes[:-1] - CosmicTimes[1:]) * 1.0e9
 
     header      = ru.loadHeader(basePath, max_snap)
     h           = header['HubbleParam']
@@ -690,6 +689,9 @@ def add_tracers():
         # find the overlapping indices between the tracers and the subfind_GRP catalogs
         tracers_indices, GRP_indices = ru.match3(offsets_group['SubfindID'][:], all_subfindIDs[snap_i])
         
+        if tracers_indices.size == 0:
+            continue
+        
         SubhaloColdGasTracer_Mass[GRP_indices,snap_i] = offsets_group['SubhaloLengthColdGas'][:][tracers_indices] * tracer_mass
         SubhaloColdGasTracer_new[GRP_indices,snap_i] = offsets_group['SubhaloLengthColdGas_new'][:][tracers_indices] * tracer_mass
         SubhaloColdGasTracer_out[GRP_indices,snap_i] = ((offsets_group['SubhaloLength'][:][tracers_indices] - offsets_group['SubhaloLengthColdGas'][:][tracers_indices])
@@ -701,7 +703,7 @@ def add_tracers():
             # loop over each subhalo at this snapshot to split the out sample into the various components
             for subfind_i, subfindID in enumerate(offsets_group['SubfindID'][:][tracers_indices]):
 
-                # if the subhalo is not identified at this snpap, continue
+                # if the subhalo is not identified at this snap, continue
                 if subfindID == -1:
                     continue
 
@@ -733,17 +735,17 @@ def add_tracers():
                 if Nheat != Nheat_check:
                     print('Warning for bound heated gas cells for %s %s subfindID %s'%(sim, snap, subfindID))
                 
-                SubhaloColdGasTracer_StripTot[GRP_index,snap_i] = Ntot * tracer_mass / time_diffs[snap_i]
-                SubhaloColdGasTracer_StripCold[GRP_index,snap_i] = Ncold * tracer_mass / time_diffs[snap_i]
-                SubhaloColdGasTracer_Heat[GRP_index,snap_i] = Nheat * tracer_mass / time_diffs[snap_i]
+                SubhaloColdGasTracer_StripTot[GRP_index,snap_i] = Ntot * tracer_mass
+                SubhaloColdGasTracer_StripCold[GRP_index,snap_i] = Ncold * tracer_mass
+                SubhaloColdGasTracer_Heat[GRP_index,snap_i] = Nheat * tracer_mass
                 
                 # second, star paticles: treating winds + stars identically here
                 star_indices = ParentPartType == star_ptn
-                SubhaloColdGasTracer_Star[GRP_index,snap_i] = len(star_indices[star_indices]) * tracer_mass / time_diffs[snap_i]
+                SubhaloColdGasTracer_Star[GRP_index,snap_i] = len(star_indices[star_indices]) * tracer_mass
 
                 # lastly, black holes
                 bh_indices = ParentPartType == bh_ptn
-                SubhaloColdGasTracer_BH[GRP_index,snap_i] = len(bh_indices[bh_indices]) * tracer_mass / time_diffs[snap_i]
+                SubhaloColdGasTracer_BH[GRP_index,snap_i] = len(bh_indices[bh_indices]) * tracer_mass
 
             # finish loop over subhalos at the given snapshot
 
@@ -751,6 +753,22 @@ def add_tracers():
         tracers.close()
 
     # finish loop over snapshots
+    
+    # for each subhalo, calculate the time between snapshots that the subhalo exists in the merger trees
+    # then divide the tracer particles by this time such that the units are Msun / yr
+    dsets = [SubhaloColdGasTracer_StripTot,
+             SubhaloColdGasTracer_StripCold, 
+             SubhaloColdGasTracer_Heat,
+             SubhaloColdGasTracer_Star,
+             SubhaloColdGasTracer_BH]
+
+    for key_i, key in enumerate(keys):
+        indices = np.where((f[keys[key_i]]['SubfindID'][:] != -1) & (SubhaloColdGasTracer_Mass[key_i] != -1))[0]
+        times = CosmicTimes[indices]
+        time_diffs = (times[:-1] - times[1:]) * 1.0e9
+
+        for dset in dsets:
+            dset[key_i,indices[:-1]] /= time_diffs
 
     # save new datasets
     dset_keys = ['SubhaloColdGasTracer_Mass',
@@ -781,6 +799,7 @@ def add_tracers():
     f.close()
 
     return
+
 
 def add_coldgasmasstracerstau():
     """
@@ -1018,7 +1037,7 @@ def add_tracers_postprocessing():
 
     
 
-sims = ['TNG100-1']
+sims = ['TNG50-1']
 for sim in sims:
     basePath = ru.ret_basePath(sim)
     #direc = '../Output/zooniverse/'
@@ -1027,7 +1046,8 @@ for sim in sims:
     direc = '../Output/%s_subfindGRP/'%sim
     #fname = 'subfind_%s_branches.hdf5'%sim
 
-    run_subfindGRP()
+    #run_subfindGRP()
+    add_tracers()
 
 
 
