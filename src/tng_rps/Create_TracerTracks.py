@@ -290,7 +290,7 @@ def find_unmatched_tracers(snap):
     unmatched_TracerIDs = tracers_subhalo['TracerIDs'][unmatched_indices]
     c = time.time()
     
-    if len(unmatched_tracerIDs) == 0:
+    if unmatched_TracerIDs.size == 0:
         print('Warning, no unmatched tracers. Returning.')
         return
 
