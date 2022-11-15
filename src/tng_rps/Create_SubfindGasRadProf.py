@@ -992,7 +992,7 @@ def add_tracers_postprocessing():
     f_keys = list(f.keys())
     result = np.ones(f[f_keys[0]]['SnapNum'].size, dtype=float) * -1.
 
-    tracer_key = 'SubhaloColdgasTracer_Mass'
+    tracer_key = 'SubhaloColdGasTracer_Mass'
     RPS_key = 'SubhaloColdGasTracer_StripTot'
     SFR_key = 'SubhaloSFR'
     SCGM_key = 'SubhaloColdGasMass'
@@ -1052,7 +1052,8 @@ for sim in sims:
     #fname = 'subfind_%s_branches.hdf5'%sim
 
     #run_subfindGRP()
-    add_tracers()
+    #add_tracers()
+    add_tracers_postprocessing()
 
 
 
