@@ -298,8 +298,8 @@ def return_taudict(key):
     tauresult = {}
     tau_infall_key = 'tau_infall'
     tau_medpeak_key = 'tau_medpeak'
-    tau_RPS_est_infall_key = 'tau_RPS_est_infall'
-    tau_RPS_tot_infall_key = 'tau_RPS_tot_infall'
+    tau_RPS_est_infall_key = 'tau_RPS_est'
+    tau_RPS_tot_infall_key = 'tau_RPS_tot'
     tau_RPS_sRPS_key = 'tau_RPS_sRPS'
     tau_keys = [tau_infall_key, tau_medpeak_key, tau_RPS_est_infall_key, tau_RPS_tot_infall_key,
                 tau_RPS_sRPS_key]
