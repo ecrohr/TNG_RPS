@@ -353,9 +353,12 @@ def return_taudict(key):
             tau_vals = tauvals_dict[tau_key]
             for tau_val in tau_vals:
                 if tau.max() >= tau_val:
-                    tau_index = np.where((tau - tau_val) >= 0)[0].max()
-                    if (tau_key == tau_RPS_est_infall_key) & (tau_val == tau_vals[0]):
+                    if tau_val == tau_vals[0]
+                        tau_index = np.where((tau - tau_val) >= 0)[0].max()
+                    elif (tau_val == tau_vals[-1]):
                         tau_index = np.where(tau == tau_val)[0].min()
+                    else:
+                        tau_index = np.where((tau - tau_val) >= 0)[0].max()
                     for grp_key in grp_keys:
                         tauresult_key = return_tauresult_key(grp_key, tau_key, tau_val)
                         tauresult[tauresult_key][group_index] = group[grp_key][tau_index]
