@@ -809,54 +809,76 @@ def add_tracers_postprocessing():
     """
     post process the tracer quantities
     """
+    
     f = h5py.File(direc+fname, 'a')
+    f_keys = np.array(list(f.keys()))
+    
+    result = np.ones(f[f_keys[0]]['SnapNum'].size, dtype=float) * -1.
 
     keys = ['RPS_int_tot',
+            'SFR_int_tot',
             'sRPS',
             'sSFR']
-
-    f_keys = list(f.keys())
-    result = np.ones(f[f_keys[0]]['SnapNum'].size, dtype=float) * -1.
 
     tracer_key = 'SubhaloColdGasTracer_Mass'
     RPS_key = 'SubhaloColdGasTracer_StripTot'
     SFR_key = 'SubhaloSFR'
     SCGM_key = 'SubhaloColdGasMass'
-    
-    for group_index, group_key in enumerate(f_keys):
+
+
+    for group_i, group_key in enumerate(f_keys):
         group = f[group_key]
 
         RPS_int_tot = result.copy()
+        SFR_int_tot = result.copy()
         sRPS = result.copy()
         sSFR = result.copy()
         
         subhalo_indices = np.where((group['SubfindID'][:] != -1) & (group[tracer_key][:] != -1))[0]
-
+        
+        SCGM_flag = False
+        
         if subhalo_indices.size > 1:
-
-            CosmicTimes = group['CosmicTime'][subhalo_indices]
-            RPS = group[RPS_key][subhalo_indices]
-            SFR = group[SFR_key][subhalo_indices]
+            
             SCGM = group[SCGM_key][subhalo_indices]
+            if 0 in SCGM:
+                SCGM_flag = True
+                start_index = np.where(SCGM == 0)[0].argmax()                
+                subhalo_indices = subhalo_indices[start_index:]
+                SCGM = SCGM[start_index:]
+                
+            if subhalo_indices.size > 1:
 
-            # calculate the integral of RPS + outflows over all time
-            if RPS.size > 1:
+                CosmicTimes = group['CosmicTime'][subhalo_indices]
+                RPS = group[RPS_key][subhalo_indices]
+                SFR = group[SFR_key][subhalo_indices]
+                SCGM = group[SCGM_key][subhalo_indices]
                 time_diffs = (CosmicTimes[:-1] - CosmicTimes[1:]) * 1.0e9
+
                 save_indices = subhalo_indices[:-1]
                 RPS_int_tot[save_indices] = np.cumsum((RPS[:-1] * time_diffs)[::-1])[::-1]
+                SFR_int_tot[save_indices] = np.cumsum((SFR[:-1] * time_diffs)[::-1])[::-1]
 
-            # calculate the specific RPS + outflows; SFR rate over all time
-            calc_indices = (RPS > 0) & (SCGM > 0)
-            if len(calc_indices[calc_indices]) > 0:
-                save_indices = subhalo_indices[calc_indices]
-                sRPS[save_indices] = RPS[calc_indices] / SCGM[calc_indices]
+                # calculate the specific RPS + outflows, SFR rate over all time
+                calc_indices = (RPS >= 0) & (SCGM > 0)
+                if calc_indices[calc_indices].size > 0:
+                    save_indices = subhalo_indices[calc_indices]
+                    sRPS[save_indices] = RPS[calc_indices] / SCGM[calc_indices]
 
-            calc_indices = SCGM > 0
-            if len(calc_indices[calc_indices]) > 0:
-                save_indices = subhalo_indices[calc_indices]
-                sSFR[save_indices] = SFR[calc_indices] / SCGM[calc_indices]
-        
-        dsets = [RPS_int_tot, sRPS, sSFR]
+                calc_indices = (SFR >= 0) & (SCGM > 0)
+                if calc_indices[calc_indices].size > 0:
+                    save_indices = subhalo_indices[calc_indices]
+                    sSFR[save_indices] = SFR[calc_indices] / SCGM[calc_indices]
+                    
+            if (SCGM_flag):
+                subhalo_indices = np.where(group['SubfindID'][:] != -1)[0]
+                RPS_int_tot[subhalo_indices[:start_index]] = RPS_int_tot[subhalo_indices[start_index]]
+                SFR_int_tot[subhalo_indices[:start_index]] = SFR_int_tot[subhalo_indices[start_index]]
+                sRPS[subhalo_indices[:start_index]] = 0
+                sSFR[subhalo_indices[:start_index]] = 0
+            
+
+        dsets = [RPS_int_tot, SFR_int_tot, sRPS, sSFR]
         for dset_index, dset_key in enumerate(keys):
             dset = dsets[dset_index]
             dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
@@ -865,7 +887,7 @@ def add_tracers_postprocessing():
     f.close()
     
     return
-
+ 
 
 def add_coldgasmasstracerstau():
     """
