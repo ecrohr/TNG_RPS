@@ -76,12 +76,12 @@ def clean_zooniverseGRP(savekeys=False):
         outf.close()
     
 
-    """
     # now split the inspected branches into jellyfish, if there's a jellyfish classificaiton
     # at snap >= snap_first, and into nonjellyf, if there are no jelly classiifications at snap >= snap_first
     # this means that some of the branches with a jellyfish classification may become nonjellyf branches!
     split_inspected_branches()
     # reorganize each of the three sets of branches [inspected, jellyfish, nonjellyf] into tau dictionaries
+    """
 
     keys = ['inspected', 'jellyfish', 'nonjellyf']
     for key in keys:
