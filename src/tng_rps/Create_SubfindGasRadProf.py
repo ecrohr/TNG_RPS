@@ -979,6 +979,7 @@ def add_coldgasmasstracerstau():
         ### tau_sRPS
         # check that there are at least N_RM snaps before infall to calc avg specific RPS + outflows
         sRPS = group[sRPS_key][subhalo_indices]
+        SCGM = group[SCGM_key][subhalo_indices]
         calc_indices = np.where(sRPS >= 0)[0]
         
         if calc_indices[infall_index:].size > N_RM:
@@ -991,7 +992,7 @@ def add_coldgasmasstracerstau():
             tau0 = np.where(diff <= 0)[0].min()
             tau0_index = subhalo_indices[calc_indices][sRPS_RM_peakindex:][tau0]
             
-            if 0 in sRPS[calc_indices][:sRPS_RM_peakindex]:
+            if 0 in SCGM[calc_indices][:sRPS_RM_peakindex]:
                 tau100_index = subhalo_indices[np.where(sRPS == 0)[0].max()]
             else:
                 tau100_index = subhalo_indices[0]
