@@ -41,7 +41,7 @@ out_keys = [nonz0_key, beforesnapfirst_key, backsplash_key,
 
 def clean_zooniverseGRP(savekeys=False):
 
-    """
+    
     dic        = load_dict(ins_key)
     keys_dic   = run_clean_zooniverseGRP(dic)
     final_keys = keys_dic[clean_key]
@@ -82,7 +82,7 @@ def clean_zooniverseGRP(savekeys=False):
     # this means that some of the branches with a jellyfish classification may become nonjellyf branches!
     split_inspected_branches()
     # reorganize each of the three sets of branches [inspected, jellyfish, nonjellyf] into tau dictionaries
-    """
+ 
 
     keys = ['inspected', 'jellyfish', 'nonjellyf']
     for key in keys:
@@ -353,10 +353,10 @@ def return_taudict(key):
             tau_vals = tauvals_dict[tau_key]
             for tau_val in tau_vals:
                 if tau.max() >= tau_val:
-                    if tau_val == tau_vals[0]
-                        tau_index = np.where((tau - tau_val) >= 0)[0].max()
+                    if tau_val == tau_vals[0]:
+                        tau_index = np.where((tau_val - tau) >= 0)[0].min()
                     elif (tau_val == tau_vals[-1]):
-                        tau_index = np.where(tau == tau_val)[0].min()
+                        tau_index = np.where((tau - tau_val) >= 0)[0].max()
                     else:
                         tau_index = np.where((tau - tau_val) >= 0)[0].max()
                     for grp_key in grp_keys:
