@@ -1030,6 +1030,7 @@ for sim in sims:
     #run_subfindGRP()
     #add_tracers()
     add_tracers_postprocessing()
+    add_coldgasmasstracerstau()
 
 
 
