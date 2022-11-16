@@ -805,180 +805,6 @@ def add_tracers():
     return
 
 
-def add_coldgasmasstracerstau():
-    """
-    add tau clock definitions based on the tracer quantities.
-    must be called after adding time and tracer datasets.
-    There are two tau definitions using the tracers:
-    (i) tau_RPS_tot_infall
-    starting one snapshot before infall,
-    integrate RPS + outflows until z_x. tau_x is when the integral
-    reaches x% of the integral until z=0.
-    (ii) tau_RPS_est_infall
-    calcualte the mass loading factor median(RPS + outflows / SFR)
-    when the galaxy was a central, and use this to estimate the 
-    outflows when the galaxy is a satellite. Then the difference
-    between the estimated outflows and the measured RPS + outflows
-    is the RPS. integrate this from infall until z=0 and use the
-    same tau_x clock as definition (i).
-    (iii) tau_RPS_sRPS
-    find the peak in the (RPS + outflows) / M_ColdGas after infall,
-    and then define tau_0 as when RPS + outflows = the average 
-    (RPS + outflows) before infall, and tau_100 as the first of:
-    a) (RPS + outflows) / M_ColdGas < 1 / t_H, t_H = Hubble Time
-    b) M_ColdGas reaches 0;
-    c) z=0
-    """
-    
-    f = h5py.File(direc+fname, 'a')
-
-    keys = ['tau_RPS_tot_infall',
-            'tau_RPS_est_infall',
-            'tau_RPS_sRPS']
-
-    f_keys = list(f.keys())
-    result = np.ones(f[f_keys[0]]['SnapNum'].size, dtype=float) * -1.
-
-    # define the number of points to use for smoothing via running median
-    N_RM = 7
-    
-    # define 1 / Hubble Time
-    tH_inv = 7.246e-11 # [yr^-1]
-
-    RPS_key = 'SubhaloColdGasTracer_StripTot'
-    SFR_key = 'SubhaloSFR'
-    SCGM_key = 'SubhaloColdGasMass'
-
-    # calculate the time between snapshots in yrs
-    CosmicTimes = f[f_keys[0]]['CosmicTime'][:]
-    time_diffs = np.ones(len(CosmicTimes), dtype=float) 
-    time_diffs[:-1] = (CosmicTimes[:-1] - CosmicTimes[1:]) * 1.0e9
-
-    for group_index, group_key in enumerate(f_keys):
-        group = f[group_key]
-        indices = np.where(group['SubfindID'][:] != -1)[0]
-
-        # initalize results
-        tau_RPS_tot_infall = result.copy()
-        tau_RPS_est_infall = result.copy()
-        tau_RPS_sRPS = result.copy()
-        
-        # start with the last snapshot that the galaxy was a central 
-        # this is the same as one snapshot before infall 
-        infall_index = np.max(np.argwhere(group['memberlifof_flags'][indices] == 1)) + 1
-        save_indices = indices[:infall_index]
-        
-        # check that there is a well defined infall time and some snaps afterwards 
-        if (infall_index < indices.size) & (len(save_indices) > 1):
-
-            # now let's start the clock at the infall
-            RPS_tot = np.cumsum((group[RPS_key][indices][:infall_index]
-                                 * time_diffs[indices][:infall_index])[::-1])[::-1]
-
-            # now let's calculate tau based on the dset and the max index
-            # because dset is a cumulative sum going backwards in time, 
-            # the 0th index is by definition the maximum
-            tau_RPS_tot_infall[save_indices] = (RPS_tot) / RPS_tot[0] * 100.
-            tau_RPS_tot_infall[indices[infall_index]] = 0.
-
-            # check that there are at least N_RM snaps before infall to calc eta
-            # note that the there is no calculated RPS + outflows for the last snpshot
-            if indices[infall_index:-1].size > N_RM:
-                SFR = group[SFR_key][indices][infall_index:-1]
-                out = group[RPS_key][indices][infall_index:-1]
-                calc_indices = (SFR > 0) & (out > 0)
-
-                if len(calc_indices[calc_indices]) > 0:
-                    eta = np.median(out[calc_indices] / SFR[calc_indices])
-
-                    out_est = eta * group[SFR_key][indices][:infall_index]
-                    RPS_est = group[RPS_key][indices][:infall_index] - out_est
-
-                    # in case outflows are overestimated, mask negative values of RPS_est
-                    RPS_est[RPS_est < 0] = 0
-                    RPS_est_cumsum = np.cumsum(RPS_est[::-1] * time_diffs[indices][:infall_index])[::-1]
-                    tau_RPS_est_infall[save_indices] = (RPS_est_cumsum) / RPS_est_cumsum[0] * 100.
-                    tau_RPS_est_infall[indices[infall_index]] = 0.
-                    
-
-            # only use snapshots where the subhalo was defined
-            # also ignore the first snapshot since there is no defined RPS
-            indices = np.where(group['SubfindID'][:] != -1)[0][:-1]
-            SCGM = group[SCGM_key][indices]
-            SCGM_indices = SCGM > 0
-
-            if SCGM.size > N_RM:
-                # if SCGM reaches 0, only consider times before this 
-                SCGM_RM = ru.RunningMedian(SCGM, N_RM)
-                if 0 in SCGM_RM:
-                    start_index = np.where(SCGM_RM == 0)[0].argmax() 
-                    indices = indices[start_index:]
-                    SCGM = SCGM[start_index:]
-                    SCGM_indices = SCGM_indices[start_index:]
-
-                RPS = group[RPS_key][indices]
-                RPS_indices = RPS > 0
-
-                calc_indices_bool = SCGM_indices & RPS_indices
-                calc_indices = np.where(calc_indices_bool)[0]
-
-                dset = RPS[calc_indices] / SCGM[calc_indices]
-
-                if dset.size >= N_RM:
-                    dset_RM = ru.RunningMedian(dset, N_RM)
-
-                    # find the first infall time
-                    infall_index = np.where(group['memberlifof_flags'][indices][calc_indices] == 1)[0].max()
-
-                    # calculate the average outflow rate before infall 
-                    avg_outf = np.median(dset_RM[infall_index:])
-
-                    # find the peak RPS+outflows before infall 
-                    dset_RM_peak_index = dset_RM[:infall_index+1].argmax()
-                    peak_index = indices[calc_indices][dset_RM_peak_index]
-
-                    # find when the RPS + outflows reaches the average before infall 
-                    dset_diff = dset_RM[dset_RM_peak_index:] - avg_outf
-                    dset_diff_indices = np.where(dset_diff < 0)[0]
-                    if dset_diff_indices.size > 0:
-                        tau0_index = indices[calc_indices][dset_RM_peak_index:][dset_diff_indices.min()]
-
-                        # find tau100 as either:
-                        # (i) when SCGM reaches 0
-                        # (ii) when dset < 1 / Hubble time
-                        # (ii) z=0
-                        tH_indices = np.where(dset_RM[:dset_RM_peak_index+1] <= tH_inv)[0]
-
-                        if 0 in SCGM_RM:
-                            tau100_index = indices[np.where(SCGM == 0)[0].max()]
-                            if tH_indices.size > 0:
-                                tau100_index = indices[tH_indices.argmax()]
-                        elif tH_indices.size > 0:
-                            tau100_index = indices[tH_indices.argmax()]
-                        else:
-                            tau100_index = 0
-
-                        tau_RPS_sRPS[:tau100_index+1] = 100.
-                        tau_RPS_sRPS[tau100_index+1:tau0_index] = 50.
-                        tau_RPS_sRPS[tau0_index] = 0.
-
-
-        # save the output
-        dsets = [tau_RPS_tot_infall,
-                 tau_RPS_est_infall,
-                 tau_RPS_sRPS]
-        
-        for dset_index, dset_key in enumerate(keys):
-            dset = dsets[dset_index]
-            dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
-            dataset[:] = dset        
-    # finish loop over branches
-    
-    f.close()
-        
-    return
-
-
 def add_tracers_postprocessing():
     """
     post process the tracer quantities
@@ -1040,6 +866,156 @@ def add_tracers_postprocessing():
     
     return
 
+
+def add_coldgasmasstracerstau():
+    """
+    add tau clock definitions based on the tracer quantities.
+    must be called after adding time and tracer datasets.
+    There are two tau definitions using the tracers:
+    (i) tau_RPS_tot_infall
+    starting one snapshot before infall,
+    integrate RPS + outflows until z_x. tau_x is when the integral
+    reaches x% of the integral until z=0.
+    (ii) tau_RPS_est_infall
+    calcualte the mass loading factor median(RPS + outflows / SFR)
+    when the galaxy was a central, and use this to estimate the 
+    outflows when the galaxy is a satellite. Then the difference
+    between the estimated outflows and the measured RPS + outflows
+    is the RPS. integrate this from infall until z=0 and use the
+    same tau_x clock as definition (i).
+    (iii) tau_RPS_sRPS
+    find the peak in the (RPS + outflows) / M_ColdGas after infall,
+    and then define tau_0 as when RPS + outflows = the average 
+    (RPS + outflows) before infall, and tau_100 as the first of:
+    a) (RPS + outflows) / M_ColdGas < 1 / t_H, t_H = Hubble Time
+    b) M_ColdGas reaches 0;
+    c) z=0
+    """
+    
+    f = h5py.File(direc+fname, 'a')
+    f_keys = np.array(list(f.keys()))
+
+    result = np.ones(f[f_keys[0]]['SnapNum'].size, dtype=float) * -1.
+
+    keys = ['tau_RPS_tot',
+            'tau_RPS_est',
+            'tau_RPS_sRPS']
+
+    # define the number of points to use for smoothing via running median
+    N_RM = 7
+    
+    tracer_key = 'SubhaloColdGasTracer_Mass'
+    RPS_key = 'SubhaloColdGasTracer_StripTot'
+    SFR_key = 'SubhaloSFR'
+    SCGM_key = 'SubhaloColdGasMass'
+    
+    RPS_int_tot_key = 'RPS_int_tot'
+    SFR_int_tot_key = 'SFR_int_tot'
+    sRPS_key = 'sRPS'
+    sSFR_key = 'sSFR'
+
+
+    for group_index, group_key in enumerate(f_keys):
+        group = f[group_key]
+
+        # initalize results
+        tau_RPS_tot = result.copy()
+        tau_RPS_est = result.copy()
+        tau_RPS_sRPS = result.copy()
+
+        # start with the last snapshot that the galaxy was a central 
+        # this is the same as one snapshot before infall 
+        subhalo_indices = np.where(group['SubfindID'][:] != -1)[0]
+
+        infall_index = np.where(group['memberlifof_flags'][subhalo_indices] == 1)[0].max() + 1
+        
+        calc_indices = subhalo_indices[:infall_index]
+        
+        ### tau_RPS_tot
+        # check that there is a well defined infall time and some snaps afterwards 
+        if (infall_index < subhalo_indices.size) & (calc_indices.size > 1):
+            # now let's start the clock at the infall
+            RPS_int_tot = group[RPS_int_tot_key][calc_indices]
+            tau_RPS_tot[calc_indices] = RPS_int_tot / RPS_int_tot[0] * 100.
+            tau_RPS_tot[subhalo_indices[infall_index]] = 0
+
+        ### tau_RPS_est
+        # check that there are at least N_RM snaps before infall to calc eta
+        # note that the there is no calculated RPS + outflows for the last snpshot
+        if subhalo_indices[infall_index:-1].size > N_RM:
+            SFR = group[SFR_key][subhalo_indices][infall_index:-1]
+            out = group[RPS_key][subhalo_indices][infall_index:-1]
+            calc_indices = (SFR > 0) & (out >= 0)
+
+            if calc_indices[calc_indices].size > 0:
+                eta = np.median(out[calc_indices] / SFR[calc_indices])
+                out_est = eta * group[SFR_key][subhalo_indices]
+                RPS = group[RPS_key][subhalo_indices]
+                                
+                RPS_RM = ru.RunningMedian(RPS, N_RM)
+                out_est_RM = ru.RunningMedian(out_est, N_RM)
+
+                RPS_RM_peakindex = RPS_RM[:infall_index].argmax()
+                diff = RPS_RM[RPS_RM_peakindex:] - out_est_RM[RPS_RM_peakindex:]
+                tau0 = np.where(diff < 0)[0].min()
+                tau0_index = subhalo_indices[RPS_RM_peakindex:][tau0]
+                
+                # ensure tau0 is before z=0
+                if tau0 > 0:
+                    SFR_int_tot = group[SFR_int_tot_key][subhalo_indices]
+                    SFR_int_tot -= SFR_int_tot[tau0_index]
+                    SFR_int_tot[tau0_index:] = 0.
+                    RPS_est_cumsum = group[RPS_int_tot_key][subhalo_indices]
+                    RPS_est_cumsum -= RPS_est_cumsum[tau0_index]
+                    RPS_est_cumsum[tau0_index:] = 0
+                    RPS_est_cumsum[:tau0_index] -= eta * SFR_int_tot[:tau0_index]
+                    RPS_est_cumsum[RPS_est_cumsum < 0] = 0
+
+                    tau_RPS_est[subhalo_indices[:tau0_index]] = (RPS_est_cumsum[:tau0_index] / RPS_est_cumsum[:tau0_index][0]) * 100.
+                    tau_RPS_est[subhalo_indices[tau0_index]] = 0.
+
+                    tau0_index_RPS_est = tau0_index
+
+        ### tau_sRPS
+        # check that there are at least N_RM snaps before infall to calc avg specific RPS + outflows
+        sRPS = group[sRPS_key][subhalo_indices]
+        calc_indices = np.where(sRPS >= 0)[0]
+        
+        if calc_indices[infall_index:].size > N_RM:
+            avg_sRPS = np.median(sRPS[calc_indices][infall_index:])
+            
+            sRPS_RM = ru.RunningMedian(sRPS[calc_indices], N_RM)
+            sRPS_RM_peakindex = sRPS_RM[:infall_index].argmax()
+            
+            diff = sRPS_RM[sRPS_RM_peakindex:] - avg_sRPS
+            tau0 = np.where(diff <= 0)[0].min()
+            tau0_index = subhalo_indices[calc_indices][sRPS_RM_peakindex:][tau0]
+            
+            if 0 in sRPS[calc_indices][:sRPS_RM_peakindex]:
+                tau100_index = subhalo_indices[np.where(sRPS == 0)[0].max()]
+            else:
+                tau100_index = subhalo_indices[0]
+                
+            tau_RPS_sRPS[:tau100_index+1] = 100.
+            tau_RPS_sRPS[tau100_index+1:tau0_index] = 50.
+            tau_RPS_sRPS[tau0_index] = 0.
+            
+            tau0_index_RPS_sRPS = tau0_index
+            
+        # save the output
+        dsets = [tau_RPS_tot,
+                 tau_RPS_est,
+                 tau_RPS_sRPS]
+        
+        for dset_index, dset_key in enumerate(keys):
+            dset = dsets[dset_index]
+            dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+            dataset[:] = dset        
+    
+    # finish loop over branches
+    f.close()
+
+    return
     
 
 sims = ['TNG50-1']
