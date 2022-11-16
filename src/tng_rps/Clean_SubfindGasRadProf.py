@@ -41,6 +41,7 @@ out_keys = [nonz0_key, beforesnapfirst_key, backsplash_key,
 
 def clean_zooniverseGRP(savekeys=False):
 
+    """
     dic        = load_dict(ins_key)
     keys_dic   = run_clean_zooniverseGRP(dic)
     final_keys = keys_dic[clean_key]
@@ -76,17 +77,16 @@ def clean_zooniverseGRP(savekeys=False):
         outf.close()
     
 
-    """
     # now split the inspected branches into jellyfish, if there's a jellyfish classificaiton
     # at snap >= snap_first, and into nonjellyf, if there are no jelly classiifications at snap >= snap_first
     # this means that some of the branches with a jellyfish classification may become nonjellyf branches!
     split_inspected_branches()
     # reorganize each of the three sets of branches [inspected, jellyfish, nonjellyf] into tau dictionaries
+    """
 
     keys = ['inspected', 'jellyfish', 'nonjellyf']
     for key in keys:
         _ = return_taudict(key)
-    """
 
     return
 
@@ -307,8 +307,8 @@ def return_taudict(key):
     tauvals_dict = {}
     tauvals_dict[tau_infall_key] = np.array([0., 90.])
     tauvals_dict[tau_medpeak_key] = np.array([0., 10., 90.])
-    tauvals_dict[tau_RPS_est_infall_key] = np.array([0., 90.])
-    tauvals_dict[tau_RPS_tot_infall_key] = np.array([0., 90.])
+    tauvals_dict[tau_RPS_est_infall_key] = np.array([0., 90., 100.])
+    tauvals_dict[tau_RPS_tot_infall_key] = np.array([0., 90., 100.])
     tauvals_dict[tau_RPS_sRPS_key] = np.array([0., 100.])
             
     grp_keys = ['SnapNum', 'CosmicTime', 'HostCentricDistance_norm', 'HostGroup_M_Crit200',
