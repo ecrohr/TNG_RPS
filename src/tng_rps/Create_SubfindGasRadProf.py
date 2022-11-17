@@ -889,7 +889,7 @@ def add_tracers_postprocessing():
     return
 
 
- def add_coldgasmasstracerstau():
+def add_coldgasmasstracerstau():
     """
     add tau clock definitions based on the tracer quantities.
     must be called after adding time and tracer datasets.
@@ -935,7 +935,6 @@ def add_tracers_postprocessing():
     SFR_int_tot_key = 'SFR_int_tot'
     sRPS_key = 'sRPS'
     sSFR_key = 'sSFR'
-
 
     for group_index, group_key in enumerate(f_keys):
         group = f[group_key]
