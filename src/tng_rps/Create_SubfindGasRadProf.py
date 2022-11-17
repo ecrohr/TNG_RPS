@@ -887,9 +887,9 @@ def add_tracers_postprocessing():
     f.close()
     
     return
- 
 
-def add_coldgasmasstracerstau():
+
+ def add_coldgasmasstracerstau():
     """
     add tau clock definitions based on the tracer quantities.
     must be called after adding time and tracer datasets.
@@ -1013,24 +1013,26 @@ def add_coldgasmasstracerstau():
                 sRPS_RM_peakindex = sRPS_RM[:infall_index].argmax()
 
                 diff = sRPS_RM[sRPS_RM_peakindex:] - avg_sRPS
-                tau0 = np.where(diff <= 0)[0].min()
-                tau0_index = subhalo_indices[calc_indices][sRPS_RM_peakindex:][tau0]
                 
-                SCGM = group[SCGM_key][subhalo_indices]
+                
+                if diff[diff <= 0].size > 0:
+                
+                    tau0 = np.where(diff <= 0)[0].min()
+                    tau0_index = subhalo_indices[calc_indices][sRPS_RM_peakindex:][tau0]
 
-                if 0 in SCGM[calc_indices][:sRPS_RM_peakindex]:
-                    print('0 in SCGM')
-                    tau100_index = subhalo_indices[np.where(sRPS == 0)[0].max()]
-                else:
-                    print('z=0')
-                    tau100_index = subhalo_indices[0]
+                    SCGM = group[SCGM_key][subhalo_indices]
 
-                tau_RPS_sRPS[:tau100_index+1] = 100.
-                tau_RPS_sRPS[tau100_index+1:tau0_index] = 50.
-                tau_RPS_sRPS[tau0_index] = 0.
+                    if 0 in SCGM[calc_indices][:sRPS_RM_peakindex]:
+                        tau100_index = subhalo_indices[np.where(sRPS == 0)[0].max()]
+                    else:
+                        tau100_index = subhalo_indices[0]
 
-                tau0_index_RPS_sRPS = tau0_index
-           
+                    tau_RPS_sRPS[:tau100_index+1] = 100.
+                    tau_RPS_sRPS[tau100_index+1:tau0_index] = 50.
+                    tau_RPS_sRPS[tau0_index] = 0.
+
+                    tau0_index_RPS_sRPS = tau0_index
+            
         # save the output
         dsets = [tau_RPS_tot,
                  tau_RPS_est,
@@ -1045,7 +1047,7 @@ def add_coldgasmasstracerstau():
     f.close()
 
     return
-    
+              
 
 sims = ['TNG50-1']
 for sim in sims:
@@ -1058,7 +1060,7 @@ for sim in sims:
 
     #run_subfindGRP()
     #add_tracers()
-    add_tracers_postprocessing()
+    #add_tracers_postprocessing()
     add_coldgasmasstracerstau()
 
 
