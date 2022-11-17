@@ -1000,31 +1000,37 @@ def add_coldgasmasstracerstau():
 
         ### tau_sRPS
         # check that there are at least N_RM snaps before infall to calc avg specific RPS + outflows
-        sRPS = group[sRPS_key][subhalo_indices]
-        SCGM = group[SCGM_key][subhalo_indices]
-        calc_indices = np.where(sRPS >= 0)[0]
-        
-        if calc_indices[infall_index:].size > N_RM:
-            avg_sRPS = np.median(sRPS[calc_indices][infall_index:])
+        if subhalo_indices[infall_index:-1].size > N_RM:
+            sRPS = group[sRPS_key][subhalo_indices]
+            calc_indices = np.where(sRPS[infall_index:-1] >= 0)[0]
             
-            sRPS_RM = ru.RunningMedian(sRPS[calc_indices], N_RM)
-            sRPS_RM_peakindex = sRPS_RM[:infall_index].argmax()
-            
-            diff = sRPS_RM[sRPS_RM_peakindex:] - avg_sRPS
-            tau0 = np.where(diff <= 0)[0].min()
-            tau0_index = subhalo_indices[calc_indices][sRPS_RM_peakindex:][tau0]
-            
-            if 0 in SCGM[calc_indices][:sRPS_RM_peakindex]:
-                tau100_index = subhalo_indices[np.where(sRPS == 0)[0].max()]
-            else:
-                tau100_index = subhalo_indices[0]
+            if calc_indices.size > 0:
+                avg_sRPS = np.median(sRPS[infall_index:-1][calc_indices])
                 
-            tau_RPS_sRPS[:tau100_index+1] = 100.
-            tau_RPS_sRPS[tau100_index+1:tau0_index] = 50.
-            tau_RPS_sRPS[tau0_index] = 0.
-            
-            tau0_index_RPS_sRPS = tau0_index
-            
+                calc_indices = sRPS >= 0
+                sRPS_RM = ru.RunningMedian(sRPS[calc_indices], N_RM)
+                
+                sRPS_RM_peakindex = sRPS_RM[:infall_index].argmax()
+
+                diff = sRPS_RM[sRPS_RM_peakindex:] - avg_sRPS
+                tau0 = np.where(diff <= 0)[0].min()
+                tau0_index = subhalo_indices[calc_indices][sRPS_RM_peakindex:][tau0]
+                
+                SCGM = group[SCGM_key][subhalo_indices]
+
+                if 0 in SCGM[calc_indices][:sRPS_RM_peakindex]:
+                    print('0 in SCGM')
+                    tau100_index = subhalo_indices[np.where(sRPS == 0)[0].max()]
+                else:
+                    print('z=0')
+                    tau100_index = subhalo_indices[0]
+
+                tau_RPS_sRPS[:tau100_index+1] = 100.
+                tau_RPS_sRPS[tau100_index+1:tau0_index] = 50.
+                tau_RPS_sRPS[tau0_index] = 0.
+
+                tau0_index_RPS_sRPS = tau0_index
+           
         # save the output
         dsets = [tau_RPS_tot,
                  tau_RPS_est,
