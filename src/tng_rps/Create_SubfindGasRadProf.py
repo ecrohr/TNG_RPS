@@ -843,7 +843,7 @@ def add_tracers_postprocessing():
             SCGM = group[SCGM_key][subhalo_indices]
             if 0 in SCGM:
                 SCGM_flag = True
-                start_index = np.where(SCGM == 0)[0].argmax()                
+                start_index = np.where(SCGM == 0)[0].max()                
                 subhalo_indices = subhalo_indices[start_index:]
                 SCGM = SCGM[start_index:]
                 
@@ -872,10 +872,10 @@ def add_tracers_postprocessing():
                     
             if (SCGM_flag):
                 subhalo_indices = np.where(group['SubfindID'][:] != -1)[0]
-                RPS_int_tot[subhalo_indices[:start_index]] = RPS_int_tot[subhalo_indices[start_index]]
-                SFR_int_tot[subhalo_indices[:start_index]] = SFR_int_tot[subhalo_indices[start_index]]
-                sRPS[subhalo_indices[:start_index]] = 0
-                sSFR[subhalo_indices[:start_index]] = 0
+                RPS_int_tot[subhalo_indices[:start_index+1]] = RPS_int_tot[subhalo_indices[start_index]]
+                SFR_int_tot[subhalo_indices[:start_index+1]] = SFR_int_tot[subhalo_indices[start_index]]
+                sRPS[subhalo_indices[:start_index+1]] = 0
+                sSFR[subhalo_indices[:start_index+1]] = 0
             
 
         dsets = [RPS_int_tot, SFR_int_tot, sRPS, sSFR]
