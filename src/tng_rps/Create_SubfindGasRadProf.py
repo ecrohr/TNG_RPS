@@ -1022,7 +1022,7 @@ def add_coldgasmasstracerstau():
                     SCGM = group[SCGM_key][subhalo_indices]
 
                     if 0 in SCGM[calc_indices][:sRPS_RM_peakindex]:
-                        tau100_index = subhalo_indices[np.where(sRPS == 0)[0].max()]
+                        tau100_index = subhalo_indices[np.where(SCGM == 0)[0].max()]
                     else:
                         tau100_index = subhalo_indices[0]
 
