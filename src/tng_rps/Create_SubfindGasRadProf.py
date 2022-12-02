@@ -730,10 +730,10 @@ def add_tracers():
                 # gas heating = number of bound gas cells that are heated == number of still bound gas cells
                 # include a check that these three groups make up all gas parents
                 
-                Ntot = len(np.where(strip_indices)[0])
-                Ncold = len(np.where(strip_indices & cold_indices)[0])
-                Nheat = len(np.where(~cold_indices & ~strip_indices)[0])
-                Nheat_check = len(np.where(~strip_indices)[0])
+                Ntot = np.where(strip_indices)[0].size
+                Ncold = np.where(strip_indices & cold_indices)[0].size
+                Nheat = np.where(~cold_indices & ~strip_indices)[0].size
+                Nheat_check = np.where(~strip_indices)[0].size
                 if Nheat != Nheat_check:
                     print('Warning for bound heated gas cells for %s %s subfindID %s'%(sim, snap, subfindID))
                 
@@ -743,11 +743,11 @@ def add_tracers():
                 
                 # second, star paticles: treating winds + stars identically here
                 star_indices = ParentPartType == star_ptn
-                SubhaloColdGasTracer_Star[GRP_index,snap_i] = len(star_indices[star_indices]) * tracer_mass
+                SubhaloColdGasTracer_Star[GRP_index,snap_i] = star_indices[star_indices].size * tracer_mass
 
                 # lastly, black holes
                 bh_indices = ParentPartType == bh_ptn
-                SubhaloColdGasTracer_BH[GRP_index,snap_i] = len(bh_indices[bh_indices]) * tracer_mass
+                SubhaloColdGasTracer_BH[GRP_index,snap_i] = bh_indices[bh_indices].size * tracer_mass
 
             # finish loop over subhalos at the given snapshot
 
@@ -765,7 +765,7 @@ def add_tracers():
              SubhaloColdGasTracer_BH]
 
     for key_i, key in enumerate(keys):
-        indices = np.where((f[keys[key_i]]['SubfindID'][:] != -1) & (SubhaloColdGasTracer_Mass[key_i] != -1))[0]
+        indices = np.where(f[keys[key_i]]['SubfindID'][:] != -1)[0]
         times = CosmicTimes[indices]
         time_diffs = (times[:-1] - times[1:]) * 1.0e9
 
@@ -832,7 +832,7 @@ def add_tracers_postprocessing():
         sRPS = result.copy()
         sSFR = result.copy()
         
-        subhalo_indices = np.where((group['SubfindID'][:] != -1) & (group[tracer_key][:] != -1))[0]
+        subhalo_indices = np.where(group['SubfindID'][:] != -1)[0]
         
         SCGM_flag = False
         
