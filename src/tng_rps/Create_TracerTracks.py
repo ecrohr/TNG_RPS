@@ -58,7 +58,7 @@ def create_tracertracks():
     print(outdirec)
     if not os.path.isdir(outdirec):
         os.system('mkdir %s'%outdirec)
-        
+
     # use the jobid to set the snaps we track
     parser = argparse.ArgumentParser()
     parser.add_argument("--jobid", help="slurm job id")
@@ -88,17 +88,7 @@ def create_tracertracks():
         track_tracers(snap)
         b = time.time()
         print('TNG50-1 inspected branches track_tracers at snap %03d: %.3g [s]'%(snap, (b-a)))    
-    
-    """
-    # now track tracers from snapNum until max_snap
-    for snap in range(snapNum, max_snap+1):
-        start = time.time()
-        track_tracers(snap)
-        end = time.time()
-        print('%s snap %03d track_tracers: %.3g [s]'%(sim, snap, (end-start)))
-    """
 
-    """
     # and find the unmatched tracers from snapNum + 1 until max_snap
     for snap in range(first_snap, last_snap):
         start = time.time()
@@ -106,14 +96,14 @@ def create_tracertracks():
         end = time.time()
         print('%s snap %03d find_unmatched_tracers: %.3g [s]'%(sim, snap, (end-start)))
 
-        if snap == last_snap:
+        if snap == (last_snap - 1):
             # add bound flag for the tracer parents
             snaps = range(snapNum+1, max_snap+1)
             Pool = mp.Pool(8)
             Pool.map(create_bound_flags, snaps)
             Pool.close()
             Pool.join()
-    """
+
 
     return
 
