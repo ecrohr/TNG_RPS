@@ -1056,8 +1056,8 @@ for sim in sims:
     #fname = 'subfind_%s_branches.hdf5'%sim
 
     #run_subfindGRP()
-    #add_tracers()
-    #add_tracers_postprocessing()
+    add_tracers()
+    add_tracers_postprocessing()
     add_coldgasmasstracerstau()
 
 
