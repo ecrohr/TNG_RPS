@@ -974,7 +974,7 @@ def add_coldgasmasstracerstau():
                 RPS_RM = ru.RunningMedian(RPS, N_RM)
                 out_est_RM = ru.RunningMedian(out_est, N_RM)
 
-                RPS_RM_peakindex = RPS_RM[:infall_index].argmax()
+                RPS_RM_peakindex = (RPS_RM[:infall_index] - out_est_RM[:infall_index]).argmax()
                 diff = RPS_RM[RPS_RM_peakindex:] - out_est_RM[RPS_RM_peakindex:]
                 tau0 = np.where(diff < 0)[0].min()
                 tau0_index = subhalo_indices[RPS_RM_peakindex:][tau0]
