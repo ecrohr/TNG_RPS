@@ -679,11 +679,9 @@ def add_tracers():
         all_subfindIDs[:,key_i] = f[key]['SubfindID'][:]
     
     for snap_i, snap in enumerate(snaps):
-
+        
         print(snap_i, snap)
-        if snap <= 33:
-            continue
-
+        
         offsets = h5py.File(off_direc + 'offsets_%03d.hdf5'%snap, 'r')
         tracers = h5py.File(off_direc + 'tracers_%03d.hdf5'%snap, 'r')
 
@@ -1058,8 +1056,8 @@ for sim in sims:
     #fname = 'subfind_%s_branches.hdf5'%sim
 
     #run_subfindGRP()
-    #add_tracers()
-    #add_tracers_postprocessing()
+    add_tracers()
+    add_tracers_postprocessing()
     add_coldgasmasstracerstau()
 
 
