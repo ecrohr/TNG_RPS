@@ -53,8 +53,7 @@ def create_tracertracks():
 
     big_array_length = int(1e9)
    
-    #outdirec = '../Output/%s_tracers_%d-%d/'%(sim,subfindIDs[0],subfindIDs[-1])
-    outdirec = '../Output/%s_tracers_zooniverse/'%(sim)
+    outdirec = '../Output/%s_tracers_zooniverse_hotgas/'%(sim)
     print(outdirec)
     if not os.path.isdir(outdirec):
         os.system('mkdir %s'%outdirec)
@@ -66,11 +65,11 @@ def create_tracertracks():
     jobid = int(args.jobid)
     
     # let's assume we can go through 5 snapshots per job (i.e. 24 hours)
-    Nsnapsperjob = 5
+    Nsnapsperjob = 10
     first_snap = snapNum + Nsnapsperjob * jobid
     last_snap = first_snap + Nsnapsperjob
-    if last_snap > 34:
-        last_snap = 34
+    if last_snap >= 100:
+        last_snap = 100
         
     for snap in range(first_snap, last_snap):
         if snap == snapNum:
@@ -89,6 +88,7 @@ def create_tracertracks():
         b = time.time()
         print('TNG50-1 inspected branches track_tracers at snap %03d: %.3g [s]'%(snap, (b-a)))    
 
+    """
     # and find the unmatched tracers from snapNum + 1 until max_snap
     for snap in range(first_snap, last_snap):
         start = time.time()
@@ -103,7 +103,7 @@ def create_tracertracks():
             Pool.map(create_bound_flags, snaps)
             Pool.close()
             Pool.join()
-
+    """
 
     return
 
@@ -382,8 +382,6 @@ def find_coldgascells(subfindIDs, snap):
     ParticleIDs = np.zeros(big_array_length, dtype=dtype)
     Particle_indices = np.zeros(big_array_length, dtype=int)
 
-    tcoldgas = 10.**(4.5) # [K]
-
     for i, subfindID in enumerate(subfindIDs):
 
         if i > 0:
@@ -397,7 +395,7 @@ def find_coldgascells(subfindIDs, snap):
         end = r['lenType'][gas_ptn]
 
         temps = gas_cells['Temperature'][start:start+end]
-        indices = temps <= tcoldgas
+        indices = temps > tcoldgas
 
         lengths[i] = len(indices[indices])
 
