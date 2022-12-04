@@ -653,7 +653,7 @@ def add_tracers():
     keys = np.array(list(f.keys()))
 
     group = f[keys[0]]
-    NsubfindIDs = len(keys)
+    NsubfindIDs = keys.size
     max_snap = np.max(group['SnapNum'])
     min_snap = np.min(group['SnapNum'])
     snaps = np.arange(max_snap, min_snap-1, -1)
@@ -664,14 +664,14 @@ def add_tracers():
     tracer_mass = header['MassTable'][tracer_ptn] * 1.0e10 / h
     
     # initialize results
-    SubhaloColdGasTracer_Mass      = np.ones((NsubfindIDs, len(snaps))) * -1.
-    SubhaloColdGasTracer_new       = np.ones((NsubfindIDs, len(snaps))) * -1.
-    SubhaloColdGasTracer_out       = np.ones((NsubfindIDs, len(snaps))) * -1.
-    SubhaloColdGasTracer_StripTot  = np.ones((NsubfindIDs, len(snaps))) * -1.
-    SubhaloColdGasTracer_StripCold = np.ones((NsubfindIDs, len(snaps))) * -1.
-    SubhaloColdGasTracer_Heat      = np.ones((NsubfindIDs, len(snaps))) * -1.
-    SubhaloColdGasTracer_Star      = np.ones((NsubfindIDs, len(snaps))) * -1.
-    SubhaloColdGasTracer_BH        = np.ones((NsubfindIDs, len(snaps))) * -1.
+    SubhaloColdGasTracer_Mass      = np.ones((NsubfindIDs, snaps.size)) * -1.
+    SubhaloColdGasTracer_new       = SubhaloColdGasTracer_Mass.copy()
+    SubhaloColdGasTracer_out       = SubhaloColdGasTracer_Mass.copy()
+    SubhaloColdGasTracer_StripTot  = SubhaloColdGasTracer_Mass.copy()
+    SubhaloColdGasTracer_StripCold = SubhaloColdGasTracer_Mass.copy()
+    SubhaloColdGasTracer_Heat      = SubhaloColdGasTracer_Mass.copy()
+    SubhaloColdGasTracer_Star      = SubhaloColdGasTracer_Mass.copy()
+    SubhaloColdGasTracer_BH        = SubhaloColdGasTracer_Mass.copy()
 
     # tabulate all GRP subfindIDs at each snap
     all_subfindIDs = np.zeros((snaps.size, keys.size), dtype=int) - 1
@@ -700,7 +700,7 @@ def add_tracers():
                                                       * tracer_mass)
 
         # for every snap except min_snap (the last one), calculate the tracer derivatives
-        if snap_i != (len(snaps) - 1):
+        if snap_i != (snaps.size - 1):
 
             # loop over each subhalo at this snapshot to split the out sample into the various components
             for subfind_i, subfindID in enumerate(offsets_group['SubfindID'][:][tracers_indices]):
