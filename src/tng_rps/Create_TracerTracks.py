@@ -53,7 +53,7 @@ def create_tracertracks():
 
     big_array_length = int(1e9)
    
-    outdirec = '../Output/%s_tracers_zooniverse_hotgas/'%(sim)
+    outdirec = '../Output/%s_tracers_zooniverse/'%(sim)
     print(outdirec)
     if not os.path.isdir(outdirec):
         os.system('mkdir %s'%outdirec)
@@ -172,9 +172,6 @@ def track_tracers(snap):
 
         start = offsets[subfind_i]
         stop = start + lengths[subfind_i]
-
-        if stop == start:
-            continue
 
         sub_indices = ((indices1 >= start) & (indices1 < stop))
         Ntracers = len(sub_indices[sub_indices])
@@ -395,7 +392,7 @@ def find_coldgascells(subfindIDs, snap):
         end = r['lenType'][gas_ptn]
 
         temps = gas_cells['Temperature'][start:start+end]
-        indices = temps > tcoldgas
+        indices = temps <= tcoldgas
 
         lengths[i] = len(indices[indices])
 
