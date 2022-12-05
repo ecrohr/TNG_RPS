@@ -219,24 +219,6 @@ def load_subfindsnapshot_flags():
         
     return result
 
-
-def load_dict(key, clean=False):
-    
-    # key == [inspected, jellyfish, nonjellyf] -- otherwise file doesn't exist
-    fname = return_outfname(sim=sim, key=key, zooniverse=zooniverse, clean=clean)
-    
-    result = {}
-        
-    with h5py.File(outdirec + fname, 'a') as f:
-        for group_key in f.keys():
-            result[group_key] = {}
-            for dset_key in f[group_key].keys():
-                result[group_key][dset_key] = f[group_key][dset_key][:]
-        f.close()
-        
-    return result
-
-
 # split the inspected branches into jellyfish and nonjellyf
 def split_inspected_branches():
     
@@ -470,6 +452,67 @@ def combine_taudicts():
         f1.close()
 
     return
+
+def split_tau_gasz0(sim='TNG50-1', key=jel_key):
+    """
+    Split the tau catalog into two samples: those with cold gas 
+    at z=0, and those without 
+    """
+
+    fname = 'zooniverse_%s_%s_clean_tau.hdf5'%(sim, key)
+    tau_dict = h5py.File(outdirec + fname, 'r')
+    group = tau_dict['Group']
+    split_key = 'SubhaloColdGasMass_z0'
+
+    mask = group[split_key][:] == 0
+
+    result_gas = {}
+    result_nogas = {}
+
+    for group_key in group.keys():
+        result_nogas[group_key] = group[group_key][mask]
+        result_gas[group_key] = group[group_key][~mask]
+
+    fname_gas = 'zooniverse_%s_%s_clean_tau_gasz0.hdf5'%(sim, key)
+    fname_nogas = 'zooniverse_%s_%s_clean_tau_nogasz0.hdf5'%(sim, key)
+
+    tau_fnames = [fname_gas, fname_nogas]
+    results = [result_gas, result_nogas]
+
+    for i, tau_fname in enumerate(tau_fnames):
+        result = results[i]
+        if (os.path.exists(outdirec + tau_fname)):
+            os.system('rm %s'%(outdirec + tau_fname))
+        with h5py.File(outdirec + tau_fname, 'w') as outf:
+            group = outf.require_group('Group')
+            for dset_key in result.keys():  
+                dset = result[dset_key]
+                dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+                dataset[:] = dset
+
+            outf.close() 
+
+    return
+
+def load_dict(key, clean=False):
+    """
+    imports the hdf5 catalog and returns the dictionary.
+    """
+    
+    # key == [inspected, jellyfish, nonjellyf] -- otherwise file doesn't exist
+    fname = return_outfname(sim=sim, key=key, zooniverse=zooniverse, clean=clean)
+    
+    result = {}
+        
+    with h5py.File(outdirec + fname, 'a') as f:
+        for group_key in f.keys():
+            result[group_key] = {}
+            for dset_key in f[group_key].keys():
+                result[group_key][dset_key] = f[group_key][dset_key][:]
+        f.close()
+        
+    return result
+
 
 def return_outfname(sim='TNG50-1', key='inspected', zooniverse=True, clean=False):
     """
