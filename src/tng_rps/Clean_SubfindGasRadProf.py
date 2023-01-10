@@ -536,7 +536,7 @@ for sim in ['TNG50-1']:
     outdirec = '../Output/%s_subfindGRP/'%sim
     outfname = return_outfname(sim=sim, key=ins_key, zooniverse=zooniverse, clean=False)
     
-    clean_zooniverseGRP(savekeys=True)
+    #clean_zooniverseGRP(savekeys=True)
 
 for key in taudict_keys:
     _ = return_taudict(key)
