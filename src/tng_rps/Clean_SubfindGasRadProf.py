@@ -303,7 +303,7 @@ def return_taudict(key):
     
     for group_index, group_key in enumerate(result_keys):
         group = result[group_key]
-        subfind_indices = group['SubfindID'] != -1
+        subfind_indices = np.where(group['SubfindID'] != -1)[0]
     
         # if just starting, then initialize the dictionary 
         if group_index == 0:
@@ -531,15 +531,15 @@ def return_outfname(sim='TNG50-1', key='inspected', zooniverse=True, clean=False
             outfname += '.hdf5'
         return outfname
 
-zooniverse = True
+zooniverse = False
 for sim in ['TNG50-1']:
     outdirec = '../Output/%s_subfindGRP/'%sim
     outfname = return_outfname(sim=sim, key=ins_key, zooniverse=zooniverse, clean=False)
     
-    #clean_zooniverseGRP(savekeys=True)
+    clean_zooniverseGRP(savekeys=True)
 
 for key in taudict_keys:
-    _ = return_taudict(key)
+    #_ = return_taudict(key)
     split_tau_gasz0(key=key)
 
 #combine_taudicts()
