@@ -40,7 +40,7 @@ out_keys = [nonz0_key, beforesnapfirst_key, backsplash_key,
             preprocessed_key, clean_key]
 
 
-def clean_zooniverseGRP(savekeys=False):
+def clean_zooniverseGRP(zooniverse=True, savekeys=False):
 
     
     dic        = load_dict(ins_key)
@@ -78,16 +78,20 @@ def clean_zooniverseGRP(savekeys=False):
         outf.close()
     
 
-    # now split the inspected branches into jellyfish, if there's a jellyfish classificaiton
-    # at snap >= snap_first, and into nonjellyf, if there are no jelly classiifications at snap >= snap_first
-    # this means that some of the branches with a jellyfish classification may become nonjellyf branches!
-    split_inspected_branches()
-    # reorganize each of the three sets of branches [inspected, jellyfish, nonjellyf] into tau dictionaries
+    if zooniverse:
+        # now split the inspected branches into jellyfish, if there's a jellyfish classificaiton
+        # at snap >= snap_first, and into nonjellyf, if there are no jelly classiifications at snap >= snap_first
+        # this means that some of the branches with a jellyfish classification may become nonjellyf branches!
+        split_inspected_branches()
+        # reorganize each of the three sets of branches [inspected, jellyfish, nonjellyf] into tau dictionaries
  
 
-    keys = ['inspected', 'jellyfish', 'nonjellyf']
-    for key in keys:
-        _ = return_taudict(key)
+        keys = ['inspected', 'jellyfish', 'nonjellyf']
+        for key in keys:
+            _ = return_taudict(key, tracers=zooniverse)
+
+    else:
+        _ = return_taudict(key, tracers=zooniverse)
 
     return
 
@@ -269,7 +273,7 @@ def split_inspected_branches():
 # we want an array of scalar quantities at important times for various plots.
 # namely, we care about times tau0, tau10, and tau90 defined by infall and peak MCgas, at z=0, and quenching time
 
-def return_taudict(key):
+def return_taudict(key, tracers=False):
             
     def return_tauresult_key(grp_key, tau_key, tau_val):
         return (grp_key + '_' + tau_key + '%d'%tau_val)
@@ -281,18 +285,22 @@ def return_taudict(key):
     tauresult = {}
     tau_infall_key = 'tau_infall'
     tau_medpeak_key = 'tau_medpeak'
-    tau_RPS_est_infall_key = 'tau_RPS_est'
-    tau_RPS_tot_infall_key = 'tau_RPS_tot'
-    tau_RPS_sRPS_key = 'tau_RPS_sRPS'
-    tau_keys = [tau_infall_key, tau_medpeak_key, tau_RPS_est_infall_key, tau_RPS_tot_infall_key,
-                tau_RPS_sRPS_key]
+    tau_keys = [tau_infall_key, tau_medpeak_key]
 
     tauvals_dict = {}
     tauvals_dict[tau_infall_key] = np.array([0., 90.])
     tauvals_dict[tau_medpeak_key] = np.array([0., 10., 90.])
-    tauvals_dict[tau_RPS_est_infall_key] = np.array([0., 90., 100.])
-    tauvals_dict[tau_RPS_tot_infall_key] = np.array([0., 90., 100.])
-    tauvals_dict[tau_RPS_sRPS_key] = np.array([0., 100.])
+
+    if tracers:
+        tau_RPS_est_infall_key = 'tau_RPS_est'
+        tau_RPS_tot_infall_key = 'tau_RPS_tot'
+        tau_RPS_sRPS_key = 'tau_RPS_sRPS'
+        tau_keys = [tau_infall_key, tau_medpeak_key, tau_RPS_est_infall_key, tau_RPS_tot_infall_key,
+                    tau_RPS_sRPS_key]
+
+        tauvals_dict[tau_RPS_est_infall_key] = np.array([0., 90., 100.])
+        tauvals_dict[tau_RPS_tot_infall_key] = np.array([0., 90., 100.])
+        tauvals_dict[tau_RPS_sRPS_key] = np.array([0., 100.])
             
     grp_keys = ['SnapNum', 'CosmicTime', 'HostCentricDistance_norm', 'HostGroup_M_Crit200',
                 'HostGroup_R_Crit200', 'HostSubhalo_Mstar_Rgal', 'SubhaloMass',
@@ -530,15 +538,16 @@ def return_outfname(sim='TNG50-1', key='inspected', zooniverse=True, clean=False
             outfname += '.hdf5'
         return outfname
 
-zooniverse = True
+zooniverse = False
 for sim in ['TNG50-1']:
     outdirec = '../Output/%s_subfindGRP/'%sim
     outfname = return_outfname(sim=sim, key=ins_key, zooniverse=zooniverse, clean=False)
     
-    #clean_zooniverseGRP(savekeys=True)
+    clean_zooniverseGRP(zooniverse=zooniverse, savekeys=True)
 
-for key in taudict_keys:
-    #_ = return_taudict(key)
-    split_tau_gasz0(key=key)
+if zooniverse:
+    for key in taudict_keys:
+        #_ = return_taudict(key)
+        split_tau_gasz0(key=key)
 
 #combine_taudicts()
