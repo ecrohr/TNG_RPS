@@ -846,15 +846,16 @@ def add_tracers_postprocessing():
                     
             infall_index = np.where(group['memberlifof_flags'][subhalo_indices] == 1)[0].max() + 1
 
-            SCGM = group[SCGM_key][subhalo_indices]
-            if 0 in SCGM:
-                SCGM_flag = True
-                start_index = np.where(SCGM[:infall_index] == 0)[0].max()                
-                subhalo_indices = subhalo_indices[start_index:]
-                SCGM = SCGM[start_index:]
-                
             if subhalo_indices.size > 1:
-
+                SCGM = group[SCGM_key][subhalo_indices]
+                if 0 in SCGM:
+                    start_index = np.where(SCGM[:infall_index] == 0)[0]
+                    if start_index.size > 0:
+                        start_index = start_index.max()
+                        SCGM_flag = True
+                        subhalo_indices = subhalo_indices[start_index:]
+                        SCGM = SCGM[start_index:]
+                
                 CosmicTimes = group['CosmicTime'][subhalo_indices]
                 RPS = group[RPS_key][subhalo_indices]
                 SFR = group[SFR_key][subhalo_indices]
@@ -1058,15 +1059,14 @@ sims = ['TNG50-1']
 for sim in sims:
     basePath = ru.ret_basePath(sim)
     #direc = '../Output/zooniverse/'
-    #fname = 'zooniverse_%s_%s_branches.hdf5'%(sim, key)
+    fname = 'zooniverse_%s_%s_branches.hdf5'%(sim, key)
 
     direc = '../Output/%s_subfindGRP/'%sim
-    fname = 'subfind_%s_branches.hdf5'%sim
+    #fname = 'subfind_%s_branches.hdf5'%sim
 
-    run_subfindGRP()
+    #run_subfindGRP()
     #add_tracers()
-    #add_tracers_postprocessing()
-    #add_coldgasmasstracerstau()
-    #add_Nperipass()
+    add_tracers_postprocessing()
+    add_coldgasmasstracerstau()
 
 
