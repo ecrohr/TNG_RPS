@@ -42,8 +42,8 @@ out_keys = [nonz0_key, beforesnapfirst_key, backsplash_key,
 
 def clean_zooniverseGRP(zooniverse=True, savekeys=False):
 
-    
-    dic        = load_dict(ins_key)
+    infname    = return_outfname(zooniverse=zooniverse, clean=False)
+    dic        = load_dict(infname)
     keys_dic   = run_clean_zooniverseGRP(dic)
     final_keys = keys_dic[clean_key]
     
@@ -66,7 +66,7 @@ def clean_zooniverseGRP(zooniverse=True, savekeys=False):
         new_key = '%08d'%(group['SubfindID'][0])
         result[new_key] = group
 
-    fname = return_outfname(clean=True)
+    fname = return_outfname(clean=True, zooniverse=zooniverse)
     with h5py.File(outdirec + fname, 'a') as outf:
         for group_key in result.keys():
             group = outf.require_group(group_key)
@@ -134,7 +134,10 @@ def run_clean_zooniverseGRP(dic):
             continue
 
         # 2. must have at least one inspection at snap >= snap_first
-        ins_flag = max(ins_flags[SnapNum >= snap_first])
+        if zooniverse:
+            ins_flag = max(ins_flags[SnapNum >= snap_first])
+        else:
+            ins_flag = max(SnapNum >= snap_first)
         if not (ins_flag):
             beforesnapfirst_keys.append(key)
             continue
@@ -157,21 +160,12 @@ def run_clean_zooniverseGRP(dic):
         # 4. no pre-processed galaxies -- galaxy must not be a satellite of
         #    a group of mass M200c > Mlolim other than its z=0 host for more than
         #    NSnaps_PreProcessed consecutive snaps.
-        #    only consider times after tau_0 (time of max cold gas mass)
-        #    note that we can only check for branches that have a defined tau_0
-        #    and that there are at least Nsnaps_check snaps after tau_0 
-        tau_medpeak = group['tau_medpeak']
-        if np.max(tau_medpeak) > 0:
-            tau0_index = np.max(np.argwhere(tau_medpeak >= 0))
-            central    = central[:tau0_index]
-            in_z0_host = in_z0_host[:tau0_index]
-            host_m200c = host_m200c[:tau0_index]
-            if len(in_z0_host) > Nsnaps_PreProcessed:
-                preprocessed_indices = ~central & ~in_z0_host & host_m200c
-                preprocessed_check = [True] * Nsnaps_PreProcessed
-                if (ru.is_slice_in_list(preprocessed_check, list(preprocessed_indices))):
-                    preprocessed_keys.append(key)
-                    continue
+        if len(in_z0_host) > Nsnaps_PreProcessed:
+            preprocessed_indices = ~central & ~in_z0_host & host_m200c
+            preprocessed_check = [True] * Nsnaps_PreProcessed
+            if (ru.is_slice_in_list(preprocessed_check, list(preprocessed_indices))):
+                preprocessed_keys.append(key)
+                continue
                     
         # galaxy has passed every test -- add to the cleaned list
         clean_keys.append(key)
@@ -273,12 +267,13 @@ def split_inspected_branches():
 # we want an array of scalar quantities at important times for various plots.
 # namely, we care about times tau0, tau10, and tau90 defined by infall and peak MCgas, at z=0, and quenching time
 
-def return_taudict(key, tracers=False):
+def return_taudict(zooniverse=True):
             
     def return_tauresult_key(grp_key, tau_key, tau_val):
         return (grp_key + '_' + tau_key + '%d'%tau_val)
 
-    result = load_dict(key, clean=True)
+    infname = return_outfname(sim=sim, key=key, zooniverse=zooniverse, clean=clean)
+    result = load_dict(infname)
     result_keys = list(result.keys())
     result_keys.sort()
 
@@ -413,7 +408,10 @@ def return_taudict(key, tracers=False):
                          / tauresult['HostGroup_M_Crit200_z0'])
     
     # save the tau dictionary
-    fname = 'zooniverse_%s_%s_clean_tau.hdf5'%(sim, key)
+    if zooniverse:
+        fname = 'zooniverse_%s_%s_clean_tau.hdf5'%(sim, key)
+    else:
+        fname = 'subfind_%s_clean_tau.hdf5'%(sim)
     with h5py.File(outdirec + fname, 'a') as outf:
         group = outf.require_group('Group')        
         for dset_key in tauresult.keys():  
@@ -503,14 +501,11 @@ def split_tau_gasz0(sim='TNG50-1', key=jel_key):
 
     return
 
-def load_dict(key, clean=False):
+def load_dict(fname):
     """
     imports the hdf5 catalog and returns the dictionary.
     """
-    
-    # key == [inspected, jellyfish, nonjellyf] -- otherwise file doesn't exist
-    fname = return_outfname(sim=sim, key=key, zooniverse=zooniverse, clean=clean)
-    
+       
     result = {}
         
     with h5py.File(outdirec + fname, 'a') as f:
@@ -528,7 +523,11 @@ def return_outfname(sim='TNG50-1', key='inspected', zooniverse=True, clean=False
     return the output filename.
     """
     if not zooniverse:
-        outfname = 'subfind_%s_branches.hdf5'%sim
+        outfname = 'subfind_%s_branches'%sim
+        if clean:
+            outfname += '_clean.hdf5'
+        else:
+            outfname += '.hdf5
         return outfname
     else:
         outfname = 'zooniverse_%s_%s_branches'%(sim, key)
@@ -538,12 +537,13 @@ def return_outfname(sim='TNG50-1', key='inspected', zooniverse=True, clean=False
             outfname += '.hdf5'
         return outfname
 
+
 zooniverse = False
 for sim in ['TNG50-1']:
     outdirec = '../Output/%s_subfindGRP/'%sim
     outfname = return_outfname(sim=sim, key=ins_key, zooniverse=zooniverse, clean=False)
     
-    clean_zooniverseGRP(zooniverse=zooniverse, savekeys=True)
+    clean_zooniverseGRP(zooniverse=zooniverse, savekeys=False)
 
 if zooniverse:
     for key in taudict_keys:
