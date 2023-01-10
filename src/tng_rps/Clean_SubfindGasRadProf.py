@@ -272,7 +272,11 @@ def return_taudict(zooniverse=True, clean=True):
     def return_tauresult_key(grp_key, tau_key, tau_val):
         return (grp_key + '_' + tau_key + '%d'%tau_val)
 
-    infname = return_outfname(sim=sim, key=key, zooniverse=zooniverse, clean=clean)
+    if zooniverse:
+        infname = return_outfname(sim=sim, key=key, zooniverse=zooniverse, clean=clean)
+    else:
+        infname = return_outfname(sim=sim, zooniverse=zooniverse, clean=clean)
+        
     result = load_dict(infname)
     result_keys = list(result.keys())
     result_keys.sort()
@@ -286,7 +290,7 @@ def return_taudict(zooniverse=True, clean=True):
     tauvals_dict[tau_infall_key] = np.array([0., 90.])
     tauvals_dict[tau_medpeak_key] = np.array([0., 10., 90.])
 
-    if tracers:
+    if zooniverse:
         tau_RPS_est_infall_key = 'tau_RPS_est'
         tau_RPS_tot_infall_key = 'tau_RPS_tot'
         tau_RPS_sRPS_key = 'tau_RPS_sRPS'
