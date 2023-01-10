@@ -839,15 +839,17 @@ def add_tracers_postprocessing():
         sSFR = result.copy()
         
         subhalo_indices = np.where(group['SubfindID'][:] != -1)[0]
-        
+                
         SCGM_flag = False
         
         if subhalo_indices.size > 1:
-            
+                    
+            infall_index = np.where(group['memberlifof_flags'][subhalo_indices] == 1)[0].max() + 1
+
             SCGM = group[SCGM_key][subhalo_indices]
             if 0 in SCGM:
                 SCGM_flag = True
-                start_index = np.where(SCGM == 0)[0].max()                
+                start_index = np.where(SCGM[:infall_index] == 0)[0].max()                
                 subhalo_indices = subhalo_indices[start_index:]
                 SCGM = SCGM[start_index:]
                 
