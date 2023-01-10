@@ -303,6 +303,7 @@ def return_taudict(key):
     
     for group_index, group_key in enumerate(result_keys):
         group = result[group_key]
+        subfind_indices = group['SubfindID'] != -1
     
         # if just starting, then initialize the dictionary 
         if group_index == 0:
@@ -332,16 +333,16 @@ def return_taudict(key):
     
         # for each of the definitions of tau, let's tabulate important properties at tau_X 
         for tau_key in tau_keys:
-            tau = group[tau_key]
+            tau = group[tau_key][subfind_indices]
             tau_vals = tauvals_dict[tau_key]
             for tau_val in tau_vals:
                 if tau.max() >= tau_val:
                     if tau_val == tau_vals[0]:
-                        tau_index = np.where((tau_val - tau) >= 0)[0].min()
+                        tau_index = subfind_indices[np.where((tau_val - tau) >= 0)[0].min()]
                     elif (tau_val == tau_vals[-1]):
-                        tau_index = np.where((tau - tau_val) >= 0)[0].max()
+                        tau_index = subfind_indices[np.where((tau - tau_val) >= 0)[0].max()]
                     else:
-                        tau_index = np.where((tau - tau_val) >= 0)[0].max()
+                        tau_index = subfind_indices[np.where((tau - tau_val) >= 0)[0].max()]
                     for grp_key in grp_keys:
                         tauresult_key = return_tauresult_key(grp_key, tau_key, tau_val)
                         tauresult[tauresult_key][group_index] = group[grp_key][tau_index]
