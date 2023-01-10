@@ -1056,15 +1056,15 @@ sims = ['TNG50-1']
 for sim in sims:
     basePath = ru.ret_basePath(sim)
     #direc = '../Output/zooniverse/'
-    fname = 'zooniverse_%s_%s_branches.hdf5'%(sim, key)
+    #fname = 'zooniverse_%s_%s_branches.hdf5'%(sim, key)
 
     direc = '../Output/%s_subfindGRP/'%sim
-    #fname = 'subfind_%s_branches.hdf5'%sim
+    fname = 'subfind_%s_branches.hdf5'%sim
 
-    #run_subfindGRP()
+    run_subfindGRP()
     #add_tracers()
     #add_tracers_postprocessing()
     #add_coldgasmasstracerstau()
-    add_Nperipass()
+    #add_Nperipass()
 
 
