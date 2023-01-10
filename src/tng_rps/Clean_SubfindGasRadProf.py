@@ -465,10 +465,7 @@ def split_tau_gasz0(sim='TNG50-1', key=jel_key):
     tau_dict = h5py.File(outdirec + fname, 'r')
     group = tau_dict['Group']
     split_key = 'SubhaloColdGasMass_z0'
-    split_key_alt = 'CosmicTime_tau_RPS_tot100'
-    split_key_alt_check = group['CosmicTime_z0'][0]
-
-    mask = (group[split_key][:] == 0) or (group[split_key_alt[:] < split_key_alt_check)
+    mask = (group[split_key][:] == 0)
 
     result_gas = {}
     result_nogas = {}
@@ -533,7 +530,7 @@ def return_outfname(sim='TNG50-1', key='inspected', zooniverse=True, clean=False
             outfname += '.hdf5'
         return outfname
 
-zooniverse = False
+zooniverse = True
 for sim in ['TNG50-1']:
     outdirec = '../Output/%s_subfindGRP/'%sim
     outfname = return_outfname(sim=sim, key=ins_key, zooniverse=zooniverse, clean=False)
