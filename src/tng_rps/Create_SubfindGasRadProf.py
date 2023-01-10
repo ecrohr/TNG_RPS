@@ -426,7 +426,6 @@ def add_dmin():
     return
         
     
-
 def add_Nperipass(mindist_phys=1000.0, mindist_norm=2.0):
     """
     add flags for pericenter passages.
@@ -472,11 +471,9 @@ def add_Nperipass(mindist_phys=1000.0, mindist_norm=2.0):
                 Dperi_phys_min[peri_indices[i-1]+1:peri_index+1] = np.min(Dperi_phys[i:])
                 
                 apo_start_index = peri_indices[i-1]
-                
-            
-            max_index_phys = argrelextrema(HostCentricDistance_phys[apo_start_index:peri_index], np.greater)[0]
-            if max_index_phys.size == 1:
-                Napopass[:apo_start_index+max_index_phys[0]+1] += 1
+                          
+            max_index_phys = np.argmax(HostCentricDistance_phys[apo_start_index:peri_index])
+            Napopass[:apo_start_index+max_index_phys+1] += 1                    
                 
         dsets = [Nperipass, Dperi_norm_min, Dperi_phys_min, Napopass]
 
@@ -1065,9 +1062,9 @@ for sim in sims:
     #fname = 'subfind_%s_branches.hdf5'%sim
 
     #run_subfindGRP()
-    add_tracers()
-    add_tracers_postprocessing()
-    add_coldgasmasstracerstau()
-
+    #add_tracers()
+    #add_tracers_postprocessing()
+    #add_coldgasmasstracerstau()
+    add_Nperipass()
 
 
