@@ -298,7 +298,7 @@ def return_taudict(key):
                 'HostGroup_R_Crit200', 'HostSubhalo_Mstar_Rgal', 'SubhaloMass',
                 'Subhalo_Mstar_Rgal',
                 'SubhaloColdGasMass', 'SubhaloHotGasMass', 'SubhaloGasMass',
-                'Nperipass', 'min_Dperi_norm', 'min_Dperi_phys', 'Napocenter',
+                'Nperipass', 'min_Dperi_norm', 'min_Dperi_phys', 'Napopass',
                 'min_HostCentricDistance_norm', 'min_HostCentricDistance_phys']
     
     for group_index, group_key in enumerate(result_keys):
