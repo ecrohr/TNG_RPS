@@ -267,7 +267,7 @@ def split_inspected_branches():
 # we want an array of scalar quantities at important times for various plots.
 # namely, we care about times tau0, tau10, and tau90 defined by infall and peak MCgas, at z=0, and quenching time
 
-def return_taudict(zooniverse=True):
+def return_taudict(zooniverse=True, clean=True):
             
     def return_tauresult_key(grp_key, tau_key, tau_val):
         return (grp_key + '_' + tau_key + '%d'%tau_val)
@@ -543,8 +543,9 @@ for sim in ['TNG50-1']:
     outdirec = '../Output/%s_subfindGRP/'%sim
     outfname = return_outfname(sim=sim, key=ins_key, zooniverse=zooniverse, clean=False)
     
-    clean_zooniverseGRP(zooniverse=zooniverse, savekeys=False)
-
+    #clean_zooniverseGRP(zooniverse=zooniverse, savekeys=False)
+    return_taudict(zooniverse=False, clean=False)
+            
 if zooniverse:
     for key in taudict_keys:
         #_ = return_taudict(key)
