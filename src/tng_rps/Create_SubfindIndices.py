@@ -83,11 +83,25 @@ def run_subfindindices(mp_flag=False, zooniverse_flag=False):
 def initialize_subfindindices():
     """
     Define SubfindIDs and SnapNums to be tracked.
+    Returns all z=0 satellites with Mstar > 10^8.3
+    and SubhaloFlag == 1. 
     Returns SnapNums, SubfindIDs
     """
+    
+    star_ptn = il.util.partTypeNum('star')
 
-    SubfindIDs = [30, 282800, 363014]
-    SnapNums   = np.ones(len(SubfindIDs), dtype=int) * 99
+    subhalo_fields = ['SubhaloFlag', 'SubhaloMassInRadType']
+    subhalo = il.groupcat.loadSubhalos(basePath, 99, fields=subhalo_fields)
+
+    halo_fields = ['GroupFirstSub']
+    GroupFirstSub = il.groupcat.loadHalos(basePath, 99, fields=halo_fields)
+
+    Mstar = subhalo['SubhaloMassInRadType'][:,star_ptn] * 1.0e10 / h
+    Mstar_lolim = 10.**(8.3) # Msun
+    subfind_indices = np.where((subhalo['SubhaloFlag'] == 1) & (Mstar >= Mstar_lolim))[0]
+    indices = np.isin(subfind_indices, GroupFirstSub)
+    SubfindIDs = subfind_indices[~indices]
+    SnapNums = np.ones(SubfindIDs.size, dtype=int) * 99 
 
     return SnapNums, SubfindIDs
 
@@ -306,9 +320,9 @@ def return_subfindindices(snap, subfindID, min_snap=0, max_snap=99):
     return result
 
 
-sims = ['TNG100-1']
+sims = ['TNG50-1']
 mp_flag = True
-zooniverse_flag = True
+zooniverse_flag = False
 
 for sim in sims:
     sim = sim
