@@ -433,7 +433,7 @@ def add_Nperipass(mindist_phys=1000.0, mindist_norm=2.0):
     """
     
     f = h5py.File(direc+fname, 'a')
-    keys = ['Nperipass', 'min_Dperi_norm', 'min_Dperi_phys']
+    keys = ['Nperipass', 'min_Dperi_norm', 'min_Dperi_phys', 'Napopass']
     
     for group_key in f.keys():
         group = f[group_key]
@@ -453,9 +453,10 @@ def add_Nperipass(mindist_phys=1000.0, mindist_norm=2.0):
         Dperi_phys = HostCentricDistance_phys[peri_indices]
         Dperi_norm = HostCentricDistance_norm[peri_indices]
     
-        Nperipass = np.zeros(len(HostCentricDistance_phys), dtype=int)
-        Dperi_norm_min = np.zeros(len(Nperipass), dtype=HostCentricDistance_norm.dtype)
-        Dperi_phys_min = np.zeros(len(Nperipass), dtype=HostCentricDistance_phys.dtype)
+        Nperipass = np.zeros(HostCentricDistance_phys.size, dtype=int)
+        Dperi_norm_min = np.zeros(Nperipass.size, dtype=HostCentricDistance_norm.dtype)
+        Dperi_phys_min = Dperi_norm_min.copy()
+        Napopass = Nperipass.copy()
         for i, peri_index in enumerate(peri_indices):
             Nperipass[:peri_index+1] += 1
 
@@ -463,13 +464,21 @@ def add_Nperipass(mindist_phys=1000.0, mindist_norm=2.0):
             if i == 0:
                 Dperi_norm_min[:peri_index+1] = np.min(Dperi_norm[i:])
                 Dperi_phys_min[:peri_index+1] = np.min(Dperi_phys[i:])
+                
+                apo_start_index = 0
 
             else:
                 Dperi_norm_min[peri_indices[i-1]+1:peri_index+1] = np.min(Dperi_norm[i:])
                 Dperi_phys_min[peri_indices[i-1]+1:peri_index+1] = np.min(Dperi_phys[i:])
                 
-
-        dsets = [Nperipass, Dperi_norm_min, Dperi_phys_min]
+                apo_start_index = peri_indices[i-1]
+                
+            
+            max_index_phys = argrelextrema(HostCentricDistance_phys[apo_start_index:peri_index], np.greater)[0]
+            if max_index_phys.size == 1:
+                Napopass[:apo_start_index+max_index_phys[0]+1] += 1
+                
+        dsets = [Nperipass, Dperi_norm_min, Dperi_phys_min, Napopass]
 
         for dset_index, dset_key in enumerate(keys):
             dset = dsets[dset_index]
