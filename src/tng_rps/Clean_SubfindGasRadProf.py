@@ -24,6 +24,7 @@ global outfname, outdirec, zooniverse
 ins_key = 'inspected'
 jel_key = 'jellyfish'
 non_key = 'nonjellyf'
+taudict_keys = [ins_key, jel_key, non_key]
 
 snap_first = 67
 Nsnaps_PreProcessed = 5
@@ -535,5 +536,8 @@ for sim in ['TNG50-1']:
     outfname = return_outfname(sim=sim, key=ins_key, zooniverse=zooniverse, clean=False)
     
     clean_zooniverseGRP(savekeys=True)
-    
+
+for key in taudict_keys:
+    split_tau_gasz0(key=key)
+
 #combine_taudicts()
