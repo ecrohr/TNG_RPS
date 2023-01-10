@@ -298,7 +298,7 @@ def return_taudict(key):
                 'HostGroup_R_Crit200', 'HostSubhalo_Mstar_Rgal', 'SubhaloMass',
                 'Subhalo_Mstar_Rgal',
                 'SubhaloColdGasMass', 'SubhaloHotGasMass', 'SubhaloGasMass',
-                'Nperipass', 'min_Dperi_norm', 'min_Dperi_phys',
+                'Nperipass', 'min_Dperi_norm', 'min_Dperi_phys', 'Napocenter',
                 'min_HostCentricDistance_norm', 'min_HostCentricDistance_phys']
     
     for group_index, group_key in enumerate(result_keys):
@@ -535,9 +535,10 @@ for sim in ['TNG50-1']:
     outdirec = '../Output/%s_subfindGRP/'%sim
     outfname = return_outfname(sim=sim, key=ins_key, zooniverse=zooniverse, clean=False)
     
-    clean_zooniverseGRP(savekeys=True)
+    #clean_zooniverseGRP(savekeys=True)
 
 for key in taudict_keys:
+    _ = return_taudict(key)
     split_tau_gasz0(key=key)
 
 #combine_taudicts()
