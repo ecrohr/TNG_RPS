@@ -527,7 +527,7 @@ def return_outfname(sim='TNG50-1', key='inspected', zooniverse=True, clean=False
         if clean:
             outfname += '_clean.hdf5'
         else:
-            outfname += '.hdf5
+            outfname += '.hdf5'
         return outfname
     else:
         outfname = 'zooniverse_%s_%s_branches'%(sim, key)
