@@ -66,7 +66,7 @@ def run_subfindindices(mp_flag=False, zooniverse_flag=False, centrals_flag=False
         result_list = []
         for index, subfindID in enumerate(SubfindID):
             result_list.append(return_subfindindices(SnapNum[index],
-                                                     subfindID), min_snap=99)        
+                                                     subfindID, min_snap=99))
 
     # reformat result and save
     result = {}
