@@ -151,7 +151,7 @@ def return_subfindGRP(snapnum, subfindID):
       
     if centrals:
         rmin_norm = 0.0
-        rmax_norm = 2.0
+        rmax_norm = 3.0
         radii_binwidth = 0.2
 
         radii_bins_norm = np.arange(rmin_norm, rmax_norm + radii_binwidth*1.0e-3, radii_binwidth)
