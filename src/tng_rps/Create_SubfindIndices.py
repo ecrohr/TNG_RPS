@@ -17,7 +17,7 @@ import glob
 
 global sim, basePath, SnapNums, BoxSizes, Times, h
 
-def run_subfindindices(mp_flag=False, zooniverse_flag=False):
+def run_subfindindices(mp_flag=False, zooniverse_flag=False, centrals_flag=False):
 
     global sim, basePath, SnapNums, BoxSizes, Times, h
     
@@ -45,6 +45,12 @@ def run_subfindindices(mp_flag=False, zooniverse_flag=False):
         outdirec = '../Output/%s_subfindGRP/'%sim
 
     # not using the zooniverse results -- define subfindIDs somehow else... 
+    elif (centrals_flag):
+        SnapNum, SubfindID = initialize_central_subfindindices()
+        
+        outdirec = '../Output/%s_subfindGRP/'%sim
+        outfname = 'central_subfind_%s_branches.hdf5'%(sim)
+        
     else:
         SnapNum, SubfindID = initialize_subfindindices()
 
@@ -53,14 +59,14 @@ def run_subfindindices(mp_flag=False, zooniverse_flag=False):
 
     # run return_subfindindices
     if mp_flag:
-        pool = mp.Pool(mp.cpu_count()) # should be 8 if running interactively
+        pool = mp.Pool(8) # should be 8 if running interactively
         result_list = pool.starmap(return_subfindindices, zip(SnapNum,
                                                                   SubfindID))
     else:
         result_list = []
         for index, subfindID in enumerate(SubfindID):
             result_list.append(return_subfindindices(SnapNum[index],
-                                                     subfindID))        
+                                                     subfindID), min_snap=99)        
 
     # reformat result and save
     result = {}
@@ -101,6 +107,21 @@ def initialize_subfindindices():
     subfind_indices = np.where((subhalo['SubhaloFlag'] == 1) & (Mstar >= Mstar_lolim))[0]
     indices = np.isin(subfind_indices, GroupFirstSub)
     SubfindIDs = subfind_indices[~indices]
+    SnapNums = np.ones(SubfindIDs.size, dtype=int) * 99 
+
+    return SnapNums, SubfindIDs
+
+
+def initialize_central_subfindindices():
+    """
+    Define SubfindIDs and SnapNums to be tracked.
+    Returns the most massive z=0 central subhalos.
+    """
+    
+    halo_fields = ['GroupFirstSub']
+    GroupFirstSub = il.groupcat.loadHalos(basePath, 99, fields=halo_fields)
+
+    SubfindIDs = GroupFirstSub[:2]
     SnapNums = np.ones(SubfindIDs.size, dtype=int) * 99 
 
     return SnapNums, SubfindIDs
@@ -321,11 +342,13 @@ def return_subfindindices(snap, subfindID, min_snap=0, max_snap=99):
 
 
 sims = ['TNG50-1']
-mp_flag = True
+mp_flag = False
 zooniverse_flag = False
+centrals_flag = True
 
 for sim in sims:
     sim = sim
     run_subfindindices(mp_flag=mp_flag,
-                       zooniverse_flag=zooniverse_flag)
+                       zooniverse_flag=zooniverse_flag,
+                       centrals_flag=True)
     
