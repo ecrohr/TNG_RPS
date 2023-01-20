@@ -92,13 +92,13 @@ def run_subfindGRP():
     f.close()
     
     # post process the gas radial profiles
-    add_memberflags()
-    add_zooniverseflags()
-    add_times()
-    add_dmin()
-    add_Nperipass()
-    add_coldgasmasstau()
-    add_quenchtimes()
+    #add_memberflags()
+    #add_zooniverseflags()
+    #add_times()
+    #add_dmin()
+    #add_Nperipass()
+    #add_coldgasmasstau()
+    #add_quenchtimes()
     #add_tracers()
     #add_coldgasmasstracerstau()
     
@@ -1059,14 +1059,15 @@ sims = ['TNG50-1']
 for sim in sims:
     basePath = ru.ret_basePath(sim)
     #direc = '../Output/zooniverse/'
-    fname = 'zooniverse_%s_%s_branches.hdf5'%(sim, key)
+    #fname = 'zooniverse_%s_%s_branches.hdf5'%(sim, key)
 
     direc = '../Output/%s_subfindGRP/'%sim
     #fname = 'subfind_%s_branches.hdf5'%sim
+    #outfname = 'central_subfind_%s_branches.hdf5'%(sim)
 
-    #run_subfindGRP()
+    run_subfindGRP()
     #add_tracers()
-    add_tracers_postprocessing()
-    add_coldgasmasstracerstau()
+    #add_tracers_postprocessing()
+    #add_coldgasmasstracerstau()
 
 
