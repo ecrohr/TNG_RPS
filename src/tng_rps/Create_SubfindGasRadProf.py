@@ -1063,7 +1063,7 @@ for sim in sims:
 
     direc = '../Output/%s_subfindGRP/'%sim
     #fname = 'subfind_%s_branches.hdf5'%sim
-    #outfname = 'central_subfind_%s_branches.hdf5'%(sim)
+    fname = 'central_subfind_%s_branches.hdf5'%(sim)
 
     run_subfindGRP()
     #add_tracers()
