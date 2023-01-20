@@ -187,7 +187,7 @@ def return_subfindGRP(snapnum, subfindID):
     subhalo_rgal = 2. * subhalo['SubhaloHalfmassRadType'][star_ptn] * a / h
                      
     if centrals:
-        R200c = ru.loadSingleFields(basePath, snapnum, haloID=subhalo['SubhaloGrNr'], fields=['Group_R_Crit200'])
+        R200c = ru.loadSingleFields(basePath, snapnum, haloID=subhalo['SubhaloGrNr'], fields=['Group_R_Crit200']) * a / h
                             
     # load gas particles for relevant halo
     gasparts = il.snapshot.loadSubhalo(basePath, snapnum, subfindID, gas_ptn, fields=gasfields)
