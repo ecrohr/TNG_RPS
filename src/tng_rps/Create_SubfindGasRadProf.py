@@ -148,18 +148,28 @@ def create_subfindGRP(dic):
 def return_subfindGRP(snapnum, subfindID):
     
     print('Working on %s snap %s subfindID %d'%(sim, snapnum, subfindID))
+      
+    if centrals:
+        rmin_norm = 0.0
+        rmax_norm = 2.0
+        radii_binwidth = 0.2
+
+        radii_bins_norm = np.arange(rmin_norm, rmax_norm + radii_binwidth*1.0e-3, radii_binwidth)
+        radii_bincents_norm = (radii_bins_norm[1:] + radii_bins_norm[:-1]) / 2.
+
+        nbins = radii_bincents_norm.size
     
     # initialize result
     result            = {}
     group_key         = '%d'%snapnum
     result[group_key] = {}
-
+    for dset_key in dset_keys:
+        result[group_key][dset_key] = np.ones(nbins-1, dtype=float) * -1.     
+    for scalar_key in scalar_keys:
+        result[group_key][scalar_key] = -1.
+  
     # check if the subhalo is identified at this snap
     if subfindID == -1:
-        for dset_key in dset_keys:
-            result[group_key][dset_key] = np.ones(nbins-1, dtype=float) * -1.     
-        for scalar_key in scalar_keys:
-            result[group_key][scalar_key] = -1.
         return result 
 
     # load general simulation parameters
@@ -168,23 +178,22 @@ def return_subfindGRP(snapnum, subfindID):
     h       = header['HubbleParam'] # = 0.6774
     boxsize = header['BoxSize'] * a / h
         
-    subhalofields = ['SubhaloHalfmassRadType', 'SubhaloPos']
+    subhalofields = ['SubhaloHalfmassRadType', 'SubhaloPos' 'SubhaloGrNr]
     gasfields     = ['Coordinates', 'Masses', 'InternalEnergy',
                      'ElectronAbundance', 'StarFormationRate']
             
     subhalo      = ru.loadSingleFields(basePath, snapnum, subhaloID=subfindID, fields=subhalofields)
     subhalopos   = subhalo['SubhaloPos'] * a / h
-    subhalo_rgal = 2. * subhalo['SubhaloHalfmassRadType'][star_ptn] * a / h 
+    subhalo_rgal = 2. * subhalo['SubhaloHalfmassRadType'][star_ptn] * a / h
+                     
+    if centrals:
+        R200c = ru.loadSinglefields(basePath, snapnum, haloID=subhalo['SubhaloGrNr'], fields=['Group_R_Crit200'])
                             
     # load gas particles for relevant halo
     gasparts = il.snapshot.loadSubhalo(basePath, snapnum, subfindID, gas_ptn, fields=gasfields)
     
     # if the satellite has no gas, write zeros for all dsets
     if gasparts['count'] == 0:
-        for dset_index, dset_key in enumerate(dset_keys):
-            result[group_key][dset_key] = np.zeros(nbins-1, float)
-        for scalar_index, scalar_key in enumerate(scalar_keys):
-            result[group_key][scalar_key] = 0.
         return result
     
     gas_coordinates        = gasparts['Coordinates'] * a / h
@@ -214,14 +223,20 @@ def return_subfindGRP(snapnum, subfindID):
     coldgas_masses = coldgas_masses[np.argsort(coldgas_radii)]
     coldgas_radii  = coldgas_radii[np.argsort(coldgas_radii)]
 
-    # calculate the radial profile via histogram 
-    radii_bins     = radii_bins_norm * subhalo_rgal # pkpc
-    radii_bincents = radii_bincents_norm * subhalo_rgal # pkpc
+    if centrals:
+        radii_bins     = radii_bins_norm * R200c # pkpc
+        radii_bincents = radii_bincents_norm * R200c # pkpc
+        vol_shells = (4./3.) * np.pi * ((radii_bins[1:])**3 - radii_bins[:-1]**3)    
+                  
+    else:
+        radii_bins     = radii_bins_norm * subhalo_rgal # pkpc
+        radii_bincents = radii_bincents_norm * subhalo_rgal # pkpc
     
-    # set the volume of the shells; len(volume) = len(bincents) = len(bins) - 1
-    vol_shells = (4./3.) * np.pi * ((radii_bins[2:])**3 - (radii_bins[1:-1])**3)
-    vol_shells = np.insert(vol_shells, 0, (4./3.) * np.pi * (radii_bins[1])**3)
-    
+        # set the volume of the shells; len(volume) = len(bincents) = len(bins) - 1
+        vol_shells = (4./3.) * np.pi * ((radii_bins[2:])**3 - (radii_bins[1:-1])**3)
+        vol_shells = np.insert(vol_shells, 0, (4./3.) * np.pi * (radii_bins[1])**3)
+  
+    # calculate the radial profile via histogram                      
     mass_shells = np.histogram(coldgas_radii, bins=radii_bins, weights=coldgas_masses)[0]
             
     densities_shells = mass_shells / vol_shells
@@ -1053,17 +1068,21 @@ def add_coldgasmasstracerstau():
     f.close()
 
     return
-              
-
+                     
+                     
 sims = ['TNG50-1']
+centrals = True                     
+                     
 for sim in sims:
     basePath = ru.ret_basePath(sim)
     #direc = '../Output/zooniverse/'
     #fname = 'zooniverse_%s_%s_branches.hdf5'%(sim, key)
 
     direc = '../Output/%s_subfindGRP/'%sim
-    #fname = 'subfind_%s_branches.hdf5'%sim
-    fname = 'central_subfind_%s_branches.hdf5'%(sim)
+    if centrals:
+        fname = 'central_subfind_%s_branches.hdf5'%(sim)
+    else:
+        fname = 'subfind_%s_branches.hdf5'%(sim)
 
     run_subfindGRP()
     #add_tracers()
