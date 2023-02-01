@@ -556,5 +556,3 @@ if zooniverse:
         split_tau_gasz0(key=key)
 
 #combine_taudicts()
-
-# comment here
