@@ -537,5 +537,3 @@ for sim in ['TNG50-1']:
     clean_zooniverseGRP(savekeys=True)
     
 #combine_taudicts()
-
-#test goes here
