@@ -1,7 +1,7 @@
 [![DOI](https://zenodo.org/badge/472725375.svg)](https://zenodo.org/badge/latestdoi/472725375)
 
 # rohr-tng-rps
-This repository contains all the relevant python scripts related to Rohr et al. in prep. analyzing the cold gas loss and ram pressure stripping in TNG50 and TNG100 jellyfish galaxies. This includes utility functions, particle data analysis, catalog creation, and plot making. For the particle data analysis, please only run the scripts on VERA or another MPCDF cluseter with direct access to the TNG data. Note that one may need to update directory structure to run properly.
+This repository contains all the relevant python scripts related to Rohr et al. in prep. analyzing the cold gas loss and ram pressure stripping in TNG50 and TNG100 jellyfish galaxies. This includes utility functions, particle data analysis, catalog creation, and plot making. For the particle data analysis, please only run the scripts on VERA or another MPCDF cluster with direct access to the TNG data. Note that one may need to update directory structure to run properly.
 
 
 <!---
