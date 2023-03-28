@@ -303,7 +303,7 @@ def find_unmatched_tracers(snap):
 
         # load all particles at snap
         Particles   = il.snapshot.loadSubset(basePath, snap, ptn, fields=fields, sq=False)
-        if Particles['count'] = 0:
+        if Particles['count'] == 0:
             continue
         
         ParticleIDs = Particles['ParticleIDs']
