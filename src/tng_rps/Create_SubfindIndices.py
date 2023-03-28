@@ -14,54 +14,39 @@ import h5py
 import rohr_utils as ru
 from importlib import reload
 import glob
+from globals import *
 
-global sim, basePath, SnapNums, BoxSizes, Times, h
+#global sim, basePath, SnapNums, BoxSizes, Times, h
 
-def run_subfindindices(mp_flag=False, zooniverse_flag=False, centrals_flag=False):
-
-    global sim, basePath, SnapNums, BoxSizes, Times, h
+def run_subfindindices():
+    """
+    run the Create_SubfindIndices module
+    """
     
-    basePath = ru.ret_basePath(sim)
-
-    Header = il.groupcat.loadHeader(basePath, 99)
-    h = Header['HubbleParam']
-
-    SnapNums = range(99, -1, -1)
-    Times = np.zeros(len(SnapNums), dtype=float)
-    BoxSizes = np.zeros(len(SnapNums), dtype=float)
-    for i, SnapNum in enumerate(SnapNums):
-        header = il.groupcat.loadHeader(basePath, SnapNum)
-        Times[i] = header['Time']
-        BoxSizes[i] = header['BoxSize'] * Times[i] / h
+    print(sim, basePath)
+    print(outdirec, outfname)
 
     # using the zooniverse results?
     if (zooniverse_flag):
-
         SnapNum, SubfindID = initialize_zooniverseindices()
-
-        ins_key = 'inspected'
-
-        outfname = 'zooniverse_%s_%s_branches.hdf5'%(sim, ins_key)
-        outdirec = '../Output/%s_subfindGRP/'%sim
 
     # not using the zooniverse results -- define subfindIDs somehow else... 
     elif (centrals_flag):
         SnapNum, SubfindID = initialize_central_subfindindices()
         
-        outdirec = '../Output/%s_subfindGRP/'%sim
-        outfname = 'central_subfind_%s_branches.hdf5'%(sim)
-        
+    # TNG-Cluster?
+    elif (TNGCluster_flag):
+        SnapNum, SubfindID = initialize_TNGCluster_subfindindices()
+      
+    # general satellites?
     else:
         SnapNum, SubfindID = initialize_subfindindices()
-
-        outdirec = '../Output/%s_subfindGRP/'%sim
-        outfname = 'subfind_%s_branches.hdf5'%(sim)
 
     # run return_subfindindices
     if mp_flag:
         pool = mp.Pool(8) # should be 8 if running interactively
         result_list = pool.starmap(return_subfindindices, zip(SnapNum,
-                                                                  SubfindID))
+                                                              SubfindID))
     else:
         result_list = []
         for index, subfindID in enumerate(SubfindID):
@@ -72,6 +57,8 @@ def run_subfindindices(mp_flag=False, zooniverse_flag=False, centrals_flag=False
     result = {}
     for d in result_list:
         result.update(d)
+        
+    print(len(result.keys()))
         
     with h5py.File(outdirec + outfname, 'a') as outf:
         for group_key in result.keys():
@@ -155,12 +142,14 @@ def initialize_TNGCluster_subfindindices():
     subhaloIDs = np.where(subhalo_indices_massive)[0][subhalo_match_indices]
     isin = np.isin(subhaloIDs, GroupFirstSub, assume_unique=True)
     
-    centralIDs = subhaloIDs[isin]
-    satelliteIDs = subhaloIDs[~isin]
+    if centrals_flag:
+        subfindIDs = subhaloIDs[isin]
+    else:
+        subfindIDs = subhaloIDs[~isin]
+        
+    snaps = np.ones(subfindIDs.size, dtype=subfindIDs.dtype) * max_snap
     
-    snaps = np.ones(satelliteIDs.size, dtype=satelliteIDs.dtype) * max_snap
-    
-    return satelliteIDs, snaps
+    return snaps, subfindIDs
 
     
 def initialize_zooniverseindices():
@@ -255,7 +244,7 @@ def load_zooniverseIDs():
     return insIDs_dict
 
 
-def return_subfindindices(snap, subfindID, min_snap=0, max_snap=99):
+def return_subfindindices(snap, subfindID):
     """
     Given the snap and subfindID, load the MPB/MDB between min_snap and max_snap.
     Then record various properties at each of these snaps.
@@ -263,7 +252,7 @@ def return_subfindindices(snap, subfindID, min_snap=0, max_snap=99):
     """
 
     # initialize results
-    snaps = np.arange(max_snap, min_snap-1, -1)
+    SnapNums = np.arange(max_snap, min_snap-1, -1)
     
     return_key = '%03d_%08d'%(snap, subfindID)
 
@@ -296,13 +285,13 @@ def return_subfindindices(snap, subfindID, min_snap=0, max_snap=99):
 
     for key in result_keys:
         if key in int_keys:
-            result[return_key][key] = np.ones(len(snaps), dtype=int) * -1
+            result[return_key][key] = np.ones(SnapNums.size, dtype=int) * -1
         elif key in threed_keys:
-            result[return_key][key] = np.ones((len(snaps), 3), dtype=int) * -1
+            result[return_key][key] = np.ones((SnapNums.size, 3), dtype=float) * -1
         else:
-            result[return_key][key] = np.ones(len(snaps), dtype=float) * -1.
+            result[return_key][key] = np.ones(SnapNums.size, dtype=float) * -1.
 
-    result[return_key]['SnapNum'] = snaps
+    result[return_key]['SnapNum'] = SnapNums
 
 
     print('Working on %s snap %03d subfindID %08d'%(sim, snap, subfindID))
@@ -329,7 +318,7 @@ def return_subfindindices(snap, subfindID, min_snap=0, max_snap=99):
                                     treeName='SubLink_gal', fields=host_fields, onlyMPB=True)
 
     # find the snapshots where both the subhalo and host have been identified
-    snap_indices, sub_indices, host_indices = ru.find_common_snaps(snaps,
+    snap_indices, sub_indices, host_indices = ru.find_common_snaps(SnapNums,
                                                                    sub_tree['SnapNum'],
                                                                    host_tree['SnapNum'])
 
@@ -376,15 +365,3 @@ def return_subfindindices(snap, subfindID, min_snap=0, max_snap=99):
                                                
     return result
 
-
-sims = ['TNG50-1']
-mp_flag = False
-zooniverse_flag = False
-centrals_flag = True
-
-for sim in sims:
-    sim = sim
-    run_subfindindices(mp_flag=mp_flag,
-                       zooniverse_flag=zooniverse_flag,
-                       centrals_flag=True)
-    
