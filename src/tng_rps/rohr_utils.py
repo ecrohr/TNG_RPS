@@ -26,7 +26,9 @@ from scipy import stats
 # functions related to 2d histograms
 
 def add_phaseplot(x, y, fig=None, ax=None):
-    
+    """
+    given x and y, create the scatter plot with running medians, 16/84 percentiles.
+    """
     # validate that either both fig and ax are given, or both are None
     if fig is None and ax is None:
         fig, ax = plt.subplots(figsize=(8,5))
@@ -338,6 +340,9 @@ def return1dhiststats(x, binwidth, log=True, density=False):
 ### has a kwarg for the minimum number of points per bin, which also excludes
 ### the last few x-points from binning 
 def create_bins(x, minpointsperbin=7):
+    """
+    iterate to find the optimal log bin size for dataset x
+    """
             
     # sort x such that it's in ascending order
     x = x[np.argsort(x)]
@@ -400,6 +405,9 @@ def returnlogbins(x, binwidth_log):
 
 
 def returnbins(x, binwidth):
+    """
+    given x and binwidth, calculate the bin edges and bin centers.
+    """
     bin_min = floor_to_value(min(x), binwidth) - binwidth/2.
     bin_max = ceil_to_value(max(x), binwidth) + binwidth/2.
     nbins = int(round((bin_max - bin_min)/ binwidth))
@@ -774,8 +782,10 @@ def Friedmann(a, OmegaM, OmegaL):
     return(1./np.sqrt(OmegaM * a**(-1) + OmegaL * a**2))
 
 
-# converts floats to latex format with num decimal place 
 def latex_float(f, num):
+    """
+    convert a given float f to a latex string, with num decimal places
+    """
     float_str = ("{0:.%dg}"%(num)).format(f)
     if "e" in float_str:
         base, exponent = float_str.split("e")
@@ -1086,6 +1096,9 @@ def loadMultipleFields(basePath, snapNum, haloID=None, subhaloID=None, fields=No
 ### ~simulation; added the kwarg indices -- only load infall catalog for 
 ### specifi infall indices NOT z=0 fof indices 
 def loadInfallFields(basePath, fields=None, infallindices=None):
+    """
+    experimental function to load the infall catalogs easily
+    """
     
     # load infall catalog into a dict
     result = {}
