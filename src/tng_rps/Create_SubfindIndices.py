@@ -296,9 +296,6 @@ def return_subfindindices(snap, subfindID):
 
     print('Working on %s snap %03d subfindID %08d'%(sim, snap, subfindID))
     
-    starpartnum = il.util.partTypeNum('star')
-    gaspartnum = il.util.partTypeNum('gas')
-
     # now load the whole main progenitor branches of the subhalo and the
     # main subhalo of its z=0 FoF Host -- then tabulate various properties
     sub_fields  = ['SnapNum', 'SubfindID', 'SubhaloMassInRadType', 'GroupFirstSub',
@@ -328,7 +325,7 @@ def return_subfindindices(snap, subfindID):
     boxsizes             = BoxSizes[snap_indices]
     SubPos               = (sub_tree['SubhaloPos'][sub_indices].T * a / h).T
     HostPos              = (host_tree['SubhaloPos'][host_indices].T * a / h).T
-    hostcentricdistances = np.zeros(len(sub_indices), dtype=float)
+    hostcentricdistances = np.zeros(sub_indices.size, dtype=float)
 
     # find a way to vectorize this... Nx3, Nx3, Nx1 array indexing is hard
     for i, sub_index in enumerate(sub_indices):
@@ -341,8 +338,8 @@ def return_subfindindices(snap, subfindID):
                                  (host_tree['Group_R_Crit200'][host_indices] * a / h))
 
     dsets = [sub_tree['SubfindID'][sub_indices],
-             sub_tree['SubhaloMassInRadType'][sub_indices,starpartnum] * 1.0e10 / h,
-             sub_tree['SubhaloHalfmassRadType'][sub_indices,starpartnum] * a / h,
+             sub_tree['SubhaloMassInRadType'][sub_indices,star_ptn] * 1.0e10 / h,
+             sub_tree['SubhaloHalfmassRadType'][sub_indices,star_ptn] * a / h,
              sub_tree['SubhaloGrNr'][sub_indices], sub_tree['GroupFirstSub'][sub_indices],
              sub_tree['SubhaloSFR'][sub_indices], sub_tree['SubhaloSFRinRad'][sub_indices],
              sub_tree['SubhaloMass'][sub_indices] * 1.0e10 / h,
@@ -350,8 +347,8 @@ def return_subfindindices(snap, subfindID):
              sub_tree['SubhaloBHMass'][sub_indices] * 1.0e10 / h,
              sub_tree['SubhaloVel'][sub_indices], host_tree['SubhaloVel'][host_indices],
              HostPos, host_tree['SubfindID'][host_indices],
-             host_tree['SubhaloMassInRadType'][host_indices,starpartnum] * 1.0e10 / h,
-             host_tree['SubhaloHalfmassRadType'][host_indices,starpartnum] * a / h,
+             host_tree['SubhaloMassInRadType'][host_indices,star_ptn] * 1.0e10 / h,
+             host_tree['SubhaloHalfmassRadType'][host_indices,star_ptn] * a / h,
              host_tree['Group_M_Crit200'][host_indices] * 1.0e10 / h,
              host_tree['Group_R_Crit200'][host_indices] * a / h,
              host_tree['SubhaloGrNr'][host_indices],
