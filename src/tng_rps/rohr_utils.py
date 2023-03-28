@@ -1129,7 +1129,32 @@ def loadInfallFields(basePath, fields=None, infallindices=None):
 
 
 def ret_basePath(sim):
-    return ('../IllustrisTNG/%s/output/'%sim)
+    """
+    given the simulation of interest, return the basePath
+    """
+    IllustrisTNG_sims = ['TNG50', 'TNG100', 'TNG300', 'L35n', 'L75n', 'L205n']
+    if any(IllustrisTNG_sim in sim for IllustrisTNG_sim in IllustrisTNG_sims):
+        return ('../IllustrisTNG/%s/output/'%sim)
+        
+    TNGCluster_sims = ['L680n']
+    if any(TNGCluster_sim in sim for TNGCluster_sim in TNGCluster_sims):
+        return ('../TNG-Cluster/%s/output'%sim)
+        
+    raise ValueError('Input simulation %s has no defined basePath.'%sim)
+    
+
+def return_basePath(sim):
+    """
+    alias for ret_basePath
+    """
+    return ret_basePath(sim)
+    
+    
+def loadbasePath(sim):
+    """
+    alias for ret_basePath
+    """
+    return ret_basePath(sim)
 
 
 def loadHeader(basePath, snapNum):
