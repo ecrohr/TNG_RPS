@@ -118,15 +118,51 @@ def initialize_central_subfindindices():
     Returns the most massive z=0 central subhalos.
     """
     
-    halo_fields = ['GroupFirstSub']
-    GroupFirstSub = il.groupcat.loadHalos(basePath, 99, fields=halo_fields)
+    halo_fields = ['Group_M_Crit200','GroupFirstSub']
+    halos = il.groupcat.loadHalos(basePath, 99, fields=halo_fields)
+    M200c = halos['Group_M_Crit200'] * 1.0e10 / h
+    indices = M200c >= 10.0**(11.5)
 
-    SubfindIDs = GroupFirstSub[:2]
+    GroupFirstSub = halos['GroupFirstSub']
+    SubfindIDs = GroupFirstSub[indices]
     SnapNums = np.ones(SubfindIDs.size, dtype=int) * 99 
 
     return SnapNums, SubfindIDs
+    
+    
+def initialize_TNGCluster_subfindindices():
+    """
+    Define the SubfindIDs at z=0 to be tracked.
+    """
+    
+    # load all halos and find the primary zoom target IDs
+    halo_fields = ['Group_M_Crit200', 'GroupFirstSub', 'GroupPrimaryZoomTarget']
+    max_snap = 99
+    halos = il.groupcat.loadHalos(basePath, max_snap, fields=halo_fields)
+    haloIDs = np.where(halos['GroupPrimaryZoomTarget'])[0]
+    GroupFirstSub = halos['GroupFirstSub'][haloIDs]
+    
+    # load all subhalos and find which ones:
+    # 1) are z=0 satellites of primary zooms
+    # 2) have Mstar(z=0) > 10^10 Msun
+    subhalo_fields = ['SubhaloGrNr', 'SubhaloMassInRadType']
+    subhalos = il.groupcat.loadSubhalos(basePath, max_snap, fields=subhalo_fields)
+    subhalo_indices_massive = subhalos['SubhaloMassInRadType'][:,star_ptn] * 1.0e10 / h > 1.0e10
+    
+    _, subhalo_match_indices = ru.match3(haloIDs, subhalos['SubhaloGrNr'][subhalo_indices_massive])
+    
+    # remove the central galaxies
+    subhaloIDs = np.where(subhalo_indices_massive)[0][subhalo_match_indices]
+    isin = np.isin(subhaloIDs, GroupFirstSub, assume_unique=True)
+    
+    centralIDs = subhaloIDs[isin]
+    satelliteIDs = subhaloIDs[~isin]
+    
+    snaps = np.ones(satelliteIDs.size, dtype=satelliteIDs.dtype) * max_snap
+    
+    return satelliteIDs, snaps
 
-
+    
 def initialize_zooniverseindices():
     """
     Load all zooniverse output catalogs for the given simulation and determine 
