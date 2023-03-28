@@ -1271,10 +1271,14 @@ def match3(ar1, ar2, firstSorted=False, parallel=False):
     
     if not firstSorted:
         # need a sorted copy of ar1 to run bisection against
+        
+        # currently not supported for parallel
         if parallel:
-            index = p_argsort(ar1)
+            #index = p_argsort(ar1)
+            raise ValueError('Parallel search currently not implemented.')
         else:
             index = np.argsort(ar1)
+        
         ar1_sorted = ar1[index]
         ar1_sorted_index = np.searchsorted(ar1_sorted, ar2)
         ar1_sorted = None
