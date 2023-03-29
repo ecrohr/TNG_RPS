@@ -118,7 +118,7 @@ def return_Mstar_lolim(Config):
     elif 'TNG300' in sim:
         res = 10.**(10.)
     elif 'L680n8192TNG' == sim:
-        return 1.0**(10)
+        return 10**(10)
     else:
         raise ValueError('sim %s not recognized.'%sim)
     
