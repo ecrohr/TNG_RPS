@@ -81,8 +81,6 @@ def initialize_subfindindices():
     Returns SnapNums, SubfindIDs
     """
     
-    star_ptn = il.util.partTypeNum('star')
-
     subhalo_fields = ['SubhaloFlag', 'SubhaloMassInRadType']
     subhalo = il.groupcat.loadSubhalos(basePath, 99, fields=subhalo_fields)
 
@@ -192,7 +190,7 @@ def initialize_zooniverseindices():
                 # load sublink_gal MPB and tabulate
                 fields = ['SnapNum', 'SubfindID']
                 MPB    = il.sublink.loadTree(basePath, int(snap_key), subfindID,
-                                             fields=fields, onlyMPB=True, treeName='SubLink_gal')
+                                             fields=fields, onlyMPB=True, treeName=treeName)
 
                 if MPB is None:
                     print('No MPB for %s snap %s subhaloID %s. Continuing'%(sim, snap_key, subfindID))
@@ -312,7 +310,7 @@ def return_subfindindices(snap, subfindID):
     
     # load the host_tree MPB using the GroupFirstSub from the last identified snap of the subhalo        
     host_tree = il.sublink.loadTree(basePath, sub_tree['SnapNum'][0], sub_tree['GroupFirstSub'][0],
-                                    treeName='SubLink_gal', fields=host_fields, onlyMPB=True)
+                                    treeName=treeName, fields=host_fields, onlyMPB=True)
 
     # find the snapshots where both the subhalo and host have been identified
     snap_indices, sub_indices, host_indices = ru.find_common_snaps(SnapNums,

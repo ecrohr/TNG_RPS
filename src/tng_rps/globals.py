@@ -18,11 +18,13 @@ def globals():
     global max_snap, min_snap, Header, h, SnapNums, Times, BoxSizes
     global gas_ptn, dm_ptn, tracer_ptn, star_ptn, bh_ptn, bary_ptns
     global tlim, jellyscore_min
+    global treeName
+    global SubfindIndices, SubfindGasRadProf, SubfindSnapshot
     
     sim = 'L680n8192TNG'
     basePath = ru.loadbasePath(sim)
 
-    TNGCluster_flag = True
+    TNGCluster_flag = False
     mp_flag = True
     zooniverse_flag = False
     centrals_flag = False
@@ -35,7 +37,7 @@ def globals():
     Header = il.groupcat.loadHeader(basePath, max_snap)
     h = Header['HubbleParam']
 
-    SnapNums = range(max_snap, min_snap-1, -1)
+    SnapNums = np.arange(max_snap, min_snap-1, -1)
     Times = np.zeros(len(SnapNums), dtype=float)
     BoxSizes = np.zeros(len(SnapNums), dtype=float)
     for i, SnapNum in enumerate(SnapNums):
@@ -54,9 +56,14 @@ def globals():
     
     tlim = 10.**(4.5) # K; cutoff between cold and hot gas
     jellyscore_min = 16
-
+    treeName = 'SubLink_gal'
     
+    SubfindIndices = False
+    SubfindGasRadProf = False
+    SubfindSnapshot = True
+
     return
+
 
 def return_outdirec_outfname():
     """
