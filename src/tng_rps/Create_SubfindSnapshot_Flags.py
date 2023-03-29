@@ -48,12 +48,15 @@ def run_subfindsnapshot_flags():
     an example.
     """
         
-    subfindIDs, result = initialize_allsubhalos()
+    if TNGCluster_flag:
+        subfindIDs, result = initialize_TNGCluster()
+    else:
+        subfindIDs, result = initialize_allsubhalos()
         
     print('Number of subhalos: %d'%subfindIDs.size)
 
     if mp_flag:
-        pool = mp.Pool(mp.cpu_count(8)) # should be 8 if running interactively
+        pool = mp.Pool(8) # should be 8 if running interactively
         result_list = pool.map(create_flags, subfindIDs)
     else:
         result_list = []
@@ -110,7 +113,7 @@ def initialize_TNGCluster():
     _, subfindIDs = initialize_TNGCluster_subfindindices()
     
     # use the full catalog for the number of subhalos
-    Nsubhalos = il.groupcat.loadSubhalos(basePath, max_snap, fields='SubhaloFlag').size
+    Nsubhalos = il.groupcat.loadSubhalos(basePath, max_snap, fields='SubhaloGrNr').size
     
     # initlaize and fill finalize result
     result = {}
