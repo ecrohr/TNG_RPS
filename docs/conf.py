@@ -17,9 +17,9 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'my_package'
-copyright = '2022, Author Name'
-author = 'Author Name'
+project = 'TNG_RPS'
+copyright = '2023, Eric rohr'
+author = 'Eric Rohr'
 
 
 # -- General configuration ---------------------------------------------------
