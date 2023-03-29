@@ -14,10 +14,17 @@ import globals
 globals.globals()
 
 # create the indices
-from Create_SubfindIndices import run_subfindindices
-#run_subfindindices()
+if globals.SubfindIndices:
+    from Create_SubfindIndices import run_subfindindices
+    run_subfindindices()
+
+# create the snapshot flags
+if globals.SubfindSnapshot:
+    from Create_SubfindSnapshot_Flags import run_subfindsnapshot_flags
+    run_subfindsnapshot_flags()
 
 # run the gas radial profile calculation
-from Create_SubfindGasRadProf import run_subfindGRP
-run_subfindGRP()
+if globals.SubfindGasRadProf:
+    from Create_SubfindGasRadProf import run_subfindGRP
+    run_subfindGRP()
 
