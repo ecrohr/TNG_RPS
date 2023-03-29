@@ -4,41 +4,21 @@ import multiprocessing as mp
 import numpy as np
 import h5py
 import rohr_utils as ru 
-from importlib import reload
+from itertools import repeat
 import glob
 import os
-from globals import *
 
 in_tree_key    = 'in_tree'
 central_key    = 'central'
 in_z0_host_key = 'in_z0_host'
 host_m200c_key = 'host_m200c'
 
-true_return  = np.ones(SnapNums.size, dtype=int)
-false_return = true_return.copy() * 0
-inval_return = true_return.copy() * -1
-float_return = true_return.copy() * -1.
-
 keys = [in_tree_key,
         central_key,
         in_z0_host_key,
         host_m200c_key]
 
-subfindsnapshot_outdirec = '../Output/%s_subfindsnapshotflags/'%sim
-subfindsnapshot_outfname = 'subfindsnapshot_flags.hdf5'
-
-if (os.path.isdir(subfindsnapshot_outdirec)):
-    print('Directory %s exists.'%subfindsnapshot_outdirec)
-    if os.path.isfile(subfindsnapshot_outdirec + subfindsnapshot_outfname):
-        print('File %s exists. Overwriting.'%(subfindsnapshot_outdirec+subfindsnapshot_outfname))
-    else:
-        print('File %s does not exists. Writing.'%(subfindsnapshot_outdirec+subfindsnapshot_outfname))
-else:
-    print('Directory %s does not exist. Creating it now.'%subfindsnapshot_outdirec)
-    os.system('mkdir %s'%subfindsnapshot_outdirec)
-
-
-def run_subfindsnapshot_flags():
+def run_subfindsnapshot_flags(Config):
     """
     Create the FoF membership flags for all subhalos at each snapshot.
     Start by initializing the output and task manager, and then saves the output.
@@ -47,21 +27,36 @@ def run_subfindsnapshot_flags():
     of the result may not be (subfindIDs.size, 100). See initialize_TNGCluster() for
     an example.
     """
-        
-    if TNGCluster_flag:
-        subfindIDs, result = initialize_TNGCluster()
+    
+    # check the output directory and fname
+    subfindsnapshot_outdirec = '../Output/%s_subfindsnapshotflags/'%(Config.sim)
+    subfindsnapshot_outfname = 'subfindsnapshot_flags.hdf5'
+
+    if (os.path.isdir(subfindsnapshot_outdirec)):
+        print('Directory %s exists.'%subfindsnapshot_outdirec)
+        if os.path.isfile(subfindsnapshot_outdirec + subfindsnapshot_outfname):
+            print('File %s exists. Overwriting.'%(subfindsnapshot_outdirec+subfindsnapshot_outfname))
+        else:
+            print('File %s does not exists. Writing.'%(subfindsnapshot_outdirec+subfindsnapshot_outfname))
     else:
-        subfindIDs, result = initialize_allsubhalos()
+        print('Directory %s does not exist. Creating it now.'%subfindsnapshot_outdirec)
+        os.system('mkdir %s'%subfindsnapshot_outdirec)
+            
+    # initialize the subfindIDs of interest and final result shape
+    if Config.TNGCluster_flag:
+        subfindIDs, result = initialize_TNGCluster(Config)
+    else:
+        subfindIDs, result = initialize_allsubhalos(Config)
         
     print('Number of subhalos: %d'%subfindIDs.size)
 
-    if mp_flag:
+    if Config.mp_flag:
         pool = mp.Pool(8) # should be 8 if running interactively
-        result_list = pool.map(create_flags, subfindIDs)
+        result_list = pool.starmap(create_flags, zip(subfindIDs, repeat(Config)))
     else:
         result_list = []
         for subfindID in subfindIDs:
-            result_list.append(create_flags(subfindID))
+            result_list.append(create_flags(subfindID, Config))
 
     for i, subfindID in enumerate(subfindIDs):
         result_dic = result_list[i]
@@ -80,26 +75,26 @@ def run_subfindsnapshot_flags():
     return result
 
 
-def initialize_allsubhalos():
+def initialize_allsubhalos(Config):
     """
     Create a list of the subfindIDs for all subhalos in the simulation.
     """
     
-    Nsubhalos = il.groupcat.loadSubhalos(basePath, max_snap, fields='SubhaloFlag').size
+    Nsubhalos = il.groupcat.loadSubhalos(Config.basePath, Config.max_snap, fields='SubhaloGrNr').size
     subfindIDs = np.arange(Nsubhalos)
     
     # initlaize and fill finalize result
     result = {}
     for key in keys:
         if key == host_m200c_key:
-            result[key] = np.zeros((Nsubhalos, SnapNums.size), dtype=float) - 1.
+            result[key] = np.zeros((Nsubhalos, Config.SnapNums.size), dtype=float) - 1.
         else:
-            result[key] = np.zeros((Nsubhalos, SnapNums.size), dtype=int) - 1
+            result[key] = np.zeros((Nsubhalos, Config.SnapNums.size), dtype=int) - 1
     
     return subfindIDs, result
 
 
-def initialize_TNGCluster():
+def initialize_TNGCluster(Config):
     """
     Create a list of all TNGCluster subfindIDs of interest, namely those
     defined in Create_SubfindIndices. However, we want to use the subfindID
@@ -108,12 +103,14 @@ def initialize_TNGCluster():
     for the subhalos of interest.
     """
     
+    SnapNums = Config.SnapNums
+    
     # use the function defined in Create_SubfindIndices to define the subhalos of interest
     from Create_SubfindIndices import initialize_TNGCluster_subfindindices
-    _, subfindIDs = initialize_TNGCluster_subfindindices()
+    _, subfindIDs = initialize_TNGCluster_subfindindices(Config)
     
     # use the full catalog for the number of subhalos
-    Nsubhalos = il.groupcat.loadSubhalos(basePath, max_snap, fields='SubhaloGrNr').size
+    Nsubhalos = il.groupcat.loadSubhalos(Config.basePath, Config.max_snap, fields='SubhaloGrNr').size
     
     # initlaize and fill finalize result
     result = {}
@@ -126,14 +123,21 @@ def initialize_TNGCluster():
     return subfindIDs, result
 
 
-def create_flags(subfindID):
+def create_flags(subfindID, Config):
     """
     Given the subfindID (at snapshot 99), load the subhalo tree,
     and potentially it's z=0 host's branch. For each snapshot,
     assign values for the flags, and return the result.
     """
         
-    result = init_result()
+    result = init_result(Config)
+    
+    SnapNums = Config.SnapNums
+    basePath = Config.basePath
+    max_snap = Config.max_snap
+    treeName = Config.treeName
+    
+    true_return  = np.ones(SnapNums.size, dtype=int)
     
     fields  = ['SubfindID', 'SnapNum', 'SubhaloGrNr', 'GroupFirstSub', 'Group_M_Crit200']               
 
@@ -157,7 +161,7 @@ def create_flags(subfindID):
     result[central_key][snap_indices] = central_flags
     
     # load the host halo mass
-    result[host_m200c_key][snap_indices] = MPB_sub['Group_M_Crit200'] * 1.0e10 / h
+    result[host_m200c_key][snap_indices] = MPB_sub['Group_M_Crit200'] * 1.0e10 / Config.h
     
     # if the subhalo is a central at z=0, then in z=0 host is the same as central flags 
     if (central_flags[0]):
@@ -191,10 +195,15 @@ def create_flags(subfindID):
     return result 
 
 
-def init_result():
+def init_result(Config):
     """
-    Initialize the result.
+    Initialize the result for a single subhalo.
     """
+    
+    false_return = np.zeros(Config.SnapNums.size, dtype=int)
+    inval_return = false_return.copy() * -1
+    float_return = false_return.copy() * -1.
+
     init_result = {}
     for key in keys:
         if key == in_tree_key:

@@ -12,46 +12,41 @@ import multiprocessing as mp
 import numpy as np
 import h5py
 import rohr_utils as ru
-from importlib import reload
+from itertools import repeat
 import glob
-from globals import *
 
-#global sim, basePath, SnapNums, BoxSizes, Times, h
-
-def run_subfindindices():
+def run_subfindindices(Config):
     """
     run the Create_SubfindIndices module
     """
     
-    print(sim, basePath)
-    print(outdirec, outfname)
-
     # using the zooniverse results?
-    if (zooniverse_flag):
-        SnapNum, SubfindID = initialize_zooniverseindices()
+    if (Config.zooniverse_flag):
+        SnapNum, SubfindID = initialize_zooniverseindices(Config)
 
     # not using the zooniverse results -- define subfindIDs somehow else... 
-    elif (centrals_flag):
-        SnapNum, SubfindID = initialize_central_subfindindices()
+    elif (Config.centrals_flag):
+        SnapNum, SubfindID = initialize_central_subfindindices(Config)
         
     # TNG-Cluster?
-    elif (TNGCluster_flag):
-        SnapNum, SubfindID = initialize_TNGCluster_subfindindices()
+    elif (Config.TNGCluster_flag):
+        SnapNum, SubfindID = initialize_TNGCluster_subfindindices(Config)
       
     # general satellites?
     else:
-        SnapNum, SubfindID = initialize_subfindindices()
+        SnapNum, SubfindID = initialize_subfindindices(Config)
 
     # run return_subfindindices
     if mp_flag:
         pool = mp.Pool(8) # should be 8 if running interactively
         result_list = pool.starmap(return_subfindindices, zip(SnapNum,
-                                                              SubfindID))
+                                                              SubfindID,
+                                                              repeat(Config)))
     else:
         result_list = []
         for index, subfindID in enumerate(SubfindID):
             result_list.append(return_subfindindices(SnapNum[index],
-                                                     subfindID, min_snap=99))
+                                                     subfindID, Config))
 
     # reformat result and save
     result = {}
@@ -60,7 +55,7 @@ def run_subfindindices():
         
     print(len(result.keys()))
         
-    with h5py.File(outdirec + outfname, 'a') as outf:
+    with h5py.File(Config.outdirec + Config.outfname, 'a') as outf:
         for group_key in result.keys():
             group = outf.require_group(group_key)
             for dset_key in result[group_key].keys():
@@ -73,13 +68,17 @@ def run_subfindindices():
     return
 
 
-def initialize_subfindindices():
+def initialize_subfindindices(Config):
     """
     Define SubfindIDs and SnapNums to be tracked.
     Returns all z=0 satellites with Mstar > 10^8.3
     and SubhaloFlag == 1. 
     Returns SnapNums, SubfindIDs
     """
+    
+    basePath = Config.basePath
+    star_ptn = Config.basePath
+    Mstar_lolim = Config.Mstar_lolim
     
     subhalo_fields = ['SubhaloFlag', 'SubhaloMassInRadType']
     subhalo = il.groupcat.loadSubhalos(basePath, 99, fields=subhalo_fields)
@@ -88,7 +87,6 @@ def initialize_subfindindices():
     GroupFirstSub = il.groupcat.loadHalos(basePath, 99, fields=halo_fields)
 
     Mstar = subhalo['SubhaloMassInRadType'][:,star_ptn] * 1.0e10 / h
-    Mstar_lolim = 10.**(8.3) # Msun
     subfind_indices = np.where((subhalo['SubhaloFlag'] == 1) & (Mstar >= Mstar_lolim))[0]
     indices = np.isin(subfind_indices, GroupFirstSub)
     SubfindIDs = subfind_indices[~indices]
@@ -97,14 +95,14 @@ def initialize_subfindindices():
     return SnapNums, SubfindIDs
 
 
-def initialize_central_subfindindices():
+def initialize_central_subfindindices(Config):
     """
     Define SubfindIDs and SnapNums to be tracked.
     Returns the most massive z=0 central subhalos.
     """
     
     halo_fields = ['Group_M_Crit200','GroupFirstSub']
-    halos = il.groupcat.loadHalos(basePath, 99, fields=halo_fields)
+    halos = il.groupcat.loadHalos(Sim.basePath, 99, fields=halo_fields)
     M200c = halos['Group_M_Crit200'] * 1.0e10 / h
     indices = M200c >= 10.0**(11.5)
 
@@ -115,14 +113,20 @@ def initialize_central_subfindindices():
     return SnapNums, SubfindIDs
     
     
-def initialize_TNGCluster_subfindindices():
+def initialize_TNGCluster_subfindindices(Config):
     """
     Define the SubfindIDs at z=0 to be tracked.
     """
     
+    basePath = Config.basePath
+    max_snap = Config.max_snap
+    star_ptn = Config.star_ptn
+    h = Config.h
+    Mstar_lolim = Config.Mstar_lolim
+    centrals_flag = Config.centrals_flag
+    
     # load all halos and find the primary zoom target IDs
     halo_fields = ['Group_M_Crit200', 'GroupFirstSub', 'GroupPrimaryZoomTarget']
-    max_snap = 99
     halos = il.groupcat.loadHalos(basePath, max_snap, fields=halo_fields)
     haloIDs = np.where(halos['GroupPrimaryZoomTarget'])[0]
     GroupFirstSub = halos['GroupFirstSub'][haloIDs]
@@ -132,7 +136,7 @@ def initialize_TNGCluster_subfindindices():
     # 2) have Mstar(z=0) > 10^10 Msun
     subhalo_fields = ['SubhaloGrNr', 'SubhaloMassInRadType']
     subhalos = il.groupcat.loadSubhalos(basePath, max_snap, fields=subhalo_fields)
-    subhalo_indices_massive = subhalos['SubhaloMassInRadType'][:,star_ptn] * 1.0e10 / h > 1.0e10
+    subhalo_indices_massive = subhalos['SubhaloMassInRadType'][:,star_ptn] * 1.0e10 / h > Mstar_lolim
     
     _, subhalo_match_indices = ru.match3(haloIDs, subhalos['SubhaloGrNr'][subhalo_indices_massive])
     
