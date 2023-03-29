@@ -19,7 +19,7 @@ def globals():
     global gas_ptn, dm_ptn, tracer_ptn, star_ptn, bh_ptn, bary_ptns
     global tlim, jellyscore_min
     global treeName
-    global SubfindIndices, SubfindGasRadProf, SubfindSnapshot
+    global SubfindIndices, SubfindGasRadProf, SubfindSnapshot, TracerTracks
     
     sim = 'L680n8192TNG'
     basePath = ru.loadbasePath(sim)
@@ -28,8 +28,6 @@ def globals():
     mp_flag = True
     zooniverse_flag = False
     centrals_flag = False
-        
-    outdirec, outfname = return_outdirec_outfname()
         
     max_snap = 99
     min_snap = 0
@@ -60,7 +58,10 @@ def globals():
     
     SubfindIndices = False
     SubfindGasRadProf = False
-    SubfindSnapshot = True
+    SubfindSnapshot = False
+    TracerTracks = False
+    
+    outdirec, outfname = return_outdirec_outfname()
 
     return
 
