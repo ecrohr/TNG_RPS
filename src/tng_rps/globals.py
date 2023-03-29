@@ -24,7 +24,7 @@ def globals():
     sim = 'L680n8192TNG'
     basePath = ru.loadbasePath(sim)
 
-    TNGCluster_flag = False
+    TNGCluster_flag = True
     mp_flag = True
     zooniverse_flag = False
     centrals_flag = False
