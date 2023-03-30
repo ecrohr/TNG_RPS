@@ -5,6 +5,7 @@ import numpy as np
 import h5py
 import rohr_utils as ru 
 from itertools import repeat
+from functools import partial
 import glob
 import os
 
@@ -52,7 +53,8 @@ def run_subfindsnapshot_flags(Config):
 
     if Config.mp_flag:
         pool = mp.Pool(8) # should be 8 if running interactively
-        result_list = pool.starmap(create_flags, zip(subfindIDs, repeat(Config)))
+        #result_list = pool.starmap(create_flags, zip(subfindIDs, repeat(Config)))
+        result_list = pool.map(partial(create_flags, Config=Config), subfindIDs)
     else:
         result_list = []
         for subfindID in subfindIDs:
