@@ -9,54 +9,31 @@ import glob
 import time
 import os
 import argparse
+from globals import *
 
-global sim, basePath, snapNum, tcoldgas, max_snap
-global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
-global gas_fields, part_fields
-global big_array_length
-global outdirec
+gas_fields  = ['InternalEnergy', 'ElectronAbundance', 'StarFormationRate', 'ParticleIDs']
+
+part_fields = ['ParticleIDs']
+
+big_array_length = int(1e9)
+
+if zooniverse_flag:
+    tracer_outdirec = '../Output/%s_tracers_zooniverse/'%(sim)
+else:
+    tracer_outdirec = '../Output/%s_tracers/'%(sim)
+
+if not os.path.isdir(tracer_outdirec):
+    os.system('mkdir %s'%tracer_outdirec)
+    
 
 def create_tracertracks():
     """
     Run the Create_TracerTracks.py file. 
-    Starts at snapNum with a list of subhalo subfindIDs,
+    Starts at min_snap with a list of subhalo subfindIDs,
     find the descendants, and loops over the snapshots
     matching the tracers from bound cold gas cells.
     Saves the output.
     """
-
-    global sim, basePath, snapNum, tcoldgas, max_snap
-    global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
-    global gas_fields, part_fields
-    global big_array_length
-    global outdirec
-    
-    # define the global variables
-    sim        = 'TNG50-1'
-    basePath   = ru.ret_basePath(sim)
-    snapNum    = 0
-    tcoldgas   = 10.**(4.5) # [K]
-    max_snap   = 99
-
-    tracer_ptn = il.util.partTypeNum('tracer')
-    star_ptn   = il.util.partTypeNum('star')
-    gas_ptn    = il.util.partTypeNum('gas')
-    bh_ptn     = il.util.partTypeNum('bh')
-
-    bary_ptns   = [gas_ptn,
-                  star_ptn,
-                  bh_ptn]
-
-    gas_fields  = ['InternalEnergy', 'ElectronAbundance', 'StarFormationRate', 'ParticleIDs']
-
-    part_fields = ['ParticleIDs']
-
-    big_array_length = int(1e9)
-   
-    outdirec = '../Output/%s_tracers_zooniverse/'%(sim)
-    print(outdirec)
-    if not os.path.isdir(outdirec):
-        os.system('mkdir %s'%outdirec)
 
     # use the jobid to set the snaps we track
     parser = argparse.ArgumentParser()
@@ -66,13 +43,13 @@ def create_tracertracks():
     
     # let's assume we can go through 5 snapshots per job (i.e. 24 hours)
     Nsnapsperjob = 10
-    first_snap = snapNum + Nsnapsperjob * jobid
+    first_snap = min_snap + Nsnapsperjob * jobid
     last_snap = first_snap + Nsnapsperjob
-    if last_snap >= 100:
-        last_snap = 100
+    if last_snap >= max_snap+1:
+        last_snap = max_snap+1
         
     for snap in range(first_snap, last_snap):
-        if snap == snapNum:
+        if snap == min_snap:
             # define the subhalos we care about -- now the TNG50-1 inspected, cleaned branches
             indirec = '../Output/zooniverse/'
             infname = 'zooniverse_TNG50-1_inspected_clean_tau.hdf5'
@@ -89,7 +66,7 @@ def create_tracertracks():
         print('TNG50-1 inspected branches track_tracers at snap %03d: %.3g [s]'%(snap, (b-a)))    
 
     """
-    # and find the unmatched tracers from snapNum + 1 until max_snap
+    # and find the unmatched tracers from min_snap + 1 until max_snap
     for snap in range(first_snap, last_snap):
         start = time.time()
         find_unmatched_tracers(snap)
@@ -98,7 +75,7 @@ def create_tracertracks():
 
         if snap == (last_snap - 1):
             # add bound flag for the tracer parents
-            snaps = range(snapNum+1, max_snap+1)
+            snaps = range(min_snap+1, max_snap+1)
             Pool = mp.Pool(8)
             Pool.map(create_bound_flags, snaps)
             Pool.close()
@@ -111,7 +88,7 @@ def create_tracertracks():
 def track_tracers(snap):
     """
     Match the bound cold gas cells of the subfindIDs at snap to the tracers.
-    If snap < snapNum, then loads the previous tracers and checks if they still
+    If snap < min_snap, then loads the previous tracers and checks if they still
     belong to the same subhalo. 
     Saves offsets and tracers catalogs, but does not find the unmatched tracers -- 
     i.e., does not search for tracers whose parents were bound cold gas cells but
@@ -122,19 +99,19 @@ def track_tracers(snap):
     print('Working on %s snap %03d'%(sim, snap))
        
     # load the subfindIDs
-    with h5py.File(outdirec + 'offsets_%03d.hdf5'%snap, 'r') as f:
+    with h5py.File(tracer_outdirec + 'offsets_%03d.hdf5'%snap, 'r') as f:
         subfindIDs = f['group']['SubfindID'][:]
         f.close()
       
     # initialize the outputs
     offsets_subhalo, tracers_subhalo = initialize_outputs(len(subfindIDs))
     
-    # if snap > snapNum: load previous tracers
-    if (snap > snapNum):
+    # if snap > min_snap: load previous tracers
+    if (snap > min_snap):
         offsets_past = []
         tracers_past = []
         for i in range(1, 4):
-            if (snap - i) < snapNum:
+            if (snap - i) < min_snap:
                 break
             offsets, tracers = load_catalogs(snap - i)
             offsets_past.append(offsets)
@@ -183,11 +160,11 @@ def track_tracers(snap):
         tracer_indices_sub = tracer_indices[sub_indices]
 
         # if snap > SnapNum: cross match with previous snapshot(s)
-        if snap > snapNum:
+        if snap > min_snap:
             ### check which cold gas cell tracers from previous snap are still here ###
             i = 1
             IDs_past = np.array([])
-            while ((snap - i) >= snapNum) & (i < 4):
+            while ((snap - i) >= min_snap) & (i < 4):
                 if offsets_past[i-1]['SubfindID'][subfind_i] != -1:
                     start = offsets_past[i-1]['SubhaloOffset'][subfind_i]
                     end   = start + offsets_past[i-1]['SubhaloLengthColdGas'][subfind_i]
@@ -395,7 +372,7 @@ def find_coldgascells(subfindIDs, snap):
         end = r['lenType'][gas_ptn]
 
         temps = gas_cells['Temperature'][start:start+end]
-        indices = temps <= tcoldgas
+        indices = temps <= tlim
 
         lengths[i] = len(indices[indices])
 
@@ -498,13 +475,13 @@ def create_bound_flags(snap):
 def track_subfindIDs(subfindIDs, z0_flag=True):
     """
     Given the list of subhalo subfindIDs at either z0 (default) or 
-    at snapNum, use either the MPB (default) or MDB to find the 
-    corresponding subfindIDs at the other snapshots between snapNum and 99. 
+    at min_snap, use either the MPB (default) or MDB to find the
+    corresponding subfindIDs at the other snapshots between min_snap and 99.
     Be careful at subhalos that don't exist in the trees or skip snaps.
     """
 
     # initialize result 
-    snaps    = np.arange(max_snap, snapNum-1, -1)
+    snaps    = np.arange(max_snap, min_snap-1, -1)
     n_snaps  = len(snaps)
     result   = np.ones((len(subfindIDs), n_snaps), dtype=int) * -1
 
@@ -516,10 +493,10 @@ def track_subfindIDs(subfindIDs, z0_flag=True):
         
         if (z0_flag):
             tree = ru.loadMainTreeBranch(sim, max_snap, subfindID, treeName=treeName,
-                                         fields=fields, min_snap=snapNum, max_snap=max_snap)
+                                         fields=fields, min_snap=min_snap, max_snap=max_snap)
         else:
-            tree = ru.loadMainTreeBranch(sim, snapNum, subfindID, treeName=treeName,
-                                         fields=fields, min_snap=snapNum, max_snap=max_snap)
+            tree = ru.loadMainTreeBranch(sim, min_snap, subfindID, treeName=treeName,
+                                         fields=fields, min_snap=min_snap, max_snap=max_snap)
             
         if not tree:
             continue
@@ -539,7 +516,7 @@ def track_subfindIDs(subfindIDs, z0_flag=True):
 
         dset = result[:,i]
         
-        with h5py.File(outdirec + outfname, 'a') as outf:
+        with h5py.File(tracer_outdirec + outfname, 'a') as outf:
             group = outf.require_group('group')
 
             dataset = group.require_dataset('SubfindID', shape=dset.shape, dtype=dset.dtype)
@@ -585,7 +562,7 @@ def load_catalogs(snap):
     fnames = ['offsets', 'tracers']
     for i, fname in enumerate(fnames):
         result[fname] = {}
-        with h5py.File(outdirec + '%s_%03d.hdf5'%(fname, snap), 'r') as f:
+        with h5py.File(tracer_outdirec + '%s_%03d.hdf5'%(fname, snap), 'r') as f:
             group = f['group']
             for key in group.keys():
                 result[fname][key] = group[key][:]
@@ -602,9 +579,9 @@ def save_catalogs(offsets, tracers, snap):
     fnames = ['offsets', 'tracers']
     for d_i, d in enumerate(dicts):
         fname    = fnames[d_i]
-        outfname = '%s_%03d.hdf5'%(fname, snap)
+        tracer_outfname = '%s_%03d.hdf5'%(fname, snap)
 
-        with h5py.File(outdirec + outfname, 'a') as outf:
+        with h5py.File(tracer_outdirec + tracer_outfname, 'a') as outf:
             group = outf.require_group('group')
             for dset_key in d.keys():
                 dset = d[dset_key]
@@ -614,7 +591,4 @@ def save_catalogs(offsets, tracers, snap):
             outf.close()
             
     return
-
-
-create_tracertracks()
 

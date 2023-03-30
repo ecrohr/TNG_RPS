@@ -11,8 +11,9 @@ import rohr_utils as ru
 import os
 import yaml
 
-# import configuration
 class Configuration(dict):
+    __slots__ = ()
+    
     @classmethod
     def from_yaml(cls, fname):
         """ Load from a yaml file. """
@@ -28,7 +29,10 @@ class Configuration(dict):
     
     def __getattr__(self, key):
         """ Direct access as an attribute """
-        return self[key]
+        try:
+            return self[key]
+        except KeyError:
+            raise AttributeError(key)
     
     def add_vals(self):
         """ Add additional attributes """
@@ -130,9 +134,8 @@ def return_Mstar_lolim(Config):
             
     return Mstar_lolim
     
-            
-    
-config_dict = Configuration.from_yaml('config.yaml')
+fname = 'config.yaml'
+config_dict = Configuration.from_yaml(fname)
 Config = Configuration(config_dict)
 Config.add_vals()
 
