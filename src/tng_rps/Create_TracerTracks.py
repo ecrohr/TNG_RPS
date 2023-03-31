@@ -4,12 +4,10 @@ import multiprocessing as mp
 import numpy as np
 import h5py
 import rohr_utils as ru 
-from importlib import reload
 import glob
 import time
 import os
 import argparse
-from globals import *
 
 gas_fields  = ['InternalEnergy', 'ElectronAbundance', 'StarFormationRate', 'ParticleIDs']
 
@@ -17,16 +15,7 @@ part_fields = ['ParticleIDs']
 
 big_array_length = int(1e9)
 
-if zooniverse_flag:
-    tracer_outdirec = '../Output/%s_tracers_zooniverse/'%(sim)
-else:
-    tracer_outdirec = '../Output/%s_tracers/'%(sim)
-
-if not os.path.isdir(tracer_outdirec):
-    os.system('mkdir %s'%tracer_outdirec)
-    
-
-def create_tracertracks():
+def create_tracertracks(first_snap, last_snap, Config):
     """
     Run the Create_TracerTracks.py file. 
     Starts at min_snap with a list of subhalo subfindIDs,
@@ -34,8 +23,46 @@ def create_tracertracks():
     matching the tracers from bound cold gas cells.
     Saves the output.
     """
+    
+    min_snap = Config.min_snap
+    
+    for snap in range(first_snap, last_snap):
+        # for the first snapshot, define some subfindIDs of interest,
+        # and determine the subfindID at every snapshot
+        ### rewrite into an intialization function
+        if snap == min_snap:
+            indirec = '../Output/zooniverse/'
+            infname = 'zooniverse_TNG50-1_inspected_clean_tau.hdf5'
+            with h5py.File(indirec + infname, 'r') as f:
+                Group = f['Group']
+                subfindIDs = Group['SubfindID'][:]
+                f.close()
 
+            track_subfindIDs(subfindIDs)
+        a = time.time()
+        track_tracers(snap)
+        b = time.time()
+        print('TNG50-1 inspected branches track_tracers at snap %03d: %.3g [s]'%(snap, (b-a)))
+
+    # and find the unmatched tracers from min_snap + 1 until max_snap
+    for snap in range(first_snap, last_snap):
+        start = time.time()
+        find_unmatched_tracers(snap)
+        end = time.time()
+        print('%s snap %03d find_unmatched_tracers: %.3g [s]'%(Sim.sim, snap, (end-start)))
+
+        if snap == (last_snap - 1):
+            # add bound flag for the tracer parents
+            snaps = range(min_snap+1, max_snap+1)
+            Pool = mp.Pool(8)
+            Pool.map(create_bound_flags, snaps)
+            Pool.close()
+            Pool.join()
+
+
+    ### SLURM job parser, which needs to be moved elsewhere
     # use the jobid to set the snaps we track
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--jobid", help="slurm job id")
     args = parser.parse_args()
@@ -65,7 +92,6 @@ def create_tracertracks():
         b = time.time()
         print('TNG50-1 inspected branches track_tracers at snap %03d: %.3g [s]'%(snap, (b-a)))    
 
-    """
     # and find the unmatched tracers from min_snap + 1 until max_snap
     for snap in range(first_snap, last_snap):
         start = time.time()
@@ -482,8 +508,8 @@ def track_subfindIDs(subfindIDs, z0_flag=True):
 
     # initialize result 
     snaps    = np.arange(max_snap, min_snap-1, -1)
-    n_snaps  = len(snaps)
-    result   = np.ones((len(subfindIDs), n_snaps), dtype=int) * -1
+    n_snaps  = snaps.size
+    result   = np.zeros((len(subfindIDs), n_snaps), dtype=int) - -1
 
     fields   = ['SubfindID', 'SnapNum']
     treeName = 'SubLink_gal'
@@ -511,19 +537,13 @@ def track_subfindIDs(subfindIDs, z0_flag=True):
     # save by looping over the snapshots
     
     for i, snap in enumerate(snaps):
-
         outfname = 'offsets_%03d.hdf5'%(snap)
-
         dset = result[:,i]
-        
         with h5py.File(tracer_outdirec + outfname, 'a') as outf:
             group = outf.require_group('group')
-
             dataset = group.require_dataset('SubfindID', shape=dset.shape, dtype=dset.dtype)
             dataset[:] = dset
-
             outf.close()
-        
     # finish loop over snaps. return to main function
             
     return
@@ -536,19 +556,18 @@ def initialize_outputs(Nsubhalos):
     
     # initialize the offset dictionary
     offsets_subhalo = {}
-    offsets_subhalo['SubhaloOffset']            = np.zeros(Nsubhalos, int)
-    offsets_subhalo['SubhaloLength']            = np.zeros(Nsubhalos, int)
-    offsets_subhalo['SubhaloLengthColdGas']     = np.zeros(Nsubhalos, int)
-    offsets_subhalo['SubhaloLengthColdGas_new'] = np.zeros(Nsubhalos, int)
+    offsets_subhalo['SubhaloOffset']            = np.zeros(Nsubhalos, dtype=int) - 1
+    offsets_subhalo['SubhaloLength']            = offsets_subhalo['SubhaloOffset'].copy()
+    offsets_subhalo['SubhaloLengthColdGas']     = offsets_subhalo['SubhaloOffset'].copy()
+    offsets_subhalo['SubhaloLengthColdGas_new'] = offsets_subhalo['SubhaloOffset'].copy()
 
     tracers_subhalo = {}
-    # rewrite into a 4xbig_array_length array rather than a dictionary
-    # for a speed increase
-    tracers_subhalo['TracerIDs']      = np.empty(big_array_length, dtype=int)
-    tracers_subhalo['TracerIndices']  = np.empty(big_array_length, dtype=int)
-    tracers_subhalo['ParentIndices']  = np.empty(big_array_length, dtype=int)
-    tracers_subhalo['ParentPartType'] = np.empty(big_array_length, dtype=int)
-    tracers_subhalo['ParentGasTemp']  = np.empty(big_array_length, dtype=float)
+    # rewrite into a 4xbig_array_length array rather than a dictionary for a speed increase
+    tracers_subhalo['TracerIDs']      = np.zeros(big_array_length, dtype=int) - 1
+    tracers_subhalo['TracerIndices']  = tracers_subhalo['TracerIDs'].copy()
+    tracers_subhalo['ParentIndices']  = tracers_subhalo['TracerIDs'].copy()
+    tracers_subhalo['ParentPartType'] = tracers_subhalo['TracerIDs'].copy()
+    tracers_subhalo['ParentGasTemp']  = np.zeros(big_array_length, dtype=float) - 1
     
     return offsets_subhalo, tracers_subhalo
 
