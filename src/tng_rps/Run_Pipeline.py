@@ -33,7 +33,13 @@ class Configuration(dict):
             return self[key]
         except KeyError:
             raise AttributeError(key)
-    
+            
+    def __setattr__(self, key, value):
+        """ Set additional attributes. """
+        self[key] = value
+        return
+
+
     def add_vals(self):
         """ Add additional attributes """
         
@@ -53,6 +59,9 @@ class Configuration(dict):
         self.SnapNums = SnapNums
         self.Times = Times
         self.BoxSizes = BoxSizes
+        zs, cosmictimes = ru.timesfromsnap(self.basePath, SnapNums)
+        self.Redshifts = zs
+        self.CosmicTimes = cosmictimes / 1.0e9 # Gyr
         
         self.gas_ptn = il.util.partTypeNum('gas')
         self.dm_ptn = il.util.partTypeNum('dm')
@@ -66,7 +75,6 @@ class Configuration(dict):
         self.Mstar_lolim = return_Mstar_lolim(Config)
         
         return
-
 
 def return_outdirec_outfname(Config):
     """
@@ -120,9 +128,9 @@ def return_Mstar_lolim(Config):
     elif 'TNG100' in sim:
         res = 10.**(9.5)
     elif 'TNG300' in sim:
-        res = 10.**(10.)
-    elif 'L680n8192TNG' == sim:
-        return 10**(10)
+        res = 10.**(10)
+    elif 'L680n8192TNG' in sim:
+        return 10.**(10)
     else:
         raise ValueError('sim %s not recognized.'%sim)
     
@@ -131,6 +139,9 @@ def return_Mstar_lolim(Config):
             Mstar_lolim = res * 8**i
         elif i == 4:
             raise ValueError('sim %s not recongized.'%sim)
+            
+    if sim == 'TNG50-4':
+        return 10.**(10)
             
     return Mstar_lolim
     
@@ -142,7 +153,7 @@ Config.add_vals()
 # create the indices
 if Config.SubfindIndices:
     from Create_SubfindIndices import run_subfindindices
-    run_subfindindices()
+    run_subfindindices(Config)
 
 # create the snapshot flags
 if Config.SubfindSnapshot:
@@ -152,5 +163,5 @@ if Config.SubfindSnapshot:
 # run the gas radial profile calculation
 if Config.SubfindGasRadProf:
     from Create_SubfindGasRadProf import run_subfindGRP
-    run_subfindGRP()
+    run_subfindGRP(Config)
 
