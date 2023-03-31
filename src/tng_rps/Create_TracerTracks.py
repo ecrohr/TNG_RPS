@@ -31,14 +31,7 @@ def create_tracertracks(first_snap, last_snap, Config):
         # and determine the subfindID at every snapshot
         ### rewrite into an intialization function
         if snap == min_snap:
-            indirec = '../Output/zooniverse/'
-            infname = 'zooniverse_TNG50-1_inspected_clean_tau.hdf5'
-            with h5py.File(indirec + infname, 'r') as f:
-                Group = f['Group']
-                subfindIDs = Group['SubfindID'][:]
-                f.close()
-
-            track_subfindIDs(subfindIDs)
+            track_subfindIDs(Config)
         a = time.time()
         track_tracers(snap)
         b = time.time()
@@ -498,7 +491,7 @@ def create_bound_flags(snap):
     return
 
 
-def track_subfindIDs(subfindIDs, z0_flag=True):
+def track_subfindIDs(Config, z0_flag=True):
     """
     Given the list of subhalo subfindIDs at either z0 (default) or 
     at min_snap, use either the MPB (default) or MDB to find the
@@ -506,10 +499,15 @@ def track_subfindIDs(subfindIDs, z0_flag=True):
     Be careful at subhalos that don't exist in the trees or skip snaps.
     """
 
-    # initialize result 
-    snaps    = np.arange(max_snap, min_snap-1, -1)
+    # initialize result
+    subfindIDs = Config.SubfindIDs
+    snaps    = Config.SnapNums
     n_snaps  = snaps.size
-    result   = np.zeros((len(subfindIDs), n_snaps), dtype=int) - -1
+    result   = np.zeros((subfindIDs.size, n_snaps), dtype=int) - -1
+    sim = Config.sim
+    treeName = Config.treeName
+    min_snap = Config.min_snap
+    max_snap = Config.max_snap
 
     fields   = ['SubfindID', 'SnapNum']
     treeName = 'SubLink_gal'
@@ -539,7 +537,7 @@ def track_subfindIDs(subfindIDs, z0_flag=True):
     for i, snap in enumerate(snaps):
         outfname = 'offsets_%03d.hdf5'%(snap)
         dset = result[:,i]
-        with h5py.File(tracer_outdirec + outfname, 'a') as outf:
+        with h5py.File(Config.tracer_outdirec + outfname, 'a') as outf:
             group = outf.require_group('group')
             dataset = group.require_dataset('SubfindID', shape=dset.shape, dtype=dset.dtype)
             dataset[:] = dset
