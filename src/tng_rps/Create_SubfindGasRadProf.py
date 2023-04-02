@@ -668,19 +668,20 @@ def add_tracers(Config):
     """
     Add tracer particle post-processing datasets to the GRP catalog.
     """
-
-    off_direc = '../Output/%s_tracers_zooniverse/'%Config.sim
-
-    f = h5py.File(Config.outdirec + Config.outfname, 'a')
-    keys = np.array(list(f.keys()))
-
-    group = f[keys[0]]
+    
     NsubfindIDs = keys.size
     max_snap = Config.max_snap
     min_snap = Config.min_snap
     snaps = Config.SnapNums
     CosmicTimes = Config.CosmicTimes
     h = Config.h
+    basePath = Config.basePath
+    tracer_outdirec = Config.tracer_outdirec
+
+    f = h5py.File(Config.outdirec + Config.outfname, 'a')
+    keys = np.array(list(f.keys()))
+
+    group = f[keys[0]]
 
     header      = ru.loadHeader(basePath, max_snap)
     tracer_mass = header['MassTable'][tracer_ptn] * 1.0e10 / h
@@ -704,8 +705,8 @@ def add_tracers(Config):
         
         print(snap_i, snap)
         
-        offsets = h5py.File(off_direc + 'offsets_%03d.hdf5'%snap, 'r')
-        tracers = h5py.File(off_direc + 'tracers_%03d.hdf5'%snap, 'r')
+        offsets = h5py.File(tracer_outdirec + 'offsets_%03d.hdf5'%snap, 'r')
+        tracers = h5py.File(tracer_outdirec + 'tracers_%03d.hdf5'%snap, 'r')
 
         offsets_group = offsets['group']
         tracers_group = tracers['group']
