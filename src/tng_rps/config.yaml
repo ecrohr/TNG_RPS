@@ -21,8 +21,10 @@ jel_key: 'jellyfish'
 non_key: 'nonjellyf'
 
 SubfindIndices: False
-SubfindGasRadProf: False
+SubfindGasRadProf: True
+run_SGRP: False
+run_SCGP_PP: True
 SubfindSnapshot: False
-TracerTracks: True
+TracerTracks: False
 
 
