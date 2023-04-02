@@ -9,7 +9,7 @@ tracers_flag: True
 max_snap: 99
 min_snap: 0
 
-first_snap: 0
+first_snap: 99
 last_snap: 99
 
 tlim: 31622.776601683792 # = 10.**(4.5) K; cutoff between cold and hot gas
