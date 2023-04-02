@@ -678,6 +678,7 @@ def add_tracers(Config):
     tracer_outdirec = Config.tracer_outdirec
     tracer_ptn = Config.tracer_ptn
     gas_ptn = Config.gas_ptn
+    tlim = Config.tlim
 
     f = h5py.File(Config.outdirec + Config.outfname, 'a')
     keys = np.array(list(f.keys()))
