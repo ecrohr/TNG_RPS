@@ -97,10 +97,8 @@ def run_postprocessing(Config):
     # for zooniverse only
     if Config.zooniverse_flag:
         add_zooniverseflags(Config)
-        add_tracers(Config)
-        add_tracers_postprocessing(Config)
-        add_coldgasmasstracerstau(Config)
-        
+
+    
     return
     
 
