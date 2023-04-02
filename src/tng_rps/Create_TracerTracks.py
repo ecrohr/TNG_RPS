@@ -27,6 +27,7 @@ def create_tracertracks(first_snap, last_snap, Config):
     
     sim = Config.sim
     min_snap = Config.min_snap
+    max_snap = Config.max_snap
     
     for snap in range(first_snap, last_snap+1):
         # for the first snapshot, define some subfindIDs of interest,
@@ -46,7 +47,7 @@ def create_tracertracks(first_snap, last_snap, Config):
         end = time.time()
         print('%s snap %03d find_unmatched_tracers: %.3g [s]'%(sim, snap, (end-start)))
 
-        if snap == (last_snap - 1):
+        if snap == (last_snap):
             # add bound flag for the tracer parents
             snaps = range(min_snap+1, max_snap+1)
             Pool = mp.Pool(8)
