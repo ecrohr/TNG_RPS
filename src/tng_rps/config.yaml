@@ -23,7 +23,7 @@ non_key: 'nonjellyf'
 SubfindIndices: False
 SubfindGasRadProf: True
 run_SGRP: False
-run_SGGP_PP: True
+run_SGRP_PP: True
 SubfindSnapshot: False
 TracerTracks: False
 
