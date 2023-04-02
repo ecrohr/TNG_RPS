@@ -520,7 +520,7 @@ def create_bound_flags(snap, Config):
 
     # check that all particles have a bound / unbound flag
     if still_bound[still_bound == -1].size > 0:
-        print('Warning, not all particles were checked at snap %03d!'%03d)
+        print('Warning, not all particles were checked at snap %03d!'%snap)
         orphan_indices = tracers_subhalo['ParentPartType'] == -1
         print(still_bound[still_bound == -1].size, orphan_indices[orphan_indices].size)
 
