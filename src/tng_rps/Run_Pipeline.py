@@ -110,7 +110,7 @@ class Configuration(dict):
         self.SubfindIDs = SubfindIDs
         self.SnapNums_SubfindIDs = SnapNums_SubfindIDs
 
-        if self.tracers_flag:
+        if self.TracerTracks:
             if self.zooniverse_flag:
                 self.tracer_outdirec = '../Output/%s_tracers_zooniverse/'%(self.sim)
             else:
