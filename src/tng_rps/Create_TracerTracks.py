@@ -53,7 +53,7 @@ def create_tracertracks(first_snap, last_snap, Config):
             # add bound flag for the tracer parents
             snaps = range(min_snap+1, max_snap+1)
             for snap in snaps:
-                create_bound_flags(snaps, Config)
+                create_bound_flags(snap, Config)
             #Pool = mp.Pool(8)
             #Pool.map(partial(create_bound_flags, Config=Config), snaps)
             #Pool.close()
