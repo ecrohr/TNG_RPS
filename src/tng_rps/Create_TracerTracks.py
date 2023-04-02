@@ -29,7 +29,6 @@ def create_tracertracks(first_snap, last_snap, Config):
     min_snap = Config.min_snap
     max_snap = Config.max_snap
     
-    """
     for snap in range(first_snap, last_snap+1):
         # for the first snapshot, define some subfindIDs of interest,
         # and determine the subfindID at every snapshot
@@ -40,7 +39,6 @@ def create_tracertracks(first_snap, last_snap, Config):
         track_tracers(snap, Config)
         end = time.time()
         print('%s inspected branches track_tracers at snap %03d: %.3g [s]'%(sim, snap, (end-start)))
-    """
     
     # and find the unmatched tracers from min_snap + 1 until max_snap
     for snap in range(first_snap, last_snap+1):
@@ -52,12 +50,10 @@ def create_tracertracks(first_snap, last_snap, Config):
         if snap == (last_snap):
             # add bound flag for the tracer parents
             snaps = range(min_snap+1, max_snap+1)
-            for snap in snaps:
-                create_bound_flags(snap, Config)
-            #Pool = mp.Pool(8)
-            #Pool.map(partial(create_bound_flags, Config=Config), snaps)
-            #Pool.close()
-            #Pool.join()
+            Pool = mp.Pool(8)
+            Pool.map(partial(create_bound_flags, Config=Config), snaps)
+            Pool.close()
+            Pool.join()
 
 
     ### SLURM job parser, which needs to be moved elsewhere
