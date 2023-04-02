@@ -151,6 +151,17 @@ def track_tracers(snap, Config):
         
     # find the gas cells of interest
     ParticleIDs, Particle_indices, Temperatures, offsets, lengths = find_coldgascells(subfindIDs, snap, Config)
+    
+    # if there are no particles of interest, save
+    if ParticleIDs.size == 0:
+        # reshape the tracers_subhalo arrays
+        for key in offsets_subhalo.keys():
+            offsets_subhalo[key][:] = 0
+        end = offsets_subhalo['SubhaloOffset'][-1] + offsets_subhalo['SubhaloLength'][-1]
+        for key in tracers_subhalo.keys():
+            tracers_subhalo[key] = tracers_subhalo[key][:end]
+        save_catalogs(offsets_subhalo, tracers_subhalo, snap, Config)
+        return
 
     # load all tracers in the simulation
     tracers = il.snapshot.loadSubset(basePath, snap, tracer_ptn)
