@@ -141,7 +141,7 @@ def track_tracers(snap, Config):
         for i in range(1, 4):
             if (snap - i) < min_snap:
                 break
-            offsets, tracers = load_catalogs(snap - i)
+            offsets, tracers = load_catalogs(snap - i, Config)
             offsets_past.append(offsets)
             tracers_past.append(tracers)
 
