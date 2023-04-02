@@ -425,9 +425,11 @@ def find_coldgascells(subfindIDs, snap, Config):
     Particle_indices = Particle_indices[:stop]
     Temperatures = gas_cells['Temperature'][Particle_indices]
     d = time.time()
-
-    if np.min(ParticleIDs) <= 0:
-        print('Warning, ParticleIDs have negative values.')
+    
+    if ParticleIDs.size == 0:
+        print('Warning, no cold gas cells.')
+    elif np.min(ParticleIDs) <= 0:
+        print('Warning, ParticleIDs has negative values.')
     
     return ParticleIDs, Particle_indices, Temperatures, offsets, lengths
 
