@@ -524,7 +524,7 @@ def track_subfindIDs(Config, z0_flag=True):
     subfindIDs = Config.SubfindIDs
     snaps    = Config.SnapNums
     n_snaps  = snaps.size
-    result   = np.zeros((subfindIDs.size, n_snaps), dtype=int) - -1
+    result   = np.zeros((subfindIDs.size, n_snaps), dtype=int) - 1
     sim = Config.sim
     treeName = Config.treeName
     min_snap = Config.min_snap
