@@ -28,7 +28,6 @@ def create_tracertracks(first_snap, last_snap, Config):
     sim = Config.sim
     min_snap = Config.min_snap
     
-    """
     for snap in range(first_snap, last_snap+1):
         # for the first snapshot, define some subfindIDs of interest,
         # and determine the subfindID at every snapshot
@@ -39,7 +38,6 @@ def create_tracertracks(first_snap, last_snap, Config):
         track_tracers(snap, Config)
         end = time.time()
         print('%s inspected branches track_tracers at snap %03d: %.3g [s]'%(sim, snap, (end-start)))
-    """
 
     # and find the unmatched tracers from min_snap + 1 until max_snap
     for snap in range(first_snap, last_snap+1):
