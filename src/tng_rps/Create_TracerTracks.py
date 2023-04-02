@@ -8,6 +8,7 @@ import glob
 import time
 import os
 import argparse
+from functools import partial
 
 gas_fields  = ['InternalEnergy', 'ElectronAbundance', 'StarFormationRate', 'ParticleIDs']
 
@@ -24,6 +25,7 @@ def create_tracertracks(first_snap, last_snap, Config):
     Saves the output.
     """
     
+    sim = Config.sim
     min_snap = Config.min_snap
     
     for snap in range(first_snap, last_snap):
@@ -32,23 +34,23 @@ def create_tracertracks(first_snap, last_snap, Config):
         ### rewrite into an intialization function
         if snap == min_snap:
             track_subfindIDs(Config)
-        a = time.time()
-        track_tracers(snap)
-        b = time.time()
-        print('TNG50-1 inspected branches track_tracers at snap %03d: %.3g [s]'%(snap, (b-a)))
+        start = time.time()
+        track_tracers(snap, Config)
+        end = time.time()
+        print('%s inspected branches track_tracers at snap %03d: %.3g [s]'%(sim, snap, (end-start)))
 
     # and find the unmatched tracers from min_snap + 1 until max_snap
     for snap in range(first_snap, last_snap):
         start = time.time()
-        find_unmatched_tracers(snap)
+        find_unmatched_tracers(snap, Config)
         end = time.time()
-        print('%s snap %03d find_unmatched_tracers: %.3g [s]'%(Sim.sim, snap, (end-start)))
+        print('%s snap %03d find_unmatched_tracers: %.3g [s]'%(sim, snap, (end-start)))
 
         if snap == (last_snap - 1):
             # add bound flag for the tracer parents
             snaps = range(min_snap+1, max_snap+1)
             Pool = mp.Pool(8)
-            Pool.map(create_bound_flags, snaps)
+            Pool.map(partial(create_bound_flags, Config=Config), snaps)
             Pool.close()
             Pool.join()
 
@@ -104,7 +106,7 @@ def create_tracertracks(first_snap, last_snap, Config):
     return
 
 
-def track_tracers(snap):
+def track_tracers(snap, Config):
     """
     Match the bound cold gas cells of the subfindIDs at snap to the tracers.
     If snap < min_snap, then loads the previous tracers and checks if they still
@@ -115,6 +117,13 @@ def track_tracers(snap):
     No returns.
     """
 
+    sim = Config.sim
+    basePath = Config.basePath
+    min_snap = Config.min_snap
+    tracer_outdirec = Config.tracer_outdirec
+    tracer_ptn = Config.tracer_ptn
+    gas_ptn = Config.gas_ptn
+
     print('Working on %s snap %03d'%(sim, snap))
        
     # load the subfindIDs
@@ -123,7 +132,7 @@ def track_tracers(snap):
         f.close()
       
     # initialize the outputs
-    offsets_subhalo, tracers_subhalo = initialize_outputs(len(subfindIDs))
+    offsets_subhalo, tracers_subhalo = initialize_outputs(subfindIDs.size)
     
     # if snap > min_snap: load previous tracers
     if (snap > min_snap):
@@ -141,7 +150,7 @@ def track_tracers(snap):
         tracers_past = None
         
     # find the gas cells of interest
-    ParticleIDs, Particle_indices, Temperatures, offsets, lengths = find_coldgascells(subfindIDs, snap)
+    ParticleIDs, Particle_indices, Temperatures, offsets, lengths = find_coldgascells(subfindIDs, snap, Config)
 
     # load all tracers in the simulation
     tracers = il.snapshot.loadSubset(basePath, snap, tracer_ptn)
@@ -170,7 +179,7 @@ def track_tracers(snap):
         stop = start + lengths[subfind_i]
 
         sub_indices = ((indices1 >= start) & (indices1 < stop))
-        Ntracers = len(sub_indices[sub_indices])
+        Ntracers = sub_indices[sub_indices].size
         offsets_subhalo['SubhaloLength'][subfind_i]            = Ntracers
         offsets_subhalo['SubhaloLengthColdGas'][subfind_i]     = Ntracers
         offsets_subhalo['SubhaloLengthColdGas_new'][subfind_i] = Ntracers
@@ -195,7 +204,7 @@ def track_tracers(snap):
                     i += 1
                 # if the subhalo isn't in the merger trees the past few snaps, move on
                 if i == 4:
-                    IDs_past = indices_past = np.ones(1, dtype=int) * -1
+                    IDs_past = indices_past = np.zeros(1, dtype=int) - 1
                     break
             
             # reorder tracer_IDs and tracer_indices such that:
@@ -214,7 +223,7 @@ def track_tracers(snap):
             # find the indices of group3 tracers later
             # the tracer indices vary with each snapshot, so we can't use the indices from the previous snaps
             # save -1 now, such that we only need to find the indices once per snapshot (rather than per subhalo)
-            indices_group3 = np.ones(len(IDs_group3), dtype=int) * -1
+            indices_group3 = np.zeros(IDs_group3.size, dtype=int) - 1
             
             tracer_IDs_sub = np.concatenate([IDs_group1, IDs_group2, IDs_group3])
             tracer_indices_sub = np.concatenate([indices_group1, indices_group2, indices_group3])
@@ -237,15 +246,15 @@ def track_tracers(snap):
         # find the appropriate particles indices for groups 1, 2
         part_indices = particle_indices[sub_indices]
         tracers_subhalo['ParentIndices'][start:start+length_cgas] = part_indices
-        tracers_subhalo['ParentPartType'][start:start+length_cgas] = np.ones(len(part_indices), dtype=int) * gas_ptn
+        tracers_subhalo['ParentPartType'][start:start+length_cgas] = np.zeros(part_indices.size, dtype=int) + gas_ptn
         tracers_subhalo['ParentGasTemp'][start:start+length_cgas] = temperatures[sub_indices]
 
         # for now, make the parent indices and parent part type -1
         # then later load the other baryonic particles in the sim and match
         # their particle IDs with all unmatched tracers
-        tracers_subhalo['ParentIndices'][start+length_cgas:start+length]  = np.ones((length - length_cgas), dtype=int) * -1
-        tracers_subhalo['ParentPartType'][start+length_cgas:start+length] = np.ones((length - length_cgas), dtype=int) * -1
-        tracers_subhalo['ParentGasTemp'][start+length_cgas:start+length]  = np.ones((length - length_cgas), dtype=float) * -1
+        tracers_subhalo['ParentIndices'][start+length_cgas:start+length]  = np.zeros((length - length_cgas), dtype=int) - 1
+        tracers_subhalo['ParentPartType'][start+length_cgas:start+length] = np.zeros((length - length_cgas), dtype=int) - 1
+        tracers_subhalo['ParentGasTemp'][start+length_cgas:start+length]  = np.zeros((length - length_cgas), dtype=float) - 1
     
     # finish loop over subfindIDs    
 
@@ -254,18 +263,23 @@ def track_tracers(snap):
     for key in tracers_subhalo.keys():
         tracers_subhalo[key] = tracers_subhalo[key][:end]
         
-    save_catalogs(offsets_subhalo, tracers_subhalo, snap)
+    save_catalogs(offsets_subhalo, tracers_subhalo, snap, Config)
             
     return
 
-def find_unmatched_tracers(snap):
+def find_unmatched_tracers(snap, Config):
     """
     For all unmatched tracers at snap, find their parents.
     """
 
+    basePath = Config.basePath
+    tracer_ptn = Config.tracer_ptn
+    bary_ptns = Config.bary_ptns
+    gas_ptn = Config.gas_ptn
+    
     # load the offsets, tracers at snap
     a = time.time()
-    offsets_subhalo, tracers_subhalo = load_catalogs(snap)
+    offsets_subhalo, tracers_subhalo = load_catalogs(snap, Config)
     b = time.time()
 
     # find the unmatched tracers
@@ -289,7 +303,6 @@ def find_unmatched_tracers(snap):
     del tracers
 
     # loop over each baryonic particle type, searching for the parents
-
     for i, ptn in enumerate(bary_ptns):
 
         if ptn == gas_ptn:
@@ -313,17 +326,17 @@ def find_unmatched_tracers(snap):
             continue
 
         parent_indices = Particle_indices
-        parent_ptn = np.ones(len(parent_indices), dtype=int) * ptn
+        parent_ptn = np.ones(parent_indices.size, dtype=int) * ptn
 
         # calculate the temperature for the gas cells
         if ptn == gas_ptn:
             for key in fields:
                 Particles[key] = Particles[key][parent_indices]
-            Particles['count'] = len(parent_indices)
+            Particles['count'] = parent_indices.size
             Particles = ru.calc_temp_dict(Particles)
             temps = Particles['Temperature']
         else:
-            temps = np.ones(len(parent_indices), dtype=float) * -1.
+            temps = np.zeros(parent_indices.size, dtype=float) - 1.
 
         # calculate the tracer catalog indices for the unmatched tracers matched to this part type
         save_indices = np.where(unmatched_indices)[0][matched_unmatched_indices][Parent_indices]
@@ -340,12 +353,12 @@ def find_unmatched_tracers(snap):
         print('Warning, not all parents found!')
         
     # save catalogs and return 
-    save_catalogs(offsets_subhalo, tracers_subhalo, snap)
+    save_catalogs(offsets_subhalo, tracers_subhalo, snap, Config)
         
     return
 
 
-def find_coldgascells(subfindIDs, snap):
+def find_coldgascells(subfindIDs, snap, Config):
     """
     Find the cold gas cells bound to the subfindIDs at snap.
     Loads all gas cells at snap, and then loops over the subfindIDs 
@@ -362,6 +375,11 @@ def find_coldgascells(subfindIDs, snap):
     Returns ParticleIDs, Particle_indices, Temperatures, offsets, lengths.
     """
     
+    sim = Config.sim
+    basePath = Config.basePath
+    gas_ptn = Config.gas_ptn
+    tlim = Config.tlim
+    
     a = time.time()
     gas_cells = il.snapshot.loadSubset(basePath, snap, gas_ptn, fields=gas_fields)
     b = time.time()
@@ -371,12 +389,12 @@ def find_coldgascells(subfindIDs, snap):
     c = time.time()
 
     dtype = int
-    offsets = np.zeros(len(subfindIDs), dtype=dtype)
-    lengths = np.zeros(len(subfindIDs), dtype=dtype)
+    offsets = np.zeros(subfindIDs.size, dtype=dtype)
+    lengths = np.zeros(subfindIDs.size, dtype=dtype)
 
     dtype = gas_cells['ParticleIDs'].dtype
-    ParticleIDs = np.zeros(big_array_length, dtype=dtype)
-    Particle_indices = np.zeros(big_array_length, dtype=int)
+    ParticleIDs = np.zeros(big_array_length, dtype=dtype) - 1
+    Particle_indices = np.zeros(big_array_length, dtype=int) - 1
 
     for i, subfindID in enumerate(subfindIDs):
 
@@ -409,12 +427,12 @@ def find_coldgascells(subfindIDs, snap):
     d = time.time()
 
     if np.min(ParticleIDs) <= 0:
-        print('Warning')
+        print('Warning, ParticleIDs have negative values.')
     
     return ParticleIDs, Particle_indices, Temperatures, offsets, lengths
 
 
-def create_bound_flags(snap):
+def create_bound_flags(snap, Config):
     """
     Post-process the catalogs to add a still-bound flag to each tracer.
     'Still-Bound' means that the tracer's parent is still gravitationally 
@@ -428,11 +446,14 @@ def create_bound_flags(snap):
     Saves the StillBound_flag to the tracers catalog. No returns.
     """
     
+    basePath = Config.basePath
+    bary_ptns = Config.bary_ptns
+    
     # load the catalogs at snap
-    offsets_subhalo, tracers_subhalo = load_catalogs(snap)
+    offsets_subhalo, tracers_subhalo = load_catalogs(snap, Config)
 
     # initalize the ouput
-    still_bound = np.ones(len(tracers_subhalo['ParentPartType']), dtype=int) * -1
+    still_bound = np.zeros(tracers_subhalo['ParentPartType'].size, dtype=int) - 1
 
     # begin loop over subfindIDs
     for subfind_i, subfindID in enumerate(offsets_subhalo['SubfindID']):
@@ -479,14 +500,14 @@ def create_bound_flags(snap):
     # finish loop over subfindIDs
 
     # check that all particles have a bound / unbound flag
-    if len(still_bound[still_bound == -1]) > 0:
+    if still_bound[still_bound == -1].size > 0:
         print('Warning, not all particles were checked!')
         orphan_indices = tracers_subhalo['ParentPartType'] == -1
-        print(len(still_bound[still_bound == -1]), len(orphan_indices[orphan_indices]))
+        print(still_bound[still_bound == -1].size, orphan_indices[orphan_indices].size)
 
     # save the catalogs
     tracers_subhalo['StillBound_flag'] = still_bound
-    save_catalogs(offsets_subhalo, tracers_subhalo, snap)
+    save_catalogs(offsets_subhalo, tracers_subhalo, snap, Config)
     
     return
 
@@ -570,7 +591,7 @@ def initialize_outputs(Nsubhalos):
     return offsets_subhalo, tracers_subhalo
 
 
-def load_catalogs(snap):
+def load_catalogs(snap, Config):
     """
     Load the offsets and tracers catalogs at snap.
     Returns dicitonaries of the offsets, tracers catalogs.
@@ -579,7 +600,7 @@ def load_catalogs(snap):
     fnames = ['offsets', 'tracers']
     for i, fname in enumerate(fnames):
         result[fname] = {}
-        with h5py.File(tracer_outdirec + '%s_%03d.hdf5'%(fname, snap), 'r') as f:
+        with h5py.File(Config.tracer_outdirec + '%s_%03d.hdf5'%(fname, snap), 'r') as f:
             group = f['group']
             for key in group.keys():
                 result[fname][key] = group[key][:]
@@ -588,7 +609,7 @@ def load_catalogs(snap):
     return result[fnames[0]], result[fnames[1]]    
 
 
-def save_catalogs(offsets, tracers, snap):
+def save_catalogs(offsets, tracers, snap, Config):
     """
     Save the offsets and tracers catalogs at snap.
     """
@@ -598,7 +619,7 @@ def save_catalogs(offsets, tracers, snap):
         fname    = fnames[d_i]
         tracer_outfname = '%s_%03d.hdf5'%(fname, snap)
 
-        with h5py.File(tracer_outdirec + tracer_outfname, 'a') as outf:
+        with h5py.File(Config.tracer_outdirec + tracer_outfname, 'a') as outf:
             group = outf.require_group('group')
             for dset_key in d.keys():
                 dset = d[dset_key]
