@@ -31,46 +31,48 @@ def run_subfindGRP(Config):
     outdirec = Config.outdirec
     outfname = Config.outfname
 
-    dics = []
+    if Config.run_SGRP:
+        dics = []
+        
+        f = h5py.File(outdirec + outfname, 'a')
+        for group_key in f.keys():
+            dic = {}
+            dic[group_key] = {}
+            group = f[group_key]
+            for dset_key in group.keys():
+                dic[group_key][dset_key] = group[dset_key][:]
+            dics.append(dic)
+
+        Pool = mp.Pool(8) # should be 8 when running interactively; mp.cpu_count() for SLURM
+
+        if Config.mp_flag:
+            result_list = Pool.map(partial(create_subfindGRP, Config=Config), dics)
+        else:
+            result_list = []
+            for dic in dics:
+                result_list.append(create_subfindGRP(dic, Config))
+
+        Pool.close()
+        Pool.join()
+
+        result = {}
+        for i, d in enumerate(result_list):
+            key = list(d.keys())[0]
+            result[key] = d[key]
+
+        new_keys = threed_keys + scalar_keys
+
+        for group_key in result.keys():
+            group = f.require_group(group_key)
+            for dset_key in new_keys:
+                dset = result[group_key][dset_key]
+                dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+                dataset[:] = dset
+                
+        f.close()
     
-    f = h5py.File(outdirec + outfname, 'a')
-    for group_key in f.keys():
-        dic = {}
-        dic[group_key] = {}
-        group = f[group_key]
-        for dset_key in group.keys():
-            dic[group_key][dset_key] = group[dset_key][:]
-        dics.append(dic)
-
-    Pool = mp.Pool(8) # should be 8 when running interactively; mp.cpu_count() for SLURM
-
-    if Config.mp_flag:
-        result_list = Pool.map(partial(create_subfindGRP, Config=Config), dics)
-    else:
-        result_list = []
-        for dic in dics:
-            result_list.append(create_subfindGRP(dic, Config))
-
-    Pool.close()
-    Pool.join()
-
-    result = {}
-    for i, d in enumerate(result_list):
-        key = list(d.keys())[0]
-        result[key] = d[key]  
-
-    new_keys = threed_keys + scalar_keys
-
-    for group_key in result.keys():
-        group = f.require_group(group_key)        
-        for dset_key in new_keys:  
-            dset = result[group_key][dset_key]
-            dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
-            dataset[:] = dset
-
-    f.close()
-    
-    run_postprocessing(Config)
+    if Config.run_SGRP_PP:
+        run_postprocessing(Config)
     
     return
     
