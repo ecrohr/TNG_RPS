@@ -669,7 +669,6 @@ def add_tracers(Config):
     Add tracer particle post-processing datasets to the GRP catalog.
     """
     
-    NsubfindIDs = keys.size
     max_snap = Config.max_snap
     min_snap = Config.min_snap
     snaps = Config.SnapNums
@@ -680,6 +679,7 @@ def add_tracers(Config):
 
     f = h5py.File(Config.outdirec + Config.outfname, 'a')
     keys = np.array(list(f.keys()))
+    NsubfindIDs = keys.size
 
     group = f[keys[0]]
 
