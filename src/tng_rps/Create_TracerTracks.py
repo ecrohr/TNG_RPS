@@ -28,7 +28,8 @@ def create_tracertracks(first_snap, last_snap, Config):
     sim = Config.sim
     min_snap = Config.min_snap
     
-    for snap in range(first_snap, last_snap):
+    """
+    for snap in range(first_snap, last_snap+1):
         # for the first snapshot, define some subfindIDs of interest,
         # and determine the subfindID at every snapshot
         ### rewrite into an intialization function
@@ -38,9 +39,10 @@ def create_tracertracks(first_snap, last_snap, Config):
         track_tracers(snap, Config)
         end = time.time()
         print('%s inspected branches track_tracers at snap %03d: %.3g [s]'%(sim, snap, (end-start)))
+    """
 
     # and find the unmatched tracers from min_snap + 1 until max_snap
-    for snap in range(first_snap, last_snap):
+    for snap in range(first_snap, last_snap+1):
         start = time.time()
         find_unmatched_tracers(snap, Config)
         end = time.time()
@@ -154,9 +156,10 @@ def track_tracers(snap, Config):
     
     # if there are no particles of interest, save
     if ParticleIDs.size == 0:
-        # reshape the tracers_subhalo arrays
+        # by definition, all subhalos have 0 offset
         for key in offsets_subhalo.keys():
             offsets_subhalo[key][:] = 0
+        # reshape the tracers_subhalo arrays
         end = offsets_subhalo['SubhaloOffset'][-1] + offsets_subhalo['SubhaloLength'][-1]
         for key in tracers_subhalo.keys():
             tracers_subhalo[key] = tracers_subhalo[key][:end]
@@ -215,7 +218,7 @@ def track_tracers(snap, Config):
                     i += 1
                 # if the subhalo isn't in the merger trees the past few snaps, move on
                 if i == 4:
-                    IDs_past = indices_past = np.zeros(1, dtype=int) - 1
+                    IDs_past = indices_past = np.zeros(0, dtype=int) - 1
                     break
             
             # reorder tracer_IDs and tracer_indices such that:
