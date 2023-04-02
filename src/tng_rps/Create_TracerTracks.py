@@ -29,6 +29,7 @@ def create_tracertracks(first_snap, last_snap, Config):
     min_snap = Config.min_snap
     max_snap = Config.max_snap
     
+    """
     for snap in range(first_snap, last_snap+1):
         # for the first snapshot, define some subfindIDs of interest,
         # and determine the subfindID at every snapshot
@@ -39,21 +40,24 @@ def create_tracertracks(first_snap, last_snap, Config):
         track_tracers(snap, Config)
         end = time.time()
         print('%s inspected branches track_tracers at snap %03d: %.3g [s]'%(sim, snap, (end-start)))
-
+    """
+    
     # and find the unmatched tracers from min_snap + 1 until max_snap
     for snap in range(first_snap, last_snap+1):
         start = time.time()
-        find_unmatched_tracers(snap, Config)
+        #find_unmatched_tracers(snap, Config)
         end = time.time()
         print('%s snap %03d find_unmatched_tracers: %.3g [s]'%(sim, snap, (end-start)))
 
         if snap == (last_snap):
             # add bound flag for the tracer parents
             snaps = range(min_snap+1, max_snap+1)
-            Pool = mp.Pool(8)
-            Pool.map(partial(create_bound_flags, Config=Config), snaps)
-            Pool.close()
-            Pool.join()
+            for snap in snaps:
+                create_bound_flags(snaps, Config)
+            #Pool = mp.Pool(8)
+            #Pool.map(partial(create_bound_flags, Config=Config), snaps)
+            #Pool.close()
+            #Pool.join()
 
 
     ### SLURM job parser, which needs to be moved elsewhere
@@ -516,7 +520,7 @@ def create_bound_flags(snap, Config):
 
     # check that all particles have a bound / unbound flag
     if still_bound[still_bound == -1].size > 0:
-        print('Warning, not all particles were checked!')
+        print('Warning, not all particles were checked at snap %03d!'%03d)
         orphan_indices = tracers_subhalo['ParentPartType'] == -1
         print(still_bound[still_bound == -1].size, orphan_indices[orphan_indices].size)
 
