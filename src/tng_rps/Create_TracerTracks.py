@@ -486,7 +486,7 @@ def create_bound_flags(snap, Config):
         still_bound[start_groups12:end_groups12] = 1
 
         # now let's check the group the group 3 tracers
-        start_group3 = start_groups12 + offsets_subhalo['SubhaloLengthColdGas'][subfind_i]
+        start_group3 = end_groups12
         end_group3 = start_groups12 + offsets_subhalo['SubhaloLength'][subfind_i]
 
         # load the relevant parent indices and parent part type
@@ -517,12 +517,6 @@ def create_bound_flags(snap, Config):
             still_bound[save_unbound_indices] = 0
         # finish loop over the baryon part types
     # finish loop over subfindIDs
-
-    # check that all particles have a bound / unbound flag
-    if still_bound[still_bound == -1].size > 0:
-        print('Warning, not all particles were checked at snap %03d!'%snap)
-        orphan_indices = tracers_subhalo['ParentPartType'] == -1
-        print(still_bound[still_bound == -1].size, orphan_indices[orphan_indices].size)
 
     # save the catalogs
     tracers_subhalo['StillBound_flag'] = still_bound
