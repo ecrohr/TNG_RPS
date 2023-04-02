@@ -93,13 +93,16 @@ def run_postprocessing(Config):
         # quenching times require the appropriate catalogs
         if not Config.TNGCluster_flag:
             add_quenchtimes(Config)
+            
+    # if the tracers have already been calculated
+    if Config.tracers_flag:
+        add_tracers(Config)
+        add_tracers_postprocessing(Config)
+        add_coldgasmasstracerstau(Config)
         
     # for zooniverse only
     if Config.zooniverse_flag:
         add_zooniverseflags(Config)
-        add_tracers(Config)
-        add_tracers_postprocessing(Config)
-        add_coldgasmasstracerstau(Config)
         
     return
     
