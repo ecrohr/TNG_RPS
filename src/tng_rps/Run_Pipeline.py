@@ -138,59 +138,64 @@ def argparse_Config(Config):
                    'computing the RSP in TNG galaxies.')
     parser = argparse.ArgumentParser(description=description)
     
+    
     # general flags
-    parser.add_argument('--TNGCluster-flag', default=False, type=bool,
+    parser.add_argument('--sim', default=None, type=str,
+                        help='which simulation to use for the analysis.')
+    
+    parser.add_argument('--TNGCluster-flag', default=None, type=bool,
                         help='analysis for TNG-Cluster')
-   parser.add_argument('--zooniverse-flag', default=False, type=bool,
+    parser.add_argument('--zooniverse-flag', default=None, type=bool,
                         help='analysis using CJF zooniverse results')
-    parser.add_argument('--centrals-flag', default=False, type=bool,
+    parser.add_argument('--centrals-flag', default=None, type=bool,
                         help='analysis for central galaxies')
-    parser.add_argument('--tracers-flag', default=False, type=bool,
+    parser.add_argument('--tracers-flag', default=None, type=bool,
                         help='use tracer post-processing catalogs in analysis.')
              
     # mp flags
-    parser.add_argument('--mp-flag', default=False, type=bool,
+    parser.add_argument('--mp-flag', default=None, type=bool,
                         help='use multiprocessing for analysis.')
-    parser.add_argument('--Nmpcores', default=8, type=int,
+    parser.add_argument('--Nmpcores', default=None, type=int,
                         help='Number of cores to use for multiprocessing tasks.')
 
     # hard coded values
-    parser.add_argument('--max-snap', default=99, type=int,
+    parser.add_argument('--max-snap', default=None, type=int,
                         help='max snap for merger trees and analysis.')
-    parser.add_argument('--min-snap', default=0, type=int,
+    parser.add_argument('--min-snap', default=None, type=int,
                         help='min snap for merger trees and analysis.')
-    parser.add_argument('--first-snap', default=0, type=int,
+    parser.add_argument('--first-snap', default=None, type=int,
                         help='first snap for running the tracers.')
-    parser.add_argument('--last-snap', default=99, type=int,
+    parser.add_argument('--last-snap', default=None, type=int,
                         help='last snap for running the tracers.')
-    parser.add_argument('--tlim', default=10.**(4.5), type=float,
+    parser.add_argument('--tlim', default=None, type=float,
                         help='temperature limit between cold and hot gas.')
-    parser.add_argument('--jellyscore-min', default=16, type=int,
+    parser.add_argument('--jellyscore-min', default=None, type=int,
                         help='minimum score to be considered a jellyfish galaxy')
 
     # which types of analysis should be run
-    parser.add_argument('--track-tracers', default=False, type=bool,
+    parser.add_argument('--track-tracers', default=None, type=bool,
                         help='flag to run track_tracers().')
-    parser.add_argument('--find-tracers', default=False, type=bool,
+    parser.add_argument('--find-tracers', default=None, type=bool,
                         help='flag to run find_unmatched_tracers().')
-    parser.add_argument('--SubfindIndices', default=False, type=bool,
+    parser.add_argument('--SubfindIndices', default=None, type=bool,
                         help='flag to run find_unmatched_tracers().')
-    parser.add_argument('--SubfindGasRadProf', default=False, type=bool,
+    parser.add_argument('--SubfindGasRadProf', default=None, type=bool,
                         help='flag to run find_unmatched_tracers().')
-    parser.add_argument('--run-SGRP', default=False, type=bool,
+    parser.add_argument('--run-SGRP', default=None, type=bool,
                         help='flag to run find_unmatched_tracers().')
-    parser.add_argument('--run-SGRP-PP', default=False, type=bool,
+    parser.add_argument('--run-SGRP-PP', default=None, type=bool,
                         help='flag to run find_unmatched_tracers().')
-    parser.add_argument('--SubfindSnapshot', default=False, type=bool,
+    parser.add_argument('--SubfindSnapshot', default=None, type=bool,
                         help='flag to run find_unmatched_tracers().')
-    parser.add_argument('--TracerTracks', default=False, type=bool,
+    parser.add_argument('--TracerTracks', default=None, type=bool,
                         help='flag to run find_unmatched_tracers().')
-    parser.add_argument('--find-tracers', default=False, type=bool,
+    parser.add_argument('--find-tracers', default=None, type=bool,
                         help='flag to run find_unmatched_tracers().')
 
     args = vars(parser.parse_args())
     for key in args.keys():
-        Config[key] = args[key]
+        if args[key]:
+            Config[key] = args[key]
         
     return Config
                         
