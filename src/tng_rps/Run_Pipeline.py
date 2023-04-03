@@ -10,6 +10,7 @@ import h5py
 import rohr_utils as ru
 import os
 import yaml
+import glob
 import argparse
 
 class Configuration(dict):
@@ -112,6 +113,7 @@ class Configuration(dict):
                 
         self.SubfindIDs = SubfindIDs
         self.SnapNums_SubfindIDs = SnapNums_SubfindIDs
+        print(SubfindIDs.size)
 
         if self.tracers_flag:
             if self.zooniverse_flag:
@@ -160,7 +162,7 @@ def return_outdirec_outfname(Config):
     
     if (Config.zooniverse_flag):
         ins_key = 'inspected'
-        outfname = 'zooniverse_%s_%s_branches.hdf5'%(Config.sim, ins_key)
+        outfname = 'zooniverse_%s_%s_branches.hdf5'%(Config.sim, Config.zooniverse_key)
         outdirec = '../Output/%s_subfindGRP/'%Config.sim
         
         if (os.path.isdir(outdirec)):
@@ -218,18 +220,19 @@ def return_Mstar_lolim(Config):
         return 10.**(10)
     else:
         raise ValueError('sim %s not recognized.'%sim)
+        
+    if sim == 'TNG50-4':
+        return 10.**(10)
     
     for i in range(1,5):
         if '-%d'%i in sim:
-            Mstar_lolim = res * 8**i
+            Mstar_lolim = res * 8**(i-1)
+            break
         elif i == 4:
             raise ValueError('sim %s not recongized.'%sim)
             
-    if sim == 'TNG50-4':
-        return 10.**(10)
-            
     return Mstar_lolim
-    
+ 
 
 def initialize_subfindindices(Config):
     """
