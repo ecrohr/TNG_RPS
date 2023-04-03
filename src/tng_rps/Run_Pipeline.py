@@ -433,5 +433,5 @@ if Config.SubfindGasRadProf:
     
 if Config.TracerTracks:
     from Create_TracerTracks import create_tracertracks
-    create_tracertracks(Config.first_snap, Config.last_snap, Config)
+    create_tracertracks(Config)
 
