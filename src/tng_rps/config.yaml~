@@ -1,0 +1,20 @@
+sim: 'L680n8192TNG'
+
+TNGCluster_flag: True
+mp_flag: True
+zooniverse_flag: False
+centrals_flag: False
+    
+max_snap: 99
+min_snap: 0
+
+tlim: 31622.776601683792 # = 10.**(4.5) K; cutoff between cold and hot gas
+jellyscore_min: 16
+treeName: 'SubLink_gal'
+
+SubfindIndices: False
+SubfindGasRadProf: False
+SubfindSnapshot: True
+TracerTracks: False
+
+
