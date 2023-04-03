@@ -41,6 +41,7 @@ out_keys = [nonz0_key, beforesnapfirst_key, backsplash_key,
 
 
 def clean_zooniverseGRP(zooniverse=True, savekeys=False):
+    """ Clean the Zooniverse sample based on various selection criteria. """
 
     infname    = return_outfname(zooniverse=zooniverse, clean=False)
     dic        = load_dict(infname)
@@ -97,6 +98,7 @@ def clean_zooniverseGRP(zooniverse=True, savekeys=False):
 
 
 def run_clean_zooniverseGRP(dic):
+    """ For each branch, load the various flags and sort them. """
 
     keys = np.array(list(dic.keys()))
 
@@ -203,6 +205,7 @@ def run_clean_zooniverseGRP(dic):
 
 
 def load_subfindsnapshot_flags():
+    """ Helpfer function to lead the subfindsnapshot flags. """
     
     direc = '../Output/%s_subfindflags/'%sim
     fname = 'subfindflags_%s_zooniverse.hdf5'%(sim)
@@ -220,6 +223,10 @@ def load_subfindsnapshot_flags():
 
 # split the inspected branches into jellyfish and nonjellyf
 def split_inspected_branches():
+    """
+    split the zooniverse branches into all (inspected), jellyfish,
+    and non-jellyfish branches based on their classification at z <= 0.5
+    """
     
     keys = ['inspected', 'jellyfish', 'nonjellyf']
     fnames = []
@@ -263,13 +270,15 @@ def split_inspected_branches():
     return
 
 
-# reorganize the evolutionary tracks into 1D arrays with scalars at specific times
-# we want an array of scalar quantities at important times for various plots.
-# namely, we care about times tau0, tau10, and tau90 defined by infall and peak MCgas, at z=0, and quenching time
-
 def return_taudict(zooniverse=True, clean=True):
-            
+    """
+    reorganize the evolutionary tracks into 1D arrays with scalars at specific times
+    we want an array of scalar quantities at important times for various plots.
+    namely, we care about times tau0, tau10, and tau90 defined by infall and peak MCgas, at z=0, and quenching time
+    """
+    
     def return_tauresult_key(grp_key, tau_key, tau_val):
+        """ helper function to determine the key name """
         return (grp_key + '_' + tau_key + '%d'%tau_val)
 
     if zooniverse:
@@ -287,8 +296,8 @@ def return_taudict(zooniverse=True, clean=True):
     tau_keys = [tau_infall_key, tau_medpeak_key]
 
     tauvals_dict = {}
-    tauvals_dict[tau_infall_key] = np.array([0., 90.])
-    tauvals_dict[tau_medpeak_key] = np.array([0., 10., 90.])
+    tauvals_dict[tau_infall_key] = np.array([0., 100.])
+    tauvals_dict[tau_medpeak_key] = np.array([0., 100.])
 
     if zooniverse:
         tau_RPS_est_infall_key = 'tau_RPS_est'
@@ -309,12 +318,14 @@ def return_taudict(zooniverse=True, clean=True):
                 'min_HostCentricDistance_norm', 'min_HostCentricDistance_phys']
     
     for group_index, group_key in enumerate(result_keys):
+    
         group = result[group_key]
         subfind_indices = np.where(group['SubfindID'] != -1)[0]
     
         # if just starting, then initialize the dictionary 
         if group_index == 0:
             tauresult['SubfindID'] = np.zeros(len(result_keys), dtype=int)
+            tauresult['HostSubhaloGrNr'] = np.zeros(len(result_keys), dtype=int)
             for grp_key in grp_keys:
                 for tau_key in tau_keys:
                     tau_vals = tauvals_dict[tau_key]
@@ -337,7 +348,8 @@ def return_taudict(zooniverse=True, clean=True):
                                                     dtype=group[tau_key].dtype) - 1
                     
         tauresult['SubfindID'][group_index] = int(float(group_key))
-    
+        tauresult['HostSubhaloGrNr'][group_index] = group['HostSubhaloGrNr'][0]
+        
         # for each of the definitions of tau, let's tabulate important properties at tau_X 
         for tau_key in tau_keys:
             tau = group[tau_key][subfind_indices]
@@ -359,21 +371,22 @@ def return_taudict(zooniverse=True, clean=True):
             tauresult_key = grp_key + '_z0'
             tauresult[tauresult_key][group_index] = group[grp_key][0]
 
-        # and at the quenching time, if this exists
-        quench_snap = group['quenching_snap'][0]
-        if quench_snap >= 0:
-            SnapNum = group['SnapNum']
-            quench_index = np.where(quench_snap == SnapNum)[0]
-            # check that the quenching snap is after min(SnapNum)
-            if quench_index.size > 0:
-                for grp_key in grp_keys:
-                    tauresult_key = grp_key + '_quench'
-                    tauresult[tauresult_key][group_index] = group[grp_key][quench_index]
+        if sim != 'L680n8192TNG':
+            # and at the quenching time, if this exists
+            quench_snap = group['quenching_snap'][0]
+            if quench_snap >= 0:
+                SnapNum = group['SnapNum']
+                quench_index = np.where(quench_snap == SnapNum)[0]
+                # check that the quenching snap is after min(SnapNum)
+                if quench_index.size > 0:
+                    for grp_key in grp_keys:
+                        tauresult_key = grp_key + '_quench'
+                        tauresult[tauresult_key][group_index] = group[grp_key][quench_index]
 
-                # also calculate the tau values at quenching
-                for tau_key in tau_keys:
-                    tauresult_key = tau_key + '_quench'
-                    tauresult[tauresult_key][group_index] = group[tau_key][quench_index]
+                    # also calculate the tau values at quenching
+                    for tau_key in tau_keys:
+                        tauresult_key = tau_key + '_quench'
+                        tauresult[tauresult_key][group_index] = group[tau_key][quench_index]
 
     # finish loop over the branches
 
@@ -382,8 +395,6 @@ def return_taudict(zooniverse=True, clean=True):
         tau_vals = tauvals_dict[tau_key]
         tau_lo = tau_vals.min()
         tau_hi = tau_vals.max()
-        if tau_key == tau_medpeak_key:
-            tau_lo = tau_vals[1]
         key_lo = 'CosmicTime_%s%d'%(tau_key, tau_lo)
         key_hi = 'CosmicTime_%s%d'%(tau_key, tau_hi)
         lo = tauresult[key_lo]
@@ -397,15 +408,16 @@ def return_taudict(zooniverse=True, clean=True):
         tauresult[tstrip_key] = tstrip
 
         # now hard code the quenching time: time of last quenching - tau_*_lo
-        key_hi = 'CosmicTime_quench'
-        hi = tauresult[key_hi]
-        indices = (lo > 0) & (hi > 0)
-        
-        tquench = np.zeros(lo.size, dtype=lo.dtype) -1
-        tquench[indices] = hi[indices] - lo[indices]
-        
-        tquench_key = 'Tquench_%s'%tau_key
-        tauresult[tquench_key] = tquench
+        if sim != 'L680n8192TNG':
+            key_hi = 'CosmicTime_quench'
+            hi = tauresult[key_hi]
+            indices = (lo > 0) & (hi > 0)
+            
+            tquench = np.zeros(lo.size, dtype=lo.dtype) -1
+            tquench[indices] = hi[indices] - lo[indices]
+            
+            tquench_key = 'Tquench_%s'%tau_key
+            tauresult[tquench_key] = tquench
 
     # and mu(z=0) = M_star^sat (z=0) / M_200c^host (z=0)
     tauresult['muz0'] = (tauresult['Subhalo_Mstar_Rgal_z0']
@@ -543,16 +555,18 @@ def return_outfname(sim='TNG50-1', key='inspected', zooniverse=True, clean=False
 
 
 zooniverse = False
-for sim in ['TNG50-1']:
+for sim in ['TNG50-4']:
     outdirec = '../Output/%s_subfindGRP/'%sim
     outfname = return_outfname(sim=sim, key=ins_key, zooniverse=zooniverse, clean=False)
     
     #clean_zooniverseGRP(zooniverse=zooniverse, savekeys=False)
     return_taudict(zooniverse=False, clean=False)
             
+"""
 if zooniverse:
     for key in taudict_keys:
         #_ = return_taudict(key)
         split_tau_gasz0(key=key)
 
 #combine_taudicts()
+"""
