@@ -10,6 +10,7 @@ import h5py
 import rohr_utils as ru
 import os
 import yaml
+import argparse
 
 class Configuration(dict):
     __slots__ = ()
@@ -42,6 +43,9 @@ class Configuration(dict):
 
     def add_vals(self):
         """ Add additional attributes """
+        
+        self = argparse_Config(self)
+        print(self.first_snap, self.last_snap)
         
         self.basePath = ru.loadbasePath(self.sim)
         self.outdirec, self.outfname = return_outdirec_outfname(self)
@@ -124,6 +128,27 @@ class Configuration(dict):
                 
         
         return
+
+
+def argparse_Config(Config):
+    """
+    Parse all command line arguments and update them in the Config.
+    """
+    description = ('Pipeline for running all analysis scripts related to \n' +
+                   'computing the RSP in TNG galaxies.')
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('-fs', '--first-snap', default=None,
+                        help='first snap for running the tracers.')
+    parser.add_argument('-ls', '--last-snap', default=None,
+                        help='last snap for running the tracers.')
+            
+    args = vars(parser.parse_args())
+    for key in args.keys():
+        print(key)
+        Config[key] = args[key]
+        
+    return Config
+                        
 
 def return_outdirec_outfname(Config):
     """
