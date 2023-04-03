@@ -45,7 +45,6 @@ class Configuration(dict):
         """ Add additional attributes """
         
         self = argparse_Config(self)
-        print(self.first_snap, self.last_snap)
         
         self.basePath = ru.loadbasePath(self.sim)
         self.outdirec, self.outfname = return_outdirec_outfname(self)
@@ -148,7 +147,7 @@ def argparse_Config(Config):
             
     args = vars(parser.parse_args())
     for key in args.keys():
-        print(key)
+        print(key, args[key])
         Config[key] = args[key]
         
     return Config
