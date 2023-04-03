@@ -43,7 +43,7 @@ def run_subfindGRP(Config):
                 dic[group_key][dset_key] = group[dset_key][:]
             dics.append(dic)
 
-        Pool = mp.Pool(8) # should be 8 when running interactively; mp.cpu_count() for SLURM
+        Pool = mp.Pool(Config.Nmpcores)
 
         if Config.mp_flag:
             result_list = Pool.map(partial(create_subfindGRP, Config=Config), dics)

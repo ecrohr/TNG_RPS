@@ -1,10 +1,11 @@
-sim: 'TNG50-1'
+sim: 'TNG50-4'
 
 TNGCluster_flag: False
-mp_flag: True
-zooniverse_flag: True
+mp_flag: False
+zooniverse_flag: False
 centrals_flag: False
-tracers_flag: True
+tracers_flag: False
+Nmpcores: 8
     
 max_snap: 99
 min_snap: 0
@@ -21,9 +22,9 @@ jel_key: 'jellyfish'
 non_key: 'nonjellyf'
 
 SubfindIndices: False
-SubfindGasRadProf: False
-run_SGRP: False
-run_SGRP_PP: False
+SubfindGasRadProf: True
+run_SGRP: True
+run_SGRP_PP: True
 SubfindSnapshot: False
 TracerTracks: False
 track_tracers: False
