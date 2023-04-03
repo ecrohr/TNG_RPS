@@ -16,7 +16,7 @@ part_fields = ['ParticleIDs']
 
 big_array_length = int(1e9)
 
-def create_tracertracks(first_snap, last_snap, Config):
+def create_tracertracks(Config):
     """
     Run the Create_TracerTracks.py file. 
     Starts at min_snap with a list of subhalo subfindIDs,
@@ -28,6 +28,13 @@ def create_tracertracks(first_snap, last_snap, Config):
     sim = Config.sim
     min_snap = Config.min_snap
     max_snap = Config.max_snap
+    
+    first_snap = Config.first_snap
+    if first_snap < min_snap:
+        first_snap = min_snap
+    last_snap = Config.last_snap
+    if last_snap > max_snap:
+        last_snap = max_snap
     
     for snap in range(first_snap, last_snap+1):
         # for the first snapshot, define some subfindIDs of interest,
