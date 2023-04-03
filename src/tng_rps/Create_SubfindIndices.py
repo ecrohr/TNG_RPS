@@ -25,7 +25,7 @@ def run_subfindindices(Config):
 
     # run return_subfindindices
     if Config.mp_flag:
-        pool = mp.Pool(8) # should be 8 if running interactively
+        pool = mp.Pool(Config.Nmpcores) # should be 8 if running interactively
         result_list = pool.starmap(return_subfindindices, zip(SnapNum,
                                                               SubfindID,
                                                               repeat(Config)))
