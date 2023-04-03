@@ -64,55 +64,6 @@ def create_tracertracks(Config):
             Pool.close()
             Pool.join()
 
-
-    ### SLURM job parser, which needs to be moved elsewhere
-    # use the jobid to set the snaps we track
-    """
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--jobid", help="slurm job id")
-    args = parser.parse_args()
-    jobid = int(args.jobid)
-    
-    # let's assume we can go through 5 snapshots per job (i.e. 24 hours)
-    Nsnapsperjob = 10
-    first_snap = min_snap + Nsnapsperjob * jobid
-    last_snap = first_snap + Nsnapsperjob
-    if last_snap >= max_snap+1:
-        last_snap = max_snap+1
-        
-    for snap in range(first_snap, last_snap):
-        if snap == min_snap:
-            # define the subhalos we care about -- now the TNG50-1 inspected, cleaned branches
-            indirec = '../Output/zooniverse/'
-            infname = 'zooniverse_TNG50-1_inspected_clean_tau.hdf5'
-            with h5py.File(indirec + infname, 'r') as f:
-                Group = f['Group']
-                subfindIDs = Group['SubfindID'][:]
-                f.close()
-
-            track_subfindIDs(subfindIDs)
-
-        a = time.time()
-        track_tracers(snap)
-        b = time.time()
-        print('TNG50-1 inspected branches track_tracers at snap %03d: %.3g [s]'%(snap, (b-a)))    
-
-    # and find the unmatched tracers from min_snap + 1 until max_snap
-    for snap in range(first_snap, last_snap):
-        start = time.time()
-        find_unmatched_tracers(snap)
-        end = time.time()
-        print('%s snap %03d find_unmatched_tracers: %.3g [s]'%(sim, snap, (end-start)))
-
-        if snap == (last_snap - 1):
-            # add bound flag for the tracer parents
-            snaps = range(min_snap+1, max_snap+1)
-            Pool = mp.Pool(8)
-            Pool.map(create_bound_flags, snaps)
-            Pool.close()
-            Pool.join()
-    """
-
     return
 
 
