@@ -137,10 +137,14 @@ def argparse_Config(Config):
     description = ('Pipeline for running all analysis scripts related to \n' +
                    'computing the RSP in TNG galaxies.')
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('-fs', '--first-snap', default=None,
+    parser.add_argument('-fs', '--first-snap', default=0, type=int,
                         help='first snap for running the tracers.')
-    parser.add_argument('-ls', '--last-snap', default=None,
+    parser.add_argument('-ls', '--last-snap', default=99, type=int,
                         help='last snap for running the tracers.')
+    parser.add_argument('--track-tracers', default=False, type=bool,
+                        help='flag to run track_tracers().')
+    parser.add_argument('--find-tracers', default=False, type=bool,
+                        help='flag to run find_unmatched_tracers().')
             
     args = vars(parser.parse_args())
     for key in args.keys():

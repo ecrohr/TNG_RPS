@@ -26,5 +26,7 @@ run_SGRP: False
 run_SGRP_PP: False
 SubfindSnapshot: False
 TracerTracks: False
+track_tracers: False
+find_tracers: False
 
 

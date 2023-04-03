@@ -35,17 +35,19 @@ def create_tracertracks(first_snap, last_snap, Config):
         ### rewrite into an intialization function
         if snap == min_snap:
             track_subfindIDs(Config)
-        start = time.time()
-        track_tracers(snap, Config)
-        end = time.time()
-        print('%s inspected branches track_tracers at snap %03d: %.3g [s]'%(sim, snap, (end-start)))
+        if Config.track_tracers:
+            start = time.time()
+            track_tracers(snap, Config)
+            end = time.time()
+            print('%s inspected branches track_tracers at snap %03d: %.3g [s]'%(sim, snap, (end-start)))
     
     # and find the unmatched tracers from min_snap + 1 until max_snap
     for snap in range(first_snap, last_snap+1):
-        start = time.time()
-        #find_unmatched_tracers(snap, Config)
-        end = time.time()
-        print('%s snap %03d find_unmatched_tracers: %.3g [s]'%(sim, snap, (end-start)))
+        if Config.find_tracers:
+            start = time.time()
+            find_unmatched_tracers(snap, Config)
+            end = time.time()
+            print('%s snap %03d find_unmatched_tracers: %.3g [s]'%(sim, snap, (end-start)))
 
         if snap == (last_snap):
             # add bound flag for the tracer parents
