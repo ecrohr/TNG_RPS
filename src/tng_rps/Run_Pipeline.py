@@ -96,20 +96,25 @@ class Configuration(dict):
             # based on the simulation and flags, find the appropriate initialziation function
             print('File %s does not exist. Initializing SubfindIDs and SnapNums elsewhere.'%(full_taufname))
             # using the zooniverse results?
-            if (Config.zooniverse_flag):
-                SnapNums_SubfindIDs, SubfindIDs = initialize_zooniverseindices(Config)
+            if (self.zooniverse_flag):
+                SnapNums_SubfindIDs, SubfindIDs = initialize_zooniverseindices(self)
 
             # not using the zooniverse results -- define subfindIDs somehow else...
-            elif (Config.centrals_flag):
-                SnapNums_SubfindIDs, SubfindIDs = initialize_central_subfindindices(Config)
+            elif (self.centrals_flag):
+                SnapNums_SubfindIDs, SubfindIDs = initialize_central_subfindindices(self)
                 
             # TNG-Cluster?
-            elif (Config.TNGCluster_flag):
-                SnapNums_SubfindIDs, SubfindIDs = initialize_TNGCluster_subfindindices(Config)
+            elif (self.TNGCluster_flag):
+                SnapNums_SubfindIDs, SubfindIDs = initialize_TNGCluster_subfindindices(self)
+              
+            # all subhalos?
+            elif (self.allsubhalos_flag):
+                SnapNums_SubfindIDs, SubfindIDs = initialize_allsubhalos(self)
               
             # general satellites?
             else:
-                SnapNums_SubfindIDs, SubfindIDs = initialize_subfindindices(Config)
+                SnapNums_SubfindIDs, SubfindIDs = initialize_subfindindices(self)
+                
                 
         self.SubfindIDs = SubfindIDs
         self.SnapNums_SubfindIDs = SnapNums_SubfindIDs
@@ -125,6 +130,8 @@ class Configuration(dict):
                 os.system('mkdir %s'%self.tracer_outdirec)
             else:
                 print('Directory %s exists. Potentially overwriting files.'%self.tracer_outdirec)
+                
+        self.taudict_keys = [self.ins_key, self.jel_key, self.non_key]
                 
         
         return
@@ -151,7 +158,8 @@ def argparse_Config(Config):
                         help='analysis for central galaxies')
     parser.add_argument('--tracers-flag', default=None, type=bool,
                         help='use tracer post-processing catalogs in analysis.')
-             
+    parser.add_argument('--allsubhalos-flag', default=None, type=bool,
+                        help='use all subhalos in the simulation.')
     # mp flags
     parser.add_argument('--mp-flag', default=None, type=bool,
                         help='use multiprocessing for analysis.')
@@ -174,17 +182,21 @@ def argparse_Config(Config):
 
     # which types of analysis should be run
     parser.add_argument('--SubfindIndices', default=None, type=bool,
-                        help='flag to run find_unmatched_tracers().')
+                        help='flag to run Create_SubfindIndices.py.')
     parser.add_argument('--SubfindGasRadProf', default=None, type=bool,
-                        help='flag to run find_unmatched_tracers().')
+                        help='flag to run Create_SubfindGasRadProf.py.')
     parser.add_argument('--run-SGRP', default=None, type=bool,
-                        help='flag to run find_unmatched_tracers().')
+                        help='flag to run the main analysis in SubfindGasRadProf.py.')
     parser.add_argument('--run-SGRP-PP', default=None, type=bool,
-                        help='flag to run find_unmatched_tracers().')
+                        help='flag to run the post processing of SGRP.')
     parser.add_argument('--SubfindSnapshot', default=None, type=bool,
-                        help='flag to run find_unmatched_tracers().')
+                        help='flag to run Create_SubfindSnapshot_Flags.py.')
+    parser.add_argument('--run-SS', default=None, type=bool,
+                        help='flag to run main analysis in Create_SS_Flags.py.')
+    parser.add_argument('--run-SS-PP', default=None, type=bool,
+                        help='flag to run post-processing of Create_SS_Flags.py.')
     parser.add_argument('--TracerTracks', default=None, type=bool,
-                        help='flag to run find_unmatched_tracers().')
+                        help='flag to run Create_TracerTracks.py.')
     parser.add_argument('--track-tracers', default=None, type=bool,
                         help='flag to run track_tracers().')
     parser.add_argument('--find-tracers', default=None, type=bool,
@@ -223,6 +235,8 @@ def return_outdirec_outfname(Config):
             
     if Config.centrals_flag:
         outfname = 'central_subfind_%s_branches.hdf5'%(Config.sim)
+    elif Config.allsubhalos_flag:
+        outfname = 'all_subfind_%s_branches.hdf5'%(Config.sim)
     else:
         outfname = 'subfind_%s_branches.hdf5'%(Config.sim)
     
@@ -246,6 +260,10 @@ def return_taufname(Config):
     """ given the simulation and flags, determine the tau filename """
     if Config.zooniverse_flag:
         return 'zooniverse_%s_%s_clean_tau.hdf5'%(Config.sim, Config.zooniverse_key)
+    elif Config.centrals_flag:
+        return 'central_subfind_%s_clean_tau.hdf5'%(Config.sim)
+    elif Config.allsubhalos_flag:
+        return 'all_subfind_%s_clean_tau.hdf5'%(Config.sim)
     else:
         return 'subfind_%s_clean_tau.hdf5'%(Config.sim)
 
@@ -276,6 +294,18 @@ def return_Mstar_lolim(Config):
             
     return Mstar_lolim
  
+
+def initialize_allsubhalos(Config):
+    """
+    Create a list of the subfindIDs for all subhalos in the simulation.
+    """
+    
+    Nsubhalos = il.groupcat.loadSubhalos(Config.basePath, Config.max_snap, fields='SubhaloGrNr').size
+    SubfindIDs = np.arange(Nsubhalos)
+    SnapNums = np.ones(SubfindIDs.size, dtype=int) * 99
+    
+    return SnapNums, SubfindIDs
+    
 
 def initialize_subfindindices(Config):
     """
