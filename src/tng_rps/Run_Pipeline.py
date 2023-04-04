@@ -173,10 +173,6 @@ def argparse_Config(Config):
                         help='minimum score to be considered a jellyfish galaxy')
 
     # which types of analysis should be run
-    parser.add_argument('--track-tracers', default=None, type=bool,
-                        help='flag to run track_tracers().')
-    parser.add_argument('--find-tracers', default=None, type=bool,
-                        help='flag to run find_unmatched_tracers().')
     parser.add_argument('--SubfindIndices', default=None, type=bool,
                         help='flag to run find_unmatched_tracers().')
     parser.add_argument('--SubfindGasRadProf', default=None, type=bool,
@@ -189,6 +185,8 @@ def argparse_Config(Config):
                         help='flag to run find_unmatched_tracers().')
     parser.add_argument('--TracerTracks', default=None, type=bool,
                         help='flag to run find_unmatched_tracers().')
+    parser.add_argument('--track-tracers', default=None, type=bool,
+                        help='flag to run track_tracers().')
     parser.add_argument('--find-tracers', default=None, type=bool,
                         help='flag to run find_unmatched_tracers().')
 
