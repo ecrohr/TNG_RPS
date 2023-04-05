@@ -239,11 +239,11 @@ def postprocess_flags(subfindIDs, Config):
             for key in group.keys():
                 result[key] = group[key][:]
             f.close()
-
-    for flag in flags:
-        result[flag] = np.zeros(len(group[in_tree_key]), dtype=int)
-        if flag != classified_flag:
-            result[flag] -= 1
+    else:
+        for flag in flags:
+            result[flag] = np.zeros(len(group[in_tree_key]), dtype=int)
+            if flag != classified_flag:
+                result[flag] -= 1
     
     # loop over subfindIDs of interest
     # NB: group[in_tree_key].size is not necessarily equal to SubfindIDs.size
