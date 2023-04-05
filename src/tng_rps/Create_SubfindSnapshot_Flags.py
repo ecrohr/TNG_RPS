@@ -116,6 +116,17 @@ def initialize_TNGCluster(Config):
     
     # initlaize and fill finalize result
     result = {}
+    # check if the files already exist, and if so, overwrite
+    subfindsnapshot_outdirec, subfindsnapshot_outfname = return_outdirec_outfname(Config, snapshotflags=True)
+    if os.path.isfile(subfindsnapshot_outdirec + subfindsnapshot_outfname):
+        with h5py.File(subfindsnapshot_outdirec + subfindsnapshot_outfname, 'r') as f:
+            group = f['group']
+            for key in group.keys():
+                result[key] = group[key][:]
+            f.close()
+        return subfindIDs, result
+
+    # file does not exist, so initialize result
     for key in keys:
         if key == host_m200c_key:
             result[key] = np.zeros((Nsubhalos, SnapNums.size), dtype=float) - 1.
