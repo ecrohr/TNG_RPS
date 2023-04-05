@@ -44,6 +44,8 @@ def run_subfindGRP(Config):
             dics.append(dic)
 
         Pool = mp.Pool(Config.Nmpcores)
+        
+        print(len(dics))
 
         if Config.mp_flag:
             result_list = Pool.map(partial(create_subfindGRP, Config=Config), dics)
@@ -111,7 +113,7 @@ def create_subfindGRP(dic, Config):
     """
     given the subhalo dictionary, calculate and add the gas radial profile
     """
-    
+        
     # create a directory for the given subhalo,
     # named after its subfindID at a given SnapNum
     dict_list = []
@@ -120,7 +122,7 @@ def create_subfindGRP(dic, Config):
     gal       = dic[gal_key]
     SnapNum   = gal['SnapNum']
     SubfindID = gal['SubfindID']
-
+    
     for snapnum_index, snapnum in enumerate(SnapNum):
         subfindID = SubfindID[snapnum_index]
     
@@ -132,7 +134,7 @@ def create_subfindGRP(dic, Config):
 
     # initialize and fill result dicitonary
     # note that threed_keys are vectors, and scalar_keys are scalars
-    shape           = (SnapNum.size, radii_dict['%d'%snapnum]['radii'].size)
+    shape           = (SnapNum.size, radii_dict['%d'%SnapNum[0]]['radii'].size)
     result          = {}
     result[gal_key] = gal
     for key in threed_keys:
@@ -173,8 +175,6 @@ def return_subfindGRP(snapnum, subfindID, Config):
         radii_bins_norm = np.arange(rmin_norm, rmax_norm + radii_binwidth*1.0e-3, radii_binwidth)
         radii_bincents_norm = (radii_bins_norm[1:] + radii_bins_norm[:-1]) / 2.
 
-        nbins = radii_bincents_norm.size
-
     else:
         radii_binwidth = 0.1 # r / rgal, log spacing
         rmin_norm = 10.**(-1.) # [r/rgal]
@@ -185,14 +185,14 @@ def return_subfindGRP(snapnum, subfindID, Config):
         radii_bins_norm = np.insert(radii_bins_norm, 0, 0.)
         radii_bincents_norm = np.insert(radii_bincents_norm, 0, radii_bins_norm[1]/2.)
 
-        nbins = radii_bins_norm.size
+    nbins = radii_bincents_norm.size
       
     # initialize result
     result            = {}
     group_key         = '%d'%snapnum
     result[group_key] = {}
     for threed_key in threed_keys:
-        result[group_key][threed_key] = np.zeros(nbins-1, dtype=float) - 1.
+        result[group_key][threed_key] = np.zeros(nbins, dtype=float) - 1.
     for scalar_key in scalar_keys:
         result[group_key][scalar_key] = -1.
   
