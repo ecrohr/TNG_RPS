@@ -231,6 +231,15 @@ def postprocess_flags(subfindIDs, Config):
              
     # initialize result
     result = {}
+    # first check if the files already exist, and if so, append to them
+    subfindsnapshot_outdirec, subfindsnapshot_outfname = return_outdirec_outfname(Config, snapshotflags=False)
+    if os.path.isfile(subfindsnapshot_outdirec + subfindsnapshot_outfname):
+        with h5py.File(subfindsnapshot_outdirec + subfindsnapshot_outfname, 'r') as f:
+            group = f['group']
+            for key in group.keys():
+                result[key] = group[key][:]
+            f.close()
+
     for flag in flags:
         result[flag] = np.zeros(len(group[in_tree_key]), dtype=int)
         if flag != classified_flag:
