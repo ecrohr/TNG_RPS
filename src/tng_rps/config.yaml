@@ -1,4 +1,4 @@
-sim: 'TNG50-4'
+sim: 'TNG50-4' # options are 'TNG*-*;, for 50, 100, 300 and -1, -2, -3 -4 or L680n8192TNG
 
 TNGCluster_flag: False
 mp_flag: False
