@@ -371,7 +371,7 @@ def initialize_TNGCluster_subfindindices(Config):
     haloIDs = np.where(halos['GroupPrimaryZoomTarget'])[0]
     GroupFirstSub = halos['GroupFirstSub'][haloIDs]
     
-    print('There are %d primary zoom targets in %s'.%(haloIDs.size, Config.sim))
+    print('There are %d primary zoom targets in %s.'%(haloIDs.size, Config.sim))
     
     # load all subhalos and find which ones:
     # 1) are z=0 satellites of primary zooms
