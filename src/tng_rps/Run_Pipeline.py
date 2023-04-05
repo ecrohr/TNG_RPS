@@ -342,7 +342,7 @@ def initialize_central_subfindindices(Config):
     """
     
     halo_fields = ['Group_M_Crit200','GroupFirstSub']
-    halos = il.groupcat.loadHalos(Sim.basePath, 99, fields=halo_fields)
+    halos = il.groupcat.loadHalos(Config.basePath, 99, fields=halo_fields)
     M200c = halos['Group_M_Crit200'] * 1.0e10 / h
     indices = M200c >= 10.0**(11.5)
 
