@@ -371,9 +371,11 @@ def initialize_TNGCluster_subfindindices(Config):
     haloIDs = np.where(halos['GroupPrimaryZoomTarget'])[0]
     GroupFirstSub = halos['GroupFirstSub'][haloIDs]
     
+    print('There are %d primary zoom targets in %s'.%(haloIDs.size, Config.sim))
+    
     # load all subhalos and find which ones:
     # 1) are z=0 satellites of primary zooms
-    # 2) have Mstar(z=0) > 10^10 Msun
+    # 2) have Mstar(z=0) > Mstar_lolim
     subhalo_fields = ['SubhaloGrNr', 'SubhaloMassInRadType']
     subhalos = il.groupcat.loadSubhalos(basePath, max_snap, fields=subhalo_fields)
     subhalo_indices_massive = subhalos['SubhaloMassInRadType'][:,star_ptn] * 1.0e10 / h > Mstar_lolim
