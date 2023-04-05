@@ -132,8 +132,12 @@ class Configuration(dict):
                 print('Directory %s exists. Potentially overwriting files.'%self.tracer_outdirec)
                 
         self.taudict_keys = [self.ins_key, self.jel_key, self.non_key]
+        self.subfindsnapshot_flags = [self.in_tree_key, self.central_key,
+                                      self.in_z0_host_key, self.host_m200c_key]
+        self.subfind_flags = [self.classified_flag, self.central_z0_flag,
+                              self.backsplash_z0_flag, self.backsplash_prev_flag,
+                              self.preprocessed_flag]
                 
-        
         return
 
 
@@ -201,6 +205,12 @@ def argparse_Config(Config):
                         help='flag to run track_tracers().')
     parser.add_argument('--find-tracers', default=None, type=bool,
                         help='flag to run find_unmatched_tracers().')
+    parser.add_argument('--CleanSubfindGasRadProf', default=None, type=bool,
+                        help='flag to run Clean_SubfindGasRadProf.py.')
+    parser.add_argument('--run-cleanSGRP', default=None, type=bool,
+                        help='flag to run clean_subfindGRP().')
+    parser.add_argument('--run-createtau', default=None, type=bool,
+                        help='flag to run create_taudict().')
 
     args = vars(parser.parse_args())
     for key in args.keys():
@@ -508,8 +518,12 @@ if Config.SubfindGasRadProf:
     from Create_SubfindGasRadProf import run_subfindGRP
     run_subfindGRP(Config)
         
-    
+# run the tracer analysis
 if Config.TracerTracks:
     from Create_TracerTracks import create_tracertracks
     create_tracertracks(Config)
 
+# clean the subfind GRP dictionary
+if Config.CleanSubfindGasRadProf:
+    from Clean_SubfindGasRadProf import run_clean_zooniverseGRP
+    run_clean_zooniverseGRP(Config)

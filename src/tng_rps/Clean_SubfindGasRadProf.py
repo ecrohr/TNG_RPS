@@ -15,107 +15,93 @@ import os
 import multiprocessing as mp
 from importlib import reload
 
-global sim, basePath, ins_key, jel_key, non_key
-global snap_first, Nsnaps_PreProcessed, M200c0_lolim
-global nonz0_key, beforesnapfirst_key, backsplash_key
-global preprocessed_key, clean_key, out_keys
-global outfname, outdirec, zooniverse
-
-ins_key = 'inspected'
-jel_key = 'jellyfish'
-non_key = 'nonjellyf'
-taudict_keys = [ins_key, jel_key, non_key]
-
-snap_first = 67
-Nsnaps_PreProcessed = 5
-M200c0_lolim = 1.0e11
-
-nonz0_key           = 'nonz0_keys'
-beforesnapfirst_key = 'beforesnapfirst_keys'
-backsplash_key      = 'backsplash_keys'
-preprocessed_key    = 'preprocessed_keys'
-clean_key           = 'clean_keys'
-
-out_keys = [nonz0_key, beforesnapfirst_key, backsplash_key,
-            preprocessed_key, clean_key]
-
-
-def clean_zooniverseGRP(zooniverse=True, savekeys=False):
+def run_clean_zooniverseGRP(Config):
     """ Clean the Zooniverse sample based on various selection criteria. """
-
-    infname    = return_outfname(zooniverse=zooniverse, clean=False)
-    dic        = load_dict(infname)
-    keys_dic   = run_clean_zooniverseGRP(dic)
-    final_keys = keys_dic[clean_key]
     
-    # save each set of dic keys
-    if (savekeys):
-        for out_key in out_keys:
-            keys     = keys_dic[out_key]
-            fname = 'zooniverse_%s_%s_%s.txt'%(sim, ins_key, out_key)
-            print('Writing file %s'%(outdirec + fname))
-            with open(outdirec + fname, 'w') as f:
-                for key in keys:
-                    f.write('%s\n'%key)
-                f.close()
-
-    # save the cleaned branches using the subfindID at snap 99
-    result = {}
-    for key in final_keys:
-        group = dic[key]
-
-        new_key = '%08d'%(group['SubfindID'][0])
-        result[new_key] = group
-
-    fname = return_outfname(clean=True, zooniverse=zooniverse)
-    with h5py.File(outdirec + fname, 'a') as outf:
-        for group_key in result.keys():
-            group = outf.require_group(group_key)
-            for dset_key in result[group_key].keys():
-                dset = result[group_key][dset_key]
-                dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
-                dataset[:] = dset
-                
-        outf.close()
+    outdirec = Config.outdirec
+    GRPfname = Config.GRPfname
     
+    if Config.run_cleanSGRP:
 
-    if zooniverse:
-        # now split the inspected branches into jellyfish, if there's a jellyfish classificaiton
-        # at snap >= snap_first, and into nonjellyf, if there are no jelly classiifications at snap >= snap_first
-        # this means that some of the branches with a jellyfish classification may become nonjellyf branches!
-        split_inspected_branches()
-        # reorganize each of the three sets of branches [inspected, jellyfish, nonjellyf] into tau dictionaries
+        dic        = load_dict(GRPfname, Config)
+        keys_dic   = clean_subfindGRP(dic, Config)
+        
+        # for each set of keys, save the resulting GRP dictionaries
+        for out_key in keys_dic.keys():
+            keys = keys_dic[out_key]
+            result = {}
+            for key in keys:
+                group = dic[key]
+
+                new_key = '%08d'%(group['SubfindID'][0])
+                result[new_key] = group
+
+            fname = return_outfname_Config(Config, out_key=out_key)
+            with h5py.File(outdirec + fname, 'a') as outf:
+                for group_key in result.keys():
+                    group = outf.require_group(group_key)
+                    for dset_key in result[group_key].keys():
+                        dset = result[group_key][dset_key]
+                        dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+                        dataset[:] = dset
+                        
+                outf.close()
+       
+
+        if Config.zooniverse_flag:
+            # now split the inspected branches into jellyfish, if there's a jellyfish classificaiton
+            # at snap >= snap_first, and into nonjellyf, if there are no jelly classiifications at snap >= snap_first
+            # this means that some of the branches with a jellyfish classification may become nonjellyf branches!
+            split_inspected_branches(Config)
+            # reorganize each of the three sets of branches [inspected, jellyfish, nonjellyf] into tau dictionaries
  
-
-        keys = ['inspected', 'jellyfish', 'nonjellyf']
-        for key in keys:
-            _ = return_taudict(key, tracers=zooniverse)
-
-    else:
-        _ = return_taudict(key, tracers=zooniverse)
+    
+    if Config.run_createtau:
+        if Config.zooniverse_flag:
+            keys = Config.taudict_keys
+            for key in keys:
+                _ = return_taudict(key, Config)
+        else:
+            _ = return_taudict(key, Config)
 
     return
 
 
-def run_clean_zooniverseGRP(dic):
-    """ For each branch, load the various flags and sort them. """
+def clean_subfindGRP(dic, Config):
+    """
+    For each branch, load the various flags and sort them.
+    Based on the flags defined in Config, decided on which criteria
+    to clean the subfindGRP branches.
+    """
 
     keys = np.array(list(dic.keys()))
-
-    print('There are %d total %s zooniverse branhces in %s.'%(len(keys), ins_key, sim))
+    
+    print('We are going through %s branches of interest.'%keys.size)
 
     # let's clean the zooniverse jellyfish branches, noting the keys of the objects
     # excised at each step
 
-    subfindsnapshot_flags = load_subfindsnapshot_flags()
+    subfind_flags = load_subfindsnapshot_flags(Config)
+    central_z0_flag = Config.central_z0_flag
+    backsplash_prev_flag = Config.backsplash_prev_flag
+    preprocessed_flag = Config.preprocessed_flag
+    
+    nonz0_key = Config.nonz0_key
+    beforesnapfirst_key = Config.beforesnapfirst_key
+    backsplash_prev_key = backsplash_prev_flag
+    preprocessed_key = preprocessed_flag
+    clean_key = Config.clean_key
 
     # initalize empty lists to hold the various keys
     clean_keys           = []
-    beforesnapfirst_keys = []
     nonz0_keys           = []
-    backsplash_keys      = []
+    backsplash_prev_keys = []
     preprocessed_keys    = []
-
+    if Config.zooniverse_flag:
+        beforesnapfirst_keys = []
+        snap_first = Config.zooniverse_snapfirst
+        
+    # begin loop over the subhalos in the GRP dictionary
     for key in keys:
         group = dic[key]
 
@@ -124,79 +110,72 @@ def run_clean_zooniverseGRP(dic):
 
         SnapNum            = group['SnapNum'][indices]
         SubfindID          = group['SubfindID'][indices]
-        jel_flags          = group['jel_flags'][indices]
-        ins_flags          = group['ins_flags'][indices]
-        central_flags      = group['central_flags'][indices]
-        memberlifof_flags  = group['memberlifof_flags'][indices]
-        preprocessed_flags = group['preprocessed_flags'][indices]
+        if Config.zooniverse_flag:
+            ins_flags = group['ins_flags'][indices]
 
-        # 1. the MDB must reach z=0 (snap 99)
-        if max(SnapNum) < 99:
+        # the MDB must reach z=0 (snap 99)
+        if SnapNum.max() < 99:
             nonz0_keys.append(key)
             continue
 
-        # 2. must have at least one inspection at snap >= snap_first
-        if zooniverse:
+        # there must be at least one inspection at snap >= snap_first for Zooniverse objects
+        if Config.zooniverse_flag:
             ins_flag = max(ins_flags[SnapNum >= snap_first])
-        else:
-            ins_flag = max(SnapNum >= snap_first)
-        if not (ins_flag):
-            beforesnapfirst_keys.append(key)
-            continue
-            
-        # because this MDB reaches z=0, load the relevant flags from SubfindSnapshot cat
-        SubfindID_z0  = SubfindID[0]
-        subfind_flags = subfindsnapshot_flags['%08d'%SubfindID_z0]
-        in_tree       = subfind_flags['in_tree']
-        intree_indices = in_tree == 1
-                
-        central    = subfind_flags['central'][intree_indices]
-        host_m200c = subfind_flags['host_m200c'][intree_indices] >= M200c0_lolim
-        in_z0_host = subfind_flags['in_z0_host'][intree_indices]
-        
-        # 3. no backsplash galaxies -- must not be a central at z=0 (snap 99)
-        if (central[0]):
-            backsplash_keys.append(key)
-            continue
-            
-        # 4. no pre-processed galaxies -- galaxy must not be a satellite of
-        #    a group of mass M200c > Mlolim other than its z=0 host for more than
-        #    NSnaps_PreProcessed consecutive snaps.
-        if len(in_z0_host) > Nsnaps_PreProcessed:
-            preprocessed_indices = ~central & ~in_z0_host & host_m200c
-            preprocessed_check = [True] * Nsnaps_PreProcessed
-            if (ru.is_slice_in_list(preprocessed_check, list(preprocessed_indices))):
-                preprocessed_keys.append(key)
+            if not (ins_flag):
+                beforesnapfirst_keys.append(key)
                 continue
-                    
-        # galaxy has passed every test -- add to the cleaned list
-        clean_keys.append(key)
+            
+        # the subhalo exists at z=0, so use subfind flags to append to the appropriate list
+        SubfindID_z0  = SubfindID[0]
+        
+        # confirm that the subhalo is a z=0 satellite
+        if subfind_flags[central_z0_flag][SubfindID_z0]:
+            print('Using the wrong function for %d which is a z=0 central! Double check.'%SubfindID_z0)
+            continue
+            
+        # pre-processed? if not then considered clean
+        if subfind_flags[preprocessed_flag][SubfindID_z0]:
+            preprocessed_keys.append(key)
+        else:
+            clean_keys.append(key)
+        
+        # was the z=0 satellite previous a backsplash galaxy?
+        if subfind_flags[backsplash_prev_flag][SubfindID_z0]:
+            backsplash_prev_keys.append(key)
         
     # end loop over the branches
-        
-    Ntotal = (len(clean_keys) + len(beforesnapfirst_keys) + len(nonz0_keys) +
-              len(backsplash_keys) + len(preprocessed_keys))
-    if Ntotal != len(keys):
-        print('Mismatch in total number of keys!')
 
-    print('%s total %s branches: %d; not reaching z=0: %d'%(sim, ins_key, len(keys), len(nonz0_keys)))
-    print('not inspected since %d: %d'%(snap_first, len(beforesnapfirst_keys)))
-    print('backsplash: %d; preprocessed: %d'%(len(backsplash_keys), len(preprocessed_keys)))
-    print('clean: %d'%(len(clean_keys)))
+    print('satellite branches not reaching z=0: %d'%(len(nonz0_keys)))
+    if Config.zooniverse_flag:
+        print('not inspected since %d: %d'%(snap_first, len(beforesnapfirst_keys)))
+    print('backsplash_prev: %d; preprocessed: %d'%(len(backsplash_prev_keys), len(preprocessed_keys)))
+    print('clean (i.e., not preprocessed): %d'%(len(clean_keys)))
 
-    result       = {}
-
-    result_keys  = [nonz0_key,
-                    beforesnapfirst_key,
-                    backsplash_key,
-                    preprocessed_key,
-                    clean_key]
+    # save the keys as a dictionary and return to main function
+    result  = {}
     
-    result_dsets = [nonz0_keys,
-                    beforesnapfirst_keys, 
-                    backsplash_keys,
-                    preprocessed_keys,
-                    clean_keys]
+    if Config.zooniverse_flag:
+        result_keys  = [nonz0_key,
+                        beforesnapfirst_key,
+                        backsplash_prev_key,
+                        preprocessed_key,
+                        clean_key]
+        
+        result_dsets = [nonz0_keys,
+                        beforesnapfirst_keys,
+                        backsplash_prev_keys,
+                        preprocessed_keys,
+                        clean_keys]
+    else:
+        result_keys  = [nonz0_key,
+                        backsplash_prev_key,
+                        preprocessed_key,
+                        clean_key]
+        
+        result_dsets = [nonz0_keys,
+                        backsplash_prev_keys,
+                        preprocessed_keys,
+                        clean_keys]
 
     for result_i, result_key in enumerate(result_keys):
         result[result_key] = result_dsets[result_i]
@@ -204,18 +183,19 @@ def run_clean_zooniverseGRP(dic):
     return result
 
 
-def load_subfindsnapshot_flags():
-    """ Helpfer function to lead the subfindsnapshot flags. """
+
+def load_subfindsnapshot_flags(Config):
+    """ Helpfer function to lead the subfind flags. """
     
-    direc = '../Output/%s_subfindflags/'%sim
-    fname = 'subfindflags_%s_zooniverse.hdf5'%(sim)
+    from Create_SubfindSnapshot_Flags import return_outdirec_outfname
+    direc, fname = return_outdirec_outfname(Config, snapshotflags=False)
+    
     result = {}
     
     with h5py.File(direc + fname, 'r') as f:
-        for group_key in f.keys():
-            result[group_key] = {}
-            for dset_key in f[group_key]:
-                result[group_key][dset_key] = f[group_key][dset_key][:]
+        group = f['group']
+        for dset_key in group.keys():
+            result[dset_key] = group[dset_key][:]
                 
         f.close()
         
@@ -347,7 +327,7 @@ def return_taudict(zooniverse=True, clean=True):
                 tauresult[tauresult_key] = np.zeros(len(result_keys),
                                                     dtype=group[tau_key].dtype) - 1
                     
-        tauresult['SubfindID'][group_index] = int(float(group_key))
+        tauresult['SubfindID'][group_index] = group['SubfindID'][0]
         tauresult['HostSubhaloGrNr'][group_index] = group['HostSubhaloGrNr'][0]
         
         # for each of the definitions of tau, let's tabulate important properties at tau_X 
@@ -477,7 +457,7 @@ def combine_taudicts():
 
     return
 
-def split_tau_gasz0(sim='TNG50-1', key=jel_key):
+def split_tau_gasz0(sim='TNG50-1', key='jellyfish'):
     """
     Split the tau catalog into two samples: those with cold gas 
     at z=0, and those without 
@@ -516,15 +496,36 @@ def split_tau_gasz0(sim='TNG50-1', key=jel_key):
             outf.close() 
 
     return
-
-def load_dict(fname):
+    
+    
+def load_dict(fname, Config):
     """
     imports the hdf5 catalog and returns the dictionary.
     """
        
     result = {}
         
-    with h5py.File(outdirec + fname, 'a') as f:
+    with h5py.File(Config.outdirec + fname, 'a') as f:
+        for group_key in f.keys():
+            result[group_key] = {}
+            for dset_key in f[group_key].keys():
+                result[group_key][dset_key] = f[group_key][dset_key][:]
+        f.close()
+        
+    return result
+
+
+
+def load_dict_Config(fname, Config):
+    """
+    imports the hdf5 catalog and returns the dictionary.
+    """
+    
+    direc = Config.outdirec
+       
+    result = {}
+        
+    with h5py.File(direc + fname, 'a') as f:
         for group_key in f.keys():
             result[group_key] = {}
             for dset_key in f[group_key].keys():
@@ -554,15 +555,33 @@ def return_outfname(sim='TNG50-1', key='inspected', zooniverse=True, clean=False
         return outfname
 
 
+def return_outfname_Config(Config, out_key=None):
+    """
+    return the output filename.
+    """
+    if not out_key:
+        outfname = Config.outfname
+    else:
+        if Config.zooniverse_flag:
+            outfname = 'zooniverse_%s_%s_branches_%s.hdf5'%(Config.sim, Config.zooniverse_key, out_key)
+        elif Config.centrals_flag:
+            outfname = 'central_subfind_%s_branches_%s.hdf5'%(Config.sim, out_key)
+        elif Config.allsubhalos_flag:
+            outfname = 'all_subfind_%s_branches_%s.hdf5'%(Config.sim, out_key)
+        else:
+            outfname = 'subfind_%s_branches_%s.hdf5'%(Config.sim, out_key)
+            
+    return outfname
+
+"""
 zooniverse = False
-for sim in ['TNG50-4']:
+for sim in ['L680n8192TNG']:
     outdirec = '../Output/%s_subfindGRP/'%sim
     outfname = return_outfname(sim=sim, key=ins_key, zooniverse=zooniverse, clean=False)
     
     #clean_zooniverseGRP(zooniverse=zooniverse, savekeys=False)
     return_taudict(zooniverse=False, clean=False)
             
-"""
 if zooniverse:
     for key in taudict_keys:
         #_ = return_taudict(key)

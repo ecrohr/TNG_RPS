@@ -32,8 +32,27 @@ run_SS_PP: False
 TracerTracks: False
 track_tracers: False
 find_tracers: False
+CleanSubfindGasRadProf: False
+run_cleanSGRP: False
+run_createtau: False
 
 zooniverse_snapfirst: 67 # require a zooniverse inspection (or jellyfish classification) at or after this snap
 Nsnaps_PP: 5 # number of consecutive snaps to be considered pre-processed
 M200c0_lolim_PP: 1.e+11 # minimum halo mass of a pre-processing host
+
+# subfind flags
+in_tree_key: 'in_tree'
+central_key: 'central'
+in_z0_host_key: 'in_z0_host'
+host_m200c_key: 'host_m200c'
+
+classified_flag: 'classified'
+central_z0_flag: 'central_z0'
+backsplash_z0_flag: 'backsplash_z0'
+backsplash_prev_flag: 'backsplash_prev'
+preprocessed_flag: 'preprocessed'
+
+nonz0_key: 'nonz0'
+beforesnapfirst_key: 'beforesnapfirst'
+clean_key: 'clean'
 

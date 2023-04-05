@@ -87,14 +87,16 @@ def initialize_allsubhalos(Config):
     """
     
     subfindIDs = Config.SubfindIDs
+    SnapNums = Config.SnapNums
+    subfind_flags = Config.subfind_flags
     
     # initlaize and fill finalize result
     result = {}
-    for key in keys:
-        if key == host_m200c_key:
-            result[key] = np.zeros((subfindIDs.size, Config.SnapNums.size), dtype=float) - 1.
+    for flag in subfind_flags:
+        if flag == Config.host_m200c_key:
+            result[flag] = np.zeros((subfindIDs.size, SnapNums.size), dtype=float) - 1.
         else:
-            result[key] = np.zeros((subfindIDs.size, Config.SnapNums.size), dtype=int) - 1
+            result[flag] = np.zeros((subfindIDs.size, SnapNums.size), dtype=int) - 1
     
     return subfindIDs, result
 
@@ -108,8 +110,10 @@ def initialize_TNGCluster(Config):
     for the subhalos of interest.
     """
     
-    SnapNums = Config.SnapNums
     subfindIDs = Config.SubfindIDs
+    SnapNums = Config.SnapNums
+    subfind_flags = Config.subfind_flags
+
     
     # use the full catalog for the number of subhalos
     Nsubhalos = il.groupcat.loadSubhalos(Config.basePath, Config.max_snap, fields='SubhaloGrNr').size
@@ -127,11 +131,11 @@ def initialize_TNGCluster(Config):
         return subfindIDs, result
 
     # file does not exist, so initialize result
-    for key in keys:
-        if key == host_m200c_key:
-            result[key] = np.zeros((Nsubhalos, SnapNums.size), dtype=float) - 1.
+    for flag in subfind_flags:
+        if flag == Config.host_m200c_key:
+            result[flag] = np.zeros((Nsubhalos, SnapNums.size), dtype=float) - 1.
         else:
-            result[key] = np.zeros((Nsubhalos, SnapNums.size), dtype=int) - 1
+            result[flag] = np.zeros((Nsubhalos, SnapNums.size), dtype=int) - 1
     
     return subfindIDs, result
 
@@ -149,6 +153,11 @@ def create_flags(subfindID, Config):
     basePath = Config.basePath
     max_snap = Config.max_snap
     treeName = Config.treeName
+    
+    in_tree_key = Config.in_tree_key
+    host_m200c_key = Config.host_m200c_key
+    central_key = Config.central_key
+    in_z0_host_key = Config.in_z0_host_key
     
     true_return  = np.ones(SnapNums.size, dtype=int)
     
@@ -221,13 +230,12 @@ def postprocess_flags(subfindIDs, Config):
     f = h5py.File(subfindsnapshot_outdirec + subfindsnapshot_outfname, 'r')
     group = f['group']
     
-    classified_flag = 'classified'
-    central_z0_flag = 'central_z0'
-    backsplash_z0_flag = 'backsplash_z0'
-    backsplash_prev_flag = 'backsplash_prev'
-    preprocessed_flag = 'preprocessed'
-    flags = [classified_flag, central_z0_flag, backsplash_z0_flag,
-             backsplash_prev_flag, preprocessed_flag]
+    classified_flag = Config.classified_flag
+    central_z0_flag = Config.central_z0_flag
+    backsplash_z0_flag = Config.backsplash_z0_flag
+    backsplash_prev_flag = Config.backsplash_prev_flag
+    preprocessed_flag = Config.preprocessed_flag
+    flags = Config.subfind_flags
              
     # initialize result
     result = {}
@@ -322,15 +330,17 @@ def init_result(Config):
     Initialize the result for a single subhalo.
     """
     
+    keys = Config.subfindsnapshot_flags
+    
     false_return = np.zeros(Config.SnapNums.size, dtype=int)
     inval_return = false_return.copy() * -1
     float_return = false_return.copy() * -1.
 
     init_result = {}
     for key in keys:
-        if key == in_tree_key:
+        if key == Config.in_tree_key:
             init_result[key] = false_return.copy()
-        elif key == host_m200c_key:
+        elif key == Config.host_m200c_key:
             init_result[key] = float_return.copy()
         else:
             init_result[key] = inval_return.copy()
