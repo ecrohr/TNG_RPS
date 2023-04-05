@@ -98,15 +98,15 @@ class Configuration(dict):
             # using the zooniverse results?
             if (self.zooniverse_flag):
                 SnapNums_SubfindIDs, SubfindIDs = initialize_zooniverseindices(self)
-
-            # not using the zooniverse results -- define subfindIDs somehow else...
-            elif (self.centrals_flag):
-                SnapNums_SubfindIDs, SubfindIDs = initialize_central_subfindindices(self)
                 
             # TNG-Cluster?
             elif (self.TNGCluster_flag):
                 SnapNums_SubfindIDs, SubfindIDs = initialize_TNGCluster_subfindindices(self)
-              
+
+            # all centrals with M200c > 10.**(11.15)?
+            elif (self.centrals_flag):
+                SnapNums_SubfindIDs, SubfindIDs = initialize_central_subfindindices(self)
+                              
             # all subhalos?
             elif (self.allsubhalos_flag):
                 SnapNums_SubfindIDs, SubfindIDs = initialize_allsubhalos(self)
