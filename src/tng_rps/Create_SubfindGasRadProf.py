@@ -91,7 +91,7 @@ def run_postprocessing(Config):
     if not Config.centrals_flag:
         add_dmin(Config)
         add_Nperipass(Config)
-        add_coldgasmasstau(Config)
+        add_gastau(Config)
         # quenching times require the appropriate catalogs
         if not Config.TNGCluster_flag:
             add_quenchtimes(Config)
@@ -301,6 +301,7 @@ def return_subfindGRP(snapnum, subfindID, Config):
 def add_memberflags(Config):
     """
     add membership flags -- central flag, pre-processed flag, member of final FoF flag
+    this should be updated to use the subfindsnapshot flags rather than recalculating them here
     """
 
     f = h5py.File(Config.outdirec + Config.outfname, 'a')
@@ -583,7 +584,7 @@ def add_quenchtimes(Config):
     return
 
  
-def add_coldgasmasstau(Config):
+def add_gastau(Config):
     """
     add the peak cold gas mass time and the respective tau
     """
@@ -592,7 +593,7 @@ def add_coldgasmasstau(Config):
         """
         Calculate and return tau given the peak_index and the dset
         """
-        tau = np.ones(dset.size, dtype=float) * -1.
+        tau = np.zeros(dset.size, dtype=dset.dtype) - 1.
 
         peak = dset[peak_index]
         tau[peak_index] = 0.
@@ -616,7 +617,8 @@ def add_coldgasmasstau(Config):
     N_RM = 3 # the number of snapshots to average over for running median
              # should be an odd number
 
-    keys = ['tau_rawpeak', 'tau_medpeak', 'tau_infall']
+    keys = ['tau_medpeak', 'tau_infall']
+    gastypes = ['ColdGas', 'HotGas', 'Gas']
 
     f_keys = list(f.keys())
 
@@ -626,37 +628,38 @@ def add_coldgasmasstau(Config):
         result = np.zeros(len(group['SnapNum'][:]), dtype=float) - -1.
         
         # find the indices that the subbhalo was identified at
-        SCGM_indices = np.where(group['SubfindID'][:] != -1)[0]        
-        SubhaloColdGasMass = group['SubhaloColdGasMass'][SCGM_indices]
-
-        # absolute maximum of the cold gas mass
-        rawpeak_tau = result.copy()
-        rawpeak_SCGM_index = np.argmax(SubhaloColdGasMass)
-        rawpeak_tau[SCGM_indices] = return_tau(rawpeak_SCGM_index, SubhaloColdGasMass)
-
-        # running median maximum of the cold gas mass
-        # ensure that there are enough snaps to calc the running median
-        # galaxies that do not reach z=0 will be ignored later anyways
-        medpeak_tau = result.copy()
-        if len(SubhaloColdGasMass) >=  N_RM:
-            med_SCGM = ru.RunningMedian(SubhaloColdGasMass, N_RM)
-            # choose the median x value corresponding to the max, as this is the peak
-            medpeak_SCGM_index = int(np.median(np.argwhere(med_SCGM == max(med_SCGM)).T))
-            #medpeak_SCGM_index = np.min(np.argwhere(med_SCGM == max(med_SCGM))) + int((N_RM - 1) / 2)
-            medpeak_tau[SCGM_indices] = return_tau(medpeak_SCGM_index, SubhaloColdGasMass)
-
+        subhalo_indices = np.where(group['SubfindID'][:] != -1)[0]
+        
         # first infall time
         infall_tau = result.copy()
         infall_index = np.max(np.argwhere(group['memberlifof_flags'][:] == 1))
-        infall_tau_index = np.where(group['SnapNum'][SCGM_indices] == group['SnapNum'][infall_index])[0][0]
-        infall_tau[SCGM_indices] = return_tau(infall_tau_index, SubhaloColdGasMass)
+        infall_tau_index = np.where(group['SnapNum'][subhalo_indices] == group['SnapNum'][infall_index])[0][0]
 
-        dsets = [rawpeak_tau, medpeak_tau, infall_tau]
-        for dset_index, dset_key in enumerate(keys):
-            dset = dsets[dset_index]
-            dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
-            dataset[:] = dset
+        for gastype in gastypes:
         
+            gas_dset = group['Subhalo%sMass'%gastype][subhalo_indices]
+            
+            # infall time
+            infall_tau[subhalo_indices] = return_tau(infall_tau_index, gas_dset)
+
+            # running median maximum of the cold gas mass
+            # ensure that there are enough snaps to calc the running median
+            # galaxies that do not reach z=0 will be ignored later anyways
+            medpeak_tau = result.copy()
+            if len(gas_dset) >=  N_RM:
+                med_SGM = ru.RunningMedian(gas_dset, N_RM)
+                # choose the median x value corresponding to the max, as this is the peak
+                medpeak_SGM_index = int(np.median(np.argwhere(med_SGM == max(med_SGM)).T))
+                #medpeak_SCGM_index = np.min(np.argwhere(med_SCGM == max(med_SCGM))) + int((N_RM - 1) / 2)
+                medpeak_tau[subhalo_indices] = return_tau(medpeak_SGM_index, gas_dset)
+
+            dsets = [medpeak_tau, infall_tau]
+            outkeys = [key +'_'+ gastype for key in keys]
+            for dset_index, dset_key in enumerate(outkeys):
+                dset = dsets[dset_index]
+                dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+                dataset[:] = dset
+            
     # finish loop over branches
     
     f.close()
