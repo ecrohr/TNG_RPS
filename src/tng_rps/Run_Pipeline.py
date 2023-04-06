@@ -131,12 +131,18 @@ class Configuration(dict):
             else:
                 print('Directory %s exists. Potentially overwriting files.'%self.tracer_outdirec)
                 
-        self.taudict_keys = [self.ins_key, self.jel_key, self.non_key]
+        self.zooniverse_keys = [self.ins_key, self.jel_key, self.non_key]
         self.subfindsnapshot_flags = [self.in_tree_key, self.central_key,
                                       self.in_z0_host_key, self.host_m200c_key]
         self.subfind_flags = [self.classified_flag, self.central_z0_flag,
                               self.backsplash_z0_flag, self.backsplash_prev_flag,
                               self.preprocessed_flag]
+                              
+        # tau dictionary keys
+        if not self.centrals_flag:
+            self.taudict_keys = [self.backsplash_prev_flag,
+                                 self.preprocessed_flag,
+                                 self.clean_key]
                 
         return
 

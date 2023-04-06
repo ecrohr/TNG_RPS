@@ -27,7 +27,7 @@ def run_clean_zooniverseGRP(Config):
         keys_dic   = clean_subfindGRP(dic, Config)
         
         # for each set of keys, save the resulting GRP dictionaries
-        for out_key in keys_dic.keys():
+        for out_key in Config.taudict_keys:
             keys = keys_dic[out_key]
             result = {}
             for key in keys:
@@ -36,7 +36,7 @@ def run_clean_zooniverseGRP(Config):
                 new_key = '%08d'%(group['SubfindID'][0])
                 result[new_key] = group
 
-            fname = return_outfname_Config(Config, out_key=out_key)
+            fname = return_outfname(Config, out_key=out_key)
             with h5py.File(outdirec + fname, 'a') as outf:
                 for group_key in result.keys():
                     group = outf.require_group(group_key)
@@ -57,12 +57,11 @@ def run_clean_zooniverseGRP(Config):
  
     
     if Config.run_createtau:
-        if Config.zooniverse_flag:
-            keys = Config.taudict_keys
-            for key in keys:
-                _ = return_taudict(key, Config)
-        else:
-            _ = return_taudict(key, Config)
+        # run once without out_key to run for all subhalos
+        create_taudict(Config)
+        # and run for each of the out_keys
+        for out_key in Config.taudict_keys:
+            create_taudict(Config, out_key=out_key)
 
     return
 
@@ -250,25 +249,32 @@ def split_inspected_branches():
     return
 
 
-def return_taudict(zooniverse=True, clean=True):
+def create_taudict(Config, out_key=None):
     """
-    reorganize the evolutionary tracks into 1D arrays with scalars at specific times
-    we want an array of scalar quantities at important times for various plots.
-    namely, we care about times tau0, tau10, and tau90 defined by infall and peak MCgas, at z=0, and quenching time
+    reorganize the evolutionary tracks into 1D arrays with scalars at specific times.
+    this only applies to subhalos that reach z=0, as z=0 is one of the specific times of interest.
+    other times could include infall into z=0 host, the time when a galaxy has lost 100% of its gas, etc.
+    note that there are additional datasets if the tracers and/or the quenching analysis has already been run.
     """
     
     def return_tauresult_key(grp_key, tau_key, tau_val):
         """ helper function to determine the key name """
         return (grp_key + '_' + tau_key + '%d'%tau_val)
+    
+    zooniverse_flag = Config.zooniverse_flag
+    tracers_flag = Config.tracers_flag
+    quench_flag = Config.sim != 'L680n8192TNG' # quenching catalogs not available for TNG-Cluster
 
-    if zooniverse:
-        infname = return_outfname(sim=sim, key=key, zooniverse=zooniverse, clean=clean)
-    else:
-        infname = return_outfname(sim=sim, zooniverse=zooniverse, clean=clean)
+    GRPfname = return_outfname(Config, out_key=out_key)
         
-    result = load_dict(infname)
+    result = load_dict(GRPfname, Config)
     result_keys = list(result.keys())
     result_keys.sort()
+    
+    # if there are no subhalos of interest in this file, don't create a tau file
+    if len(result_keys) == 0:
+        print('There are no subhalos of interest in this file %s.'%GRPfname)
+        return
 
     tauresult = {}
     tau_infall_key = 'tau_infall'
@@ -279,7 +285,7 @@ def return_taudict(zooniverse=True, clean=True):
     tauvals_dict[tau_infall_key] = np.array([0., 100.])
     tauvals_dict[tau_medpeak_key] = np.array([0., 100.])
 
-    if zooniverse:
+    if tracers_flag:
         tau_RPS_est_infall_key = 'tau_RPS_est'
         tau_RPS_tot_infall_key = 'tau_RPS_tot'
         tau_RPS_sRPS_key = 'tau_RPS_sRPS'
@@ -290,6 +296,7 @@ def return_taudict(zooniverse=True, clean=True):
         tauvals_dict[tau_RPS_tot_infall_key] = np.array([0., 90., 100.])
         tauvals_dict[tau_RPS_sRPS_key] = np.array([0., 100.])
             
+    # pick the datasets we want to output at given times for all subhalos
     grp_keys = ['SnapNum', 'CosmicTime', 'HostCentricDistance_norm', 'HostGroup_M_Crit200',
                 'HostGroup_R_Crit200', 'HostSubhalo_Mstar_Rgal', 'SubhaloMass',
                 'Subhalo_Mstar_Rgal',
@@ -297,6 +304,7 @@ def return_taudict(zooniverse=True, clean=True):
                 'Nperipass', 'min_Dperi_norm', 'min_Dperi_phys', 'Napopass',
                 'min_HostCentricDistance_norm', 'min_HostCentricDistance_phys']
     
+    # begin loop over subhalos
     for group_index, group_key in enumerate(result_keys):
     
         group = result[group_key]
@@ -322,10 +330,11 @@ def return_taudict(zooniverse=True, clean=True):
                                                     dtype=group[grp_key].dtype) - 1
 
             # also calculate tau at the quenching time
-            for tau_key in tau_keys:
-                tauresult_key = tau_key + '_quench'
-                tauresult[tauresult_key] = np.zeros(len(result_keys),
-                                                    dtype=group[tau_key].dtype) - 1
+            if quench_flag:
+                for tau_key in tau_keys:
+                    tauresult_key = tau_key + '_quench'
+                    tauresult[tauresult_key] = np.zeros(len(result_keys),
+                                                        dtype=group[tau_key].dtype) - 1
                     
         tauresult['SubfindID'][group_index] = group['SubfindID'][0]
         tauresult['HostSubhaloGrNr'][group_index] = group['HostSubhaloGrNr'][0]
@@ -336,10 +345,13 @@ def return_taudict(zooniverse=True, clean=True):
             tau_vals = tauvals_dict[tau_key]
             for tau_val in tau_vals:
                 if tau.max() >= tau_val:
+                    # in case there are multiple snapshots of tau_vals[0], use the most recent
                     if tau_val == tau_vals[0]:
                         tau_index = subfind_indices[np.where((tau_val - tau) >= 0)[0].min()]
+                    # in case there are multiple snapshots of tau_vals[-1], use the first one
                     elif (tau_val == tau_vals[-1]):
                         tau_index = subfind_indices[np.where((tau - tau_val) >= 0)[0].max()]
+                    # and in general, use the first instance of this occuring
                     else:
                         tau_index = subfind_indices[np.where((tau - tau_val) >= 0)[0].max()]
                     for grp_key in grp_keys:
@@ -351,7 +363,7 @@ def return_taudict(zooniverse=True, clean=True):
             tauresult_key = grp_key + '_z0'
             tauresult[tauresult_key][group_index] = group[grp_key][0]
 
-        if sim != 'L680n8192TNG':
+        if quench_flag:
             # and at the quenching time, if this exists
             quench_snap = group['quenching_snap'][0]
             if quench_snap >= 0:
@@ -388,7 +400,7 @@ def return_taudict(zooniverse=True, clean=True):
         tauresult[tstrip_key] = tstrip
 
         # now hard code the quenching time: time of last quenching - tau_*_lo
-        if sim != 'L680n8192TNG':
+        if quench_flag:
             key_hi = 'CosmicTime_quench'
             hi = tauresult[key_hi]
             indices = (lo > 0) & (hi > 0)
@@ -404,10 +416,8 @@ def return_taudict(zooniverse=True, clean=True):
                          / tauresult['HostGroup_M_Crit200_z0'])
     
     # save the tau dictionary
-    if zooniverse:
-        fname = 'zooniverse_%s_%s_clean_tau.hdf5'%(sim, key)
-    else:
-        fname = 'subfind_%s_clean_tau.hdf5'%(sim)
+    outdirec = Config.outdirec
+    fname = return_outfname(Config, out_key=out_key, tau=True)
     with h5py.File(outdirec + fname, 'a') as outf:
         group = outf.require_group('Group')        
         for dset_key in tauresult.keys():  
@@ -515,61 +525,38 @@ def load_dict(fname, Config):
     return result
 
 
-
-def load_dict_Config(fname, Config):
-    """
-    imports the hdf5 catalog and returns the dictionary.
-    """
-    
-    direc = Config.outdirec
-       
-    result = {}
-        
-    with h5py.File(direc + fname, 'a') as f:
-        for group_key in f.keys():
-            result[group_key] = {}
-            for dset_key in f[group_key].keys():
-                result[group_key][dset_key] = f[group_key][dset_key][:]
-        f.close()
-        
-    return result
-
-
-def return_outfname(sim='TNG50-1', key='inspected', zooniverse=True, clean=False):
-    """
-    return the output filename.
-    """
-    if not zooniverse:
-        outfname = 'subfind_%s_branches'%sim
-        if clean:
-            outfname += '_clean.hdf5'
-        else:
-            outfname += '.hdf5'
-        return outfname
-    else:
-        outfname = 'zooniverse_%s_%s_branches'%(sim, key)
-        if clean:
-            outfname += '_clean.hdf5'
-        else:
-            outfname += '.hdf5'
-        return outfname
-
-
-def return_outfname_Config(Config, out_key=None):
+def return_outfname(Config, out_key=None, tau=False):
     """
     return the output filename.
     """
     if not out_key:
-        outfname = Config.outfname
-    else:
-        if Config.zooniverse_flag:
-            outfname = 'zooniverse_%s_%s_branches_%s.hdf5'%(Config.sim, Config.zooniverse_key, out_key)
-        elif Config.centrals_flag:
-            outfname = 'central_subfind_%s_branches_%s.hdf5'%(Config.sim, out_key)
-        elif Config.allsubhalos_flag:
-            outfname = 'all_subfind_%s_branches_%s.hdf5'%(Config.sim, out_key)
+        if not tau:
+            outfname = Config.GRPfname
         else:
-            outfname = 'subfind_%s_branches_%s.hdf5'%(Config.sim, out_key)
+            ftype = 'tau'
+            out_key = 'all'
+            if Config.zooniverse_flag:
+                outfname = 'zooniverse_%s_%s_%s_%s.hdf5'%(Config.sim, Config.zooniverse_key, ftype, out_key)
+            elif Config.centrals_flag:
+                outfname = 'central_subfind_%s_%s_%s.hdf5'%(Config.sim, ftype, out_key)
+            elif Config.allsubhalos_flag:
+                outfname = 'all_subfind_%s_%s_%s.hdf5'%(Config.sim, ftype, out_key)
+            else:
+                outfname = 'subfind_%s_%s_%s.hdf5'%(Config.sim, ftype, out_key)
+    else:
+        if tau:
+            ftype = 'tau'
+        else:
+            ftype = 'branches'
+    
+        if Config.zooniverse_flag:
+            outfname = 'zooniverse_%s_%s_%s_%s.hdf5'%(Config.sim, Config.zooniverse_key, ftype, out_key)
+        elif Config.centrals_flag:
+            outfname = 'central_subfind_%s_%s_%s.hdf5'%(Config.sim, ftype, out_key)
+        elif Config.allsubhalos_flag:
+            outfname = 'all_subfind_%s_%s_%s.hdf5'%(Config.sim, ftype, out_key)
+        else:
+            outfname = 'subfind_%s_%s_%s.hdf5'%(Config.sim, ftype, out_key)
             
     return outfname
 
