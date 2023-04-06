@@ -263,7 +263,7 @@ def create_taudict(Config, out_key=None):
     
     zooniverse_flag = Config.zooniverse_flag
     tracers_flag = Config.tracers_flag
-    quench_flag = Config.sim != 'L680n8192TNG' # quenching catalogs not available for TNG-Cluster
+    quench_flag = not Config.TNGCluster_flag # quenching catalogs not available for TNG-Cluster
 
     GRPfname = return_outfname(Config, out_key=out_key)
         
@@ -277,21 +277,24 @@ def create_taudict(Config, out_key=None):
         return
 
     tauresult = {}
-    tau_infall_key = 'tau_infall'
-    tau_medpeak_key = 'tau_medpeak'
-    tau_keys = [tau_infall_key, tau_medpeak_key]
-
     tauvals_dict = {}
-    tauvals_dict[tau_infall_key] = np.array([0., 100.])
-    tauvals_dict[tau_medpeak_key] = np.array([0., 100.])
+    tau_keys = []
+    tautypes = ['tau_medpeak', 'tau_infall']
+    gastypes = ['ColdGas', 'HotGas', 'Gas']
+    for tautype in tautypes:
+        for gastype in gastypes:
+            key = tautype + '_' + gastype
+            tau_keys.append(key)
+            tauvals_dict[key] = np.array([0., 100.])
 
-    if tracers_flag:
+    # for backwards compatibility with Rohr+23 studying RPS in TNG jellyfish
+    if tracers_flag and zooniverse_flag:
         tau_RPS_est_infall_key = 'tau_RPS_est'
         tau_RPS_tot_infall_key = 'tau_RPS_tot'
         tau_RPS_sRPS_key = 'tau_RPS_sRPS'
         tau_keys = [tau_infall_key, tau_medpeak_key, tau_RPS_est_infall_key, tau_RPS_tot_infall_key,
                     tau_RPS_sRPS_key]
-
+                    
         tauvals_dict[tau_RPS_est_infall_key] = np.array([0., 90., 100.])
         tauvals_dict[tau_RPS_tot_infall_key] = np.array([0., 90., 100.])
         tauvals_dict[tau_RPS_sRPS_key] = np.array([0., 100.])
@@ -345,9 +348,9 @@ def create_taudict(Config, out_key=None):
             tau_vals = tauvals_dict[tau_key]
             for tau_val in tau_vals:
                 if tau.max() >= tau_val:
-                    # in case there are multiple snapshots of tau_vals[0], use the most recent
+                    # in case there are multiple snapshots of tau_vals[0], use the most recent one
                     if tau_val == tau_vals[0]:
-                        tau_index = subfind_indices[np.where((tau_val - tau) >= 0)[0].min()]
+                        tau_index = subfind_indices[np.where((tau - tau_val) >= 0)[0].min()]
                     # in case there are multiple snapshots of tau_vals[-1], use the first one
                     elif (tau_val == tau_vals[-1]):
                         tau_index = subfind_indices[np.where((tau - tau_val) >= 0)[0].max()]
