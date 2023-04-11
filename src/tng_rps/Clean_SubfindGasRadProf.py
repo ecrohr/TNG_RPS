@@ -58,10 +58,12 @@ def run_clean_zooniverseGRP(Config):
     
     if Config.run_createtau:
         # run once without out_key to run for all subhalos
-        create_taudict(Config)
+        #create_taudict(Config)
+        split_tau_gasz0(Config)
         # and run for each of the out_keys
         for out_key in Config.taudict_keys:
-            create_taudict(Config, out_key=out_key)
+            #create_taudict(Config, out_key=out_key)
+            split_tau_gasz0(Config, out_key=out_key)
 
     return
 
@@ -470,16 +472,20 @@ def combine_taudicts():
 
     return
 
-def split_tau_gasz0(sim='TNG50-1', key='jellyfish'):
+def split_tau_gasz0(Config, split_key='SubhaloHotGasMass_z0', out_key=None):
     """
     Split the tau catalog into two samples: those with cold gas 
     at z=0, and those without 
     """
+    
+    outdirec = Config.outdirec
+    fname = return_outfname(Config, out_key=out_key, tau=True)
+    
+    if not os.path.isfile(outdirec + fname):
+        return
 
-    fname = 'zooniverse_%s_%s_clean_tau.hdf5'%(sim, key)
     tau_dict = h5py.File(outdirec + fname, 'r')
     group = tau_dict['Group']
-    split_key = 'SubhaloColdGasMass_z0'
     mask = (group[split_key][:] == 0)
 
     result_gas = {}
@@ -489,8 +495,8 @@ def split_tau_gasz0(sim='TNG50-1', key='jellyfish'):
         result_nogas[group_key] = group[group_key][mask]
         result_gas[group_key] = group[group_key][~mask]
 
-    fname_gas = 'zooniverse_%s_%s_clean_tau_gasz0.hdf5'%(sim, key)
-    fname_nogas = 'zooniverse_%s_%s_clean_tau_nogasz0.hdf5'%(sim, key)
+    fname_gas = fname[:-5] + '_gasz0.hdf5'
+    fname_nogas = fname[:-5] + '_nogasz0.hdf5'
 
     tau_fnames = [fname_gas, fname_nogas]
     results = [result_gas, result_nogas]
