@@ -155,7 +155,6 @@ def argparse_Config(Config):
                    'computing the RSP in TNG galaxies.')
     parser = argparse.ArgumentParser(description=description)
     
-    
     # general flags
     parser.add_argument('--sim', default=None, type=str,
                         help='which simulation to use for the analysis.')

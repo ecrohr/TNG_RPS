@@ -84,13 +84,13 @@ def run_postprocessing(Config):
     """
     
     # standard datasets
-    add_memberflags(Config)
-    add_times(Config)
+    #add_memberflags(Config)
+    #add_times(Config)
     
     # for satellites only
     if not Config.centrals_flag:
-        add_dmin(Config)
-        add_Nperipass(Config)
+        #add_dmin(Config)
+        #add_Nperipass(Config)
         add_gastau(Config)
         # quenching times require the appropriate catalogs
         if not Config.TNGCluster_flag:
@@ -219,8 +219,12 @@ def return_subfindGRP(snapnum, subfindID, Config):
     # load gas particles for relevant halo
     gasparts = il.snapshot.loadSubhalo(basePath, snapnum, subfindID, gas_ptn, fields=gasfields)
     
-    # if the satellite has no gas, write -1 for all dsets
+    # if the satellite has no gas, write 0 for all dsets
     if gasparts['count'] == 0:
+        for threed_key in threed_keys:
+            result[group_key][threed_key][:] = 0
+        for scalar_key in scalar_keys:
+            result[group_key][scalar_key] = 0
         return result
     
     gas_coordinates        = gasparts['Coordinates'] * a / h
@@ -625,7 +629,7 @@ def add_gastau(Config):
     for group_index, group_key in enumerate(f_keys):
         group = f[group_key]
 
-        result = np.zeros(len(group['SnapNum'][:]), dtype=float) - -1.
+        result = np.zeros(len(group['SnapNum'][:]), dtype=float) - 1.
         
         # find the indices that the subbhalo was identified at
         subhalo_indices = np.where(group['SubfindID'][:] != -1)[0]
