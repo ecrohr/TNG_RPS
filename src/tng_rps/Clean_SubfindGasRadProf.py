@@ -13,7 +13,6 @@ import h5py
 import rohr_utils as ru 
 import os
 import multiprocessing as mp
-from importlib import reload
 
 def run_clean_zooniverseGRP(Config):
     """ Clean the Zooniverse sample based on various selection criteria. """
@@ -300,6 +299,8 @@ def create_taudict(Config, out_key=None):
         tauvals_dict[tau_RPS_est_infall_key] = np.array([0., 90., 100.])
         tauvals_dict[tau_RPS_tot_infall_key] = np.array([0., 90., 100.])
         tauvals_dict[tau_RPS_sRPS_key] = np.array([0., 100.])
+        
+    print(tau_keys)
             
     # pick the datasets we want to output at given times for all subhalos
     grp_keys = ['SnapNum', 'CosmicTime', 'HostCentricDistance_norm', 'HostGroup_M_Crit200',
@@ -330,9 +331,10 @@ def create_taudict(Config, out_key=None):
                 tauresult[tauresult_key] = np.zeros(len(result_keys),
                                                     dtype=group[grp_key].dtype) - 1
 
-                tauresult_key = grp_key + '_quench'
-                tauresult[tauresult_key] = np.zeros(len(result_keys),
-                                                    dtype=group[grp_key].dtype) - 1
+                if quench_flag:
+                    tauresult_key = grp_key + '_quench'
+                    tauresult[tauresult_key] = np.zeros(len(result_keys),
+                                                        dtype=group[grp_key].dtype) - 1
 
             # also calculate tau at the quenching time
             if quench_flag:
@@ -343,6 +345,7 @@ def create_taudict(Config, out_key=None):
                     
         tauresult['SubfindID'][group_index] = group['SubfindID'][0]
         tauresult['HostSubhaloGrNr'][group_index] = group['HostSubhaloGrNr'][0]
+        # finish initializing the the result
         
         # for each of the definitions of tau, let's tabulate important properties at tau_X 
         for tau_key in tau_keys:
@@ -350,15 +353,17 @@ def create_taudict(Config, out_key=None):
             tau_vals = tauvals_dict[tau_key]
             for tau_val in tau_vals:
                 if tau.max() >= tau_val:
-                    # in case there are multiple snapshots of tau_vals[0], use the most recent one
+                    tau_index = subfind_indices[np.where((tau - tau_val) >= 0)[0].max()]
+                    """
                     if tau_val == tau_vals[0]:
-                        tau_index = subfind_indices[np.where((tau - tau_val) >= 0)[0].min()]
+                        tau_index = subfind_indices[np.where((tau_val - tau) >= 0)[0].min()]
                     # in case there are multiple snapshots of tau_vals[-1], use the first one
                     elif (tau_val == tau_vals[-1]):
                         tau_index = subfind_indices[np.where((tau - tau_val) >= 0)[0].max()]
                     # and in general, use the first instance of this occuring
                     else:
                         tau_index = subfind_indices[np.where((tau - tau_val) >= 0)[0].max()]
+                    """
                     for grp_key in grp_keys:
                         tauresult_key = return_tauresult_key(grp_key, tau_key, tau_val)
                         tauresult[tauresult_key][group_index] = group[grp_key][tau_index]
@@ -472,7 +477,8 @@ def combine_taudicts():
 
     return
 
-def split_tau_gasz0(Config, split_key='SubhaloHotGasMass_z0', out_key=None):
+
+def split_tau_gasz0(Config, split_key='CosmicTime_tau_infall_HotGas100', out_key=None):
     """
     Split the tau catalog into two samples: those with cold gas 
     at z=0, and those without 
@@ -486,7 +492,7 @@ def split_tau_gasz0(Config, split_key='SubhaloHotGasMass_z0', out_key=None):
 
     tau_dict = h5py.File(outdirec + fname, 'r')
     group = tau_dict['Group']
-    mask = (group[split_key][:] == 0)
+    mask = (group[split_key][:] <= 13.8) & (group[split_key][:] >= 0)
 
     result_gas = {}
     result_nogas = {}

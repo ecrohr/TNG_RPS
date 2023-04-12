@@ -1,6 +1,6 @@
-sim: 'TNG50-4' # options are 'TNG*-*;, for 50, 100, 300 and -1, -2, -3 -4 or L680n8192TNG
+sim: 'L680n8192TNG' # options are 'TNG*-*;, for 50, 100, 300 and -1, -2, -3 -4 or L680n8192TNG
 
-TNGCluster_flag: False
+TNGCluster_flag: True
 mp_flag: False
 zooniverse_flag: False
 centrals_flag: False
@@ -32,9 +32,9 @@ run_SS_PP: False
 TracerTracks: False
 track_tracers: False
 find_tracers: False
-CleanSubfindGasRadProf: False
+CleanSubfindGasRadProf: True
 run_cleanSGRP: False
-run_createtau: False
+run_createtau: True
 
 zooniverse_snapfirst: 67 # require a zooniverse inspection (or jellyfish classification) at or after this snap
 Nsnaps_PP: 5 # number of consecutive snaps to be considered pre-processed
