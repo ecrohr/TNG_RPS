@@ -478,7 +478,7 @@ def combine_taudicts():
     return
 
 
-def split_tau_gasz0(Config, split_key='CosmicTime_tau_infall_HotGas100', out_key=None):
+def split_tau_gasz0(Config, split_key='SubhaloHotGasMass_z0', out_key=None):
     """
     Split the tau catalog into two samples: those with cold gas 
     at z=0, and those without 
@@ -492,7 +492,7 @@ def split_tau_gasz0(Config, split_key='CosmicTime_tau_infall_HotGas100', out_key
 
     tau_dict = h5py.File(outdirec + fname, 'r')
     group = tau_dict['Group']
-    mask = (group[split_key][:] <= 13.8) & (group[split_key][:] >= 0)
+    mask = (group[split_key][:] <= 0.0)
 
     result_gas = {}
     result_nogas = {}
