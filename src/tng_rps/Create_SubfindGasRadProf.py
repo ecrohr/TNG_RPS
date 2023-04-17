@@ -362,7 +362,7 @@ def add_zooniverseflags(Config):
     """
 
     # load the inpsected and jellyfish ID dictionaries
-    insIDs_dict, jelIDs_dict = load_zooniverseIDs()
+    insIDs_dict, jelIDs_dict = load_zooniverseIDs(Config)
 
     f = h5py.File(Config.outdirec + Config.outfname, 'a')
 
@@ -418,7 +418,7 @@ def load_zooniverseIDs(Config):
         snap_key = filename[-8:-5]
         f        = h5py.File(filename, 'r')
         done     = f['done'][0]
-        Score    = f['Score'][0]
+        Score    = f['ScoreWeighted'][0]
         
         insIDs_dict[snap_key] = np.where(done == 1)[0]
         jelIDs_dict[snap_key] = np.where(Score >= Config.jellyscore_min)[0]

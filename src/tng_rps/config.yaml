@@ -1,6 +1,6 @@
-sim: 'L680n8192TNG' # options are 'TNG*-*;, for 50, 100, 300 and -1, -2, -3 -4 or L680n8192TNG
+sim: 'TNG50-4' # options are 'TNG*-*;, for 50, 100, 300 and -1, -2, -3 -4 or L680n8192TNG
 
-TNGCluster_flag: True
+TNGCluster_flag: False
 mp_flag: False
 zooniverse_flag: False
 centrals_flag: False
@@ -15,7 +15,7 @@ first_snap: 0
 last_snap: 99
 
 tlim: 31622.776601683792 # = 10.**(4.5) K; cutoff between cold and hot gas
-jellyscore_min: 16
+jellyscore_min: 0.8
 treeName: 'SubLink_gal'
 zooniverse_key: 'inspected'
 ins_key: 'inspected'
