@@ -493,7 +493,6 @@ def load_zooniverseIDs(Config):
         snap_key = filename[-8:-5]
         f        = h5py.File(filename, 'r')
         done     = f['done'][0]
-        Score    = f['Score'][0]
         
         insIDs_dict[snap_key] = np.where(done == 1)[0]
 
