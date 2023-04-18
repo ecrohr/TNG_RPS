@@ -91,7 +91,7 @@ def run_postprocessing(Config):
     if not Config.centrals_flag:
         #add_dmin(Config)
         #add_Nperipass(Config)
-        add_gastau(Config)
+        #add_gastau(Config)
         # quenching times require the appropriate catalogs
         if not Config.TNGCluster_flag:
             add_quenchtimes(Config)
@@ -362,18 +362,19 @@ def add_zooniverseflags(Config):
     """
 
     # load the inpsected and jellyfish ID dictionaries
-    insIDs_dict, jelIDs_dict = load_zooniverseIDs(Config)
+    insIDs_dict, jelIDs_dict, jelIDs_raw_dict = load_zooniverseIDs(Config)
 
     f = h5py.File(Config.outdirec + Config.outfname, 'a')
 
-    keys = ['ins_flags', 'jel_flags']
+    keys = ['ins_flags', 'jel_flags', 'jel_flags_raw']
 
     for group_key in f.keys():
         group     = f[group_key]
         SnapNum   = group['SnapNum'][:]
         SubfindID = group['SubfindID'][:]
         ins_flags = np.zeros(len(SnapNum), dtype=int)
-        jel_flags = np.zeros(len(SnapNum), dtype=int)
+        jel_flags = ins_flags.copy()
+        jel_flags_raw = ins_flags.copy()
 
         for index, snap in enumerate(SnapNum):
             snap_key = '%03d'%snap
@@ -382,11 +383,14 @@ def add_zooniverseflags(Config):
                     ins_flags[index] = 1
                     if SubfindID[index] in jelIDs_dict[snap_key]:
                         jel_flags[index] = 1
+                    if SubfindID[index] in jelIDs_raw_dict[snap_key]:
+                        jel_flags_raw[index] = 1
+
             except KeyError: # no zooniverse classifications as this snap
                 continue
 
         # finish loop over SnapNum
-        dsets = [ins_flags, jel_flags]
+        dsets = [ins_flags, jel_flags, jel_flags_raw]
         for i, key in enumerate(keys):
             dset       = dsets[i]
             dataset    = group.require_dataset(key, shape=dset.shape, dtype=dset.dtype)
@@ -414,18 +418,21 @@ def load_zooniverseIDs(Config):
     # create dictionaries with snapnum as the key and lists of subfindIDs as the entires
     insIDs_dict = {}
     jelIDs_dict = {}
+    jelIDs_raw_dict = {}
     for filename in infnames:
         snap_key = filename[-8:-5]
         f        = h5py.File(filename, 'r')
         done     = f['done'][0]
         Score    = f['ScoreWeighted'][0]
+        ScoreRaw = f['ScoreRaw'][0]
         
         insIDs_dict[snap_key] = np.where(done == 1)[0]
         jelIDs_dict[snap_key] = np.where(Score >= Config.jellyscore_min)[0]
+        jelIDs_raw_dict[snap_key] = np.where(ScoreRaw >= Config.jellyscore_min_raw)[0]
 
         f.close()
 
-    return insIDs_dict, jelIDs_dict
+    return insIDs_dict, jelIDs_dict, jelIDs_raw_dict
     
 
 def add_times(Config):

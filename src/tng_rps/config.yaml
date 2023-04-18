@@ -16,6 +16,7 @@ last_snap: 99
 
 tlim: 31622.776601683792 # = 10.**(4.5) K; cutoff between cold and hot gas
 jellyscore_min: 0.8
+jellyscore_min_raw: 16
 treeName: 'SubLink_gal'
 zooniverse_key: 'inspected'
 ins_key: 'inspected'
