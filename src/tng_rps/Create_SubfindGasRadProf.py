@@ -362,35 +362,50 @@ def add_zooniverseflags(Config):
     """
 
     # load the inpsected and jellyfish ID dictionaries
-    insIDs_dict, jelIDs_dict, jelIDs_raw_dict = load_zooniverseIDs(Config)
+    insIDs_dict, jelIDs_dict, jelIDs_raw_dict, Scores_dict = load_zooniverseIDs(Config)
 
     f = h5py.File(Config.outdirec + Config.outfname, 'a')
 
-    keys = ['ins_flags', 'jel_flags', 'jel_flags_raw']
+    keys = ['ins_flags', 'jel_flags', 'jel_flags_raw', 'ScoreRaw', 'ScoreWeighted']
 
     for group_key in f.keys():
         group     = f[group_key]
         SnapNum   = group['SnapNum'][:]
         SubfindID = group['SubfindID'][:]
-        ins_flags = np.zeros(len(SnapNum), dtype=int)
+        subfind_indices = np.where(SubfindID != -1)[0]
+        
+        ins_flags = np.zeros(SnapNum.size, dtype=int) - 1
         jel_flags = ins_flags.copy()
         jel_flags_raw = ins_flags.copy()
+        
+        ins_flags[subfind_indices] = 0
+        jel_flags[subfind_indices] = 0
+        jel_flags_raw[subfind_indices] = 0
+
+        ScoreRaw = np.zeros(SnapNum.size, dtype=float) - 1
+        ScoreWeighted = ScoreRaw.copy()
 
         for index, snap in enumerate(SnapNum):
             snap_key = '%03d'%snap
+            subfindID = SubfindID[index]
+            if subfindID == -1:
+                continue
             try:
-                if SubfindID[index] in insIDs_dict[snap_key]:
+                scores = Scores_dict[snap_key]
+                ScoreRaw[index] = scores['ScoreRaw'][subfindID]
+                ScoreWeighted[index] = scores['ScoreWeighted'][subfindID]
+                if subfindID in insIDs_dict[snap_key]:
                     ins_flags[index] = 1
-                    if SubfindID[index] in jelIDs_dict[snap_key]:
+                    if subfindID in jelIDs_dict[snap_key]:
                         jel_flags[index] = 1
-                    if SubfindID[index] in jelIDs_raw_dict[snap_key]:
+                    if subfindID in jelIDs_raw_dict[snap_key]:
                         jel_flags_raw[index] = 1
 
             except KeyError: # no zooniverse classifications as this snap
                 continue
 
         # finish loop over SnapNum
-        dsets = [ins_flags, jel_flags, jel_flags_raw]
+        dsets = [ins_flags, jel_flags, jel_flags_raw, ScoreRaw, ScoreWeighted]
         for i, key in enumerate(keys):
             dset       = dsets[i]
             dataset    = group.require_dataset(key, shape=dset.shape, dtype=dset.dtype)
@@ -419,6 +434,7 @@ def load_zooniverseIDs(Config):
     insIDs_dict = {}
     jelIDs_dict = {}
     jelIDs_raw_dict = {}
+    Scores_dict = {}
     for filename in infnames:
         snap_key = filename[-8:-5]
         f        = h5py.File(filename, 'r')
@@ -426,13 +442,17 @@ def load_zooniverseIDs(Config):
         Score    = f['ScoreWeighted'][0]
         ScoreRaw = f['ScoreRaw'][0]
         
+        Scores_dict[snap_key] = {}
+        Scores_dict[snap_key]['ScoreRaw'] = ScoreRaw.copy()
+        Scores_dict[snap_key]['ScoreWeighted'] = Score.copy()
+        
         insIDs_dict[snap_key] = np.where(done == 1)[0]
         jelIDs_dict[snap_key] = np.where(Score >= Config.jellyscore_min)[0]
-        jelIDs_raw_dict[snap_key] = np.where(ScoreRaw >= Config.jellyscore_min_raw)[0]
+        jelIDs_raw_dict[snap_key] = np.where(ScoreRaw >= Config.jellyscore_min)[0]
 
         f.close()
 
-    return insIDs_dict, jelIDs_dict, jelIDs_raw_dict
+    return insIDs_dict, jelIDs_dict, jelIDs_raw_dict, Scores_dict
     
 
 def add_times(Config):
