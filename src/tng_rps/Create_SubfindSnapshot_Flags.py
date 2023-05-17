@@ -7,16 +7,6 @@ import rohr_utils as ru
 from functools import partial
 import glob
 import os
-
-in_tree_key    = 'in_tree'
-central_key    = 'central'
-in_z0_host_key = 'in_z0_host'
-host_m200c_key = 'host_m200c'
-
-keys = [in_tree_key,
-        central_key,
-        in_z0_host_key,
-        host_m200c_key]
     
 
 def run_subfindsnapshot_flags(Config):
@@ -226,7 +216,7 @@ def postprocess_flags(subfindIDs, Config):
     M200c0_lolim_PP = Config.M200c0_lolim_PP
 
     # load the catalogs
-    subfindsnapshot_outdirec, subfindsnapshot_outfname = return_outdirec_outfname(Config)
+    subfindsnapshot_outdirec, subfindsnapshot_outfname = return_outdirec_outfname(Config, snapshotflags=True)
     f = h5py.File(subfindsnapshot_outdirec + subfindsnapshot_outfname, 'r')
     group = f['group']
     
@@ -268,12 +258,12 @@ def postprocess_flags(subfindIDs, Config):
             
         result[classified_flag][subfindID] = 1
         
-        central = group[central_key][subfindID][intree_indices]
-        in_z0_host = group[in_z0_host_key][subfindID][intree_indices]
+        central = group[central_key][subfindID][intree_indices] == 1
+        in_z0_host = group[in_z0_host_key][subfindID][intree_indices] == 1
         host_m200c = group[host_m200c_key][subfindID][intree_indices] >= M200c0_lolim_PP
         
         # is the subhalo a central at z=0?
-        if (central[0]):
+        if (central[0] == 1):
             result[central_z0_flag][subfindID] = 1
             # yes! Is the subhalo a backsplash galaxy?
             backsplash_indices = ~central & ~in_z0_host & host_m200c

@@ -33,9 +33,9 @@ run_SS_PP: False
 TracerTracks: False
 track_tracers: False
 find_tracers: False
-CleanSubfindGasRadProf: True
+CleanSubfindGasRadProf: False
 run_cleanSGRP: False
-run_createtau: True
+run_createtau: False
 
 zooniverse_snapfirst: 67 # require a zooniverse inspection (or jellyfish classification) at or after this snap
 Nsnaps_PP: 5 # number of consecutive snaps to be considered pre-processed
