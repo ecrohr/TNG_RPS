@@ -732,8 +732,7 @@ def timesfromsnap(basePath, snapnum):
     zs = np.zeros(len(snapnum)) 
     times = np.zeros(len(snapnum))
         
-    for index in range(len(snapnum)):
-        snap = snapnum[index]
+    for index, snap in enumerate(snapnum):
         hdr = il.groupcat.loadHeader(basePath, snap)
         
         if index == 0:
@@ -747,7 +746,7 @@ def timesfromsnap(basePath, snapnum):
         zs[index] = z
         times[index] = cosmictime(z, H0, Omega0, OmegaL) # [yr]
         
-    return(zs, times)
+    return zs, times
         
 def cosmictime(z, H0, OmegaM, OmegaL):
     """
@@ -769,11 +768,10 @@ def cosmictime(z, H0, OmegaM, OmegaL):
     
     integral = quad(Friedmann, 0, 1. / (1.+z), args=(OmegaM,OmegaL))[0]
     result = integral / H0 / 1.022e-12 # converts [s Mpc km^-1] to [yr]
-    return(result)
+    return result
     
 def Friedmann(a, OmegaM, OmegaL):
     """
-    
     returns the integrand of the Friedmann equation, given the 
     cosmological parameters and assuming neutrino and radiaiton 
     density parameters are 0. this is used in cosmictime()
