@@ -21,7 +21,7 @@ def run_clean_zooniverseGRP(Config):
     GRPfname = Config.GRPfname
     
     if Config.run_cleanSGRP:
-
+    
         dic        = load_dict(GRPfname, Config)
         keys_dic   = clean_subfindGRP(dic, Config)
         
@@ -45,7 +45,7 @@ def run_clean_zooniverseGRP(Config):
                         dataset[:] = dset
                         
                 outf.close()
-       
+                                
 
         if Config.zooniverse_flag:
             # now split the inspected branches into jellyfish, if there's a jellyfish classificaiton
@@ -97,6 +97,7 @@ def clean_subfindGRP(dic, Config):
     nonz0_keys           = []
     backsplash_prev_keys = []
     preprocessed_keys    = []
+    centralz0_keys = []
     if Config.zooniverse_flag:
         beforesnapfirst_keys = []
         snap_first = Config.zooniverse_snapfirst
@@ -129,7 +130,8 @@ def clean_subfindGRP(dic, Config):
         SubfindID_z0  = SubfindID[0]
         
         # confirm that the subhalo is a z=0 satellite
-        if subfind_flags[central_z0_flag][SubfindID_z0]:
+        if (subfind_flags[central_z0_flag][SubfindID_z0] == 1):
+            centralz0_keys.append(key)
             print('Using the wrong function for %d which is a z=0 central! Double check.'%SubfindID_z0)
             continue
             
@@ -148,6 +150,7 @@ def clean_subfindGRP(dic, Config):
     print('satellite branches not reaching z=0: %d'%(len(nonz0_keys)))
     if Config.zooniverse_flag:
         print('not inspected since %d: %d'%(snap_first, len(beforesnapfirst_keys)))
+    print('central at z=0: %d'%len(centralz0_keys))
     print('backsplash_prev: %d; preprocessed: %d'%(len(backsplash_prev_keys), len(preprocessed_keys)))
     print('clean (i.e., not preprocessed): %d'%(len(clean_keys)))
 
@@ -202,20 +205,24 @@ def load_subfindsnapshot_flags(Config):
     return result
 
 # split the inspected branches into jellyfish and nonjellyf
-def split_inspected_branches():
+def split_inspected_branches(Config):
     """
     split the zooniverse branches into all (inspected), jellyfish,
     and non-jellyfish branches based on their classification at z <= 0.5
     """
+    outdirec = Config.outdirec
+    sim = Config.sim
+    zooniverse_keys = Config.zooniverse_keys
+    zooniverse_snapfirst = Config.zooniverse_snapfirst
+    ins_key = Config.ins_key
     
-    keys = ['inspected', 'jellyfish', 'nonjellyf']
     fnames = []
-    for key in keys:
-        fname = outdirec + 'zooniverse_%s_%s_branches_clean.hdf5'%(sim, key)
+    for zooniverse_key in zooniverse_keys:
+        fname = outdirec + 'zooniverse_%s_%s_branches_clean.hdf5'%(sim, zooniverse_key)
         fnames.append(fname)
         
         # if the jellyfish and nonjellyf files exist, delete them 
-        if key != keys[0]:
+        if zooniverse_key != ins_key:
             if (os.path.exists(fname)):
                 os.system('rm %s'%fname)
     
@@ -228,20 +235,20 @@ def split_inspected_branches():
     for group_key in insf.keys():
         group = insf[group_key]
         SnapNum = group['SnapNum'][:]
-        jel_flag = np.max(group['jel_flags'][SnapNum >= snap_first])
+        jel_flag = np.max(group['jel_flags'][SnapNum >= zooniverse_snapfirst])
         if (jel_flag):
             insf.copy(insf[group_key], jelf)
         else:
             insf.copy(insf[group_key], nonf)
             # check if the galaxy was a jellyfish before snap_first
-            if (min(SnapNum) < snap_first):
-                if (np.max(group['jel_flags'][SnapNum < snap_first])):
+            if (SnapNum.max() < zooniverse_snapfirst):
+                if (np.max(group['jel_flags'][SnapNum < zooniverse_snapfirst])):
                     jelbeforesnapfirst_keys.append(group_key)
 
     print('Of the %d inspected clean branches in %s'%(len(insf.keys()), sim))
     print('%d are jellyfish and %d are nonjellyf.'%(len(jelf.keys()), len(nonf.keys())))
     print('%d were jellyfish before snap %d but are included in nonjellyf.'%(len(jelbeforesnapfirst_keys),
-                                                                             snap_first))
+                                                                                         zooniverse_snapfirst))
 
     insf.close()
     jelf.close()

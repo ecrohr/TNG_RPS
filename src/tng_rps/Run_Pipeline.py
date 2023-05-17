@@ -418,88 +418,17 @@ def initialize_zooniverseindices(Config):
     snapshot at which the galaxy was inspected, and the subfindID at that snapshot.
     Returns SnapNums, SubfindIDs
     """
-
-    # load the inspected IDs dictionary
-    insIDs_dict = load_zooniverseIDs(Config)
-
-    # create empty lists
-    snapnums   = []
-    subfindids = []
-
-    # initialize dictionary with empty lists that will hold the SubfindIDs,
-    # corresponding to branches that have already been cataloged
-    out_dict = {}
-    for i in range(0, 100):
-        out_dict['%03d'%i] = []
     
-    # load in each file consecutively, and check for every done subhalo whether
-    # it has already been cataloged. if not, add the key to the empty lists
-    # start at snap 99 and work backwards, such that we only need to load the MPBs
-    for snap_key in insIDs_dict.keys():
-
-        out_dict_snap = out_dict[snap_key]
-        subfindIDs    = insIDs_dict[snap_key]
-
-        for i, subfindID in enumerate(subfindIDs):
-            subfindID_key = '%08d'%subfindID
-
-            # check if this subfindID at this snap has already been cataloged
-            if subfindID_key in out_dict_snap:
-                continue
-            
-            else:
-                # load sublink_gal MPB and tabulate
-                fields = ['SnapNum', 'SubfindID']
-                MPB    = il.sublink.loadTree(Config.basePath, int(snap_key), subfindID,
-                                             fields=fields, onlyMPB=True, treeName=Config.treeName)
-
-                if MPB is None:
-                    print('No MPB for %s snap %s subhaloID %s. Continuing'%(sim, snap_key, subfindID))
-                    continue
-
-                for j in range(MPB['count']):
-                    snapkey       = '%03d'%MPB['SnapNum'][j]
-                    subfindid     = MPB['SubfindID'][j]
-                    subfindid_key = '%08d'%MPB['SubfindID'][j]
-                    out_dict[snapkey].append(subfindid_key)
-                # finish loop over the MPB
-
-                snapnums.append(int(snap_key))
-                subfindids.append(int(subfindID_key))
-                
-    # finish loop over the insIDs and save the keys
-    snapnums   = np.array(snapnums, dtype=type(snapnums[0]))
-    subfindids = np.array(subfindids, dtype=type(subfindids[0]))
-
-    return snapnums, subfindids
-
-
-def load_zooniverseIDs(Config):
-    """
-    Load all zooniverse catalogs. Create a dictionary with each snapshot as the key,
-    and the entries are the subfindIDs of all inspected galaxies at that snapshot.
-    Returns the dictionary.
-    """
+    indirec = '../IllustrisTNG/%s/postprocessing/Zooniverse_CosmologicalJellyfish/'%Config.sim
+    infname = 'jellyfish.hdf5'
     
-    # load in the filenames for each snapshot, starting at the last snap
-    indirec  = '../IllustrisTNG/%s/postprocessing/Zooniverse_CosmologicalJellyfish/flags/'%Config.sim
-    infname  = 'cosmic_jellyfish_flags_*.hdf5'
-    infnames = glob.glob(indirec + infname)
-    infnames.sort(reverse=True)
-
-    # create dictionaries with snapnum as the key and lists of subfindIDs as the entires
-    insIDs_dict = {}
-    for filename in infnames:
-        snap_key = filename[-8:-5]
-        f        = h5py.File(filename, 'r')
-        done     = f['done'][0]
+    with h5py.File(indirec + infname, 'r') as inf:
+        snapnums = inf['Branches_SnapNum_LastInspect'][:]
+        subfindIDs = inf['Branches_SubfindID_LastInspect'][:]
         
-        insIDs_dict[snap_key] = np.where(done == 1)[0]
-
-        f.close()
-    # finish loop over files
+        inf.close()
     
-    return insIDs_dict
+    return snapnums, subfindIDs
 
     
 fname = 'config.yaml'
