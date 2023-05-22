@@ -143,6 +143,8 @@ class Configuration(dict):
             self.taudict_keys = [self.backsplash_prev_flag,
                                  self.preprocessed_flag,
                                  self.clean_key]
+        if self.zooniverse_flag:
+            self.taudict_keys = self.zooniverse_keys
                 
         return
 
@@ -230,33 +232,18 @@ def return_outdirec_outfname(Config):
     given the simulation and flags, determine the directory and GRP filename
     """
     
+    outdirec = '../Output/%s_subfindGRP/'%Config.sim
     if (Config.zooniverse_flag):
         ins_key = 'inspected'
         outfname = 'zooniverse_%s_%s_branches.hdf5'%(Config.sim, Config.zooniverse_key)
-        outdirec = '../Output/%s_subfindGRP/'%Config.sim
-        
-        if (os.path.isdir(outdirec)):
-            print('Directory %s exists.'%outdirec)
-            if os.path.isfile(outdirec + outfname):
-                print('File %s exists. Overwriting.'%(outdirec+outfname))
-                return outdirec, outfname
-            else:
-                print('File %s does not exists. Writing.'%(outdirec+outfname))
-                return outdirec, outfname
-        else:
-            print('Directory %s does not exist. Creating it now.'%outdirec)
-            os.system('mkdir %s'%outdirec)
-            return outdirec, outfname
-            
-    if Config.centrals_flag:
+        outdirec = '../Output/zooniverse/'
+    elif Config.centrals_flag:
         outfname = 'central_subfind_%s_branches.hdf5'%(Config.sim)
     elif Config.allsubhalos_flag:
         outfname = 'all_subfind_%s_branches.hdf5'%(Config.sim)
     else:
         outfname = 'subfind_%s_branches.hdf5'%(Config.sim)
-    
-    outdirec = '../Output/%s_subfindGRP/'%Config.sim
-    
+        
     if (os.path.isdir(outdirec)):
         print('Directory %s exists.'%outdirec)
         if os.path.isfile(outdirec + outfname):
