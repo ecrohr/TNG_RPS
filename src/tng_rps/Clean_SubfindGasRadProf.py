@@ -58,9 +58,11 @@ def run_clean_zooniverseGRP(Config):
     if Config.run_createtau:
         # run once without out_key to run for all subhalos
         #create_taudict(Config)
-        split_tau_gasz0(Config)
+        if not Config.zooniverse_flag:
+            split_tau_gasz0(Config)
         # and run for each of the out_keys
         for out_key in Config.taudict_keys:
+            print(out_key)
             #create_taudict(Config, out_key=out_key)
             split_tau_gasz0(Config, out_key=out_key)
 
@@ -493,20 +495,23 @@ def split_tau_gasz0(Config, split_key='SubhaloHotGasMass_z0', out_key=None):
     
     outdirec = Config.outdirec
     fname = return_outfname(Config, out_key=out_key, tau=True)
+    print(outdirec + fname)
     
     if not os.path.isfile(outdirec + fname):
-        return
+        raise ValueError('file %s does not exist.'%(outdirec + fname))
 
     tau_dict = h5py.File(outdirec + fname, 'r')
     group = tau_dict['Group']
     mask = (group[split_key][:] <= 0.0)
 
+    if Config.zooniverse_flag:
+        mask = np.logical_or(group['SubhaloColdGasMass_z0'][:] == 0., group['CosmicTime_tau_RPS_tot100'][:] <= 13.7)
     result_gas = {}
     result_nogas = {}
 
     for group_key in group.keys():
         result_nogas[group_key] = group[group_key][mask]
-        result_gas[group_key] = group[group_key][~mask]
+        result_gas[group_key] = group[group_key][np.logical_not(mask)]
 
     fname_gas = fname[:-5] + '_gasz0.hdf5'
     fname_nogas = fname[:-5] + '_nogasz0.hdf5'
@@ -558,7 +563,7 @@ def return_outfname(Config, out_key=None, tau=False):
             ftype = 'tau'
             out_key = 'all'
             if Config.zooniverse_flag:
-                outfname = 'zooniverse_%s_%s_%s_%s.hdf5'%(Config.sim, Config.zooniverse_key, ftype, out_key)
+                outfname = 'zooniverse_%s_%s_%s_%s.hdf5'%(Config.sim, Config.zooniverse_key, out_key, ftype)
             elif Config.centrals_flag:
                 outfname = 'central_subfind_%s_%s_%s.hdf5'%(Config.sim, ftype, out_key)
             elif Config.allsubhalos_flag:
@@ -568,11 +573,13 @@ def return_outfname(Config, out_key=None, tau=False):
     else:
         if tau:
             ftype = 'tau'
+            if Config.zooniverse_flag:
+                outfname = 'zooniverse_%s_%s_clean_%s.hdf5'%(Config.sim, out_key, ftype)
+                return outfname
         else:
             ftype = 'branches'
-    
         if Config.zooniverse_flag:
-            outfname = 'zooniverse_%s_%s_%s_%s.hdf5'%(Config.sim, Config.zooniverse_key, ftype, out_key)
+            outfname = 'zooniverse_%s_%s_%s.hdf5'%(Config.sim, out_key, ftype)
         elif Config.centrals_flag:
             outfname = 'central_subfind_%s_%s_%s.hdf5'%(Config.sim, ftype, out_key)
         elif Config.allsubhalos_flag:
