@@ -78,6 +78,7 @@ def return_subfindindices(snap, subfindID, Config):
                    'Subhalo_Mstar_Rgal',
                    'Subhalo_Rgal',
                    'SubhaloGrNr', 'SubGroupFirstSub',
+                   'SubhaloParent',
                    'SubhaloSFR', 'SubhaloSFRinRad',
                    'SubhaloMass',
                    'SubhaloPos', 'SubhaloBHMdot',
@@ -96,6 +97,7 @@ def return_subfindindices(snap, subfindID, Config):
 
     int_keys = ['SubfindID',
                 'SubhaloGrNr', 'SubhaloGroupFirstSub',
+                'SubhaloParent',
                 'HostSubfindID', 'HostSubhaloGrNr']
 
     threed_keys = ['SubhaloPos', 'SubhaloVel',
@@ -116,7 +118,7 @@ def return_subfindindices(snap, subfindID, Config):
     
     # now load the whole main progenitor branches of the subhalo and the
     # main subhalo of its z=0 FoF Host -- then tabulate various properties
-    sub_fields  = ['SnapNum', 'SubfindID', 'SubhaloMassInRadType', 'GroupFirstSub',
+    sub_fields  = ['SnapNum', 'SubfindID', 'SubhaloMassInRadType', 'GroupFirstSub', 'SubhaloParent',
                    'SubhaloHalfmassRadType', 'SubhaloPos', 'SubhaloGrNr', 'SubhaloSFR',
                    'SubhaloSFRinRad', 'SubhaloMass', 'SubhaloBHMdot', 'SubhaloBHMass',
                    'SubhaloVel']
@@ -160,6 +162,7 @@ def return_subfindindices(snap, subfindID, Config):
              sub_tree['SubhaloMassInRadType'][sub_indices,star_ptn] * 1.0e10 / h,
              sub_tree['SubhaloHalfmassRadType'][sub_indices,star_ptn] * a / h,
              sub_tree['SubhaloGrNr'][sub_indices], sub_tree['GroupFirstSub'][sub_indices],
+             sub_tree['SubhaloParent'][sub_indices],
              sub_tree['SubhaloSFR'][sub_indices], sub_tree['SubhaloSFRinRad'][sub_indices],
              sub_tree['SubhaloMass'][sub_indices] * 1.0e10 / h,
              SubPos, sub_tree['SubhaloBHMdot'][sub_indices] * 10.22,
