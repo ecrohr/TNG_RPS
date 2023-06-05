@@ -143,8 +143,8 @@ class Configuration(dict):
             self.taudict_keys = [self.backsplash_prev_flag,
                                  self.preprocessed_flag,
                                  self.clean_key]
-        if self.zooniverse_flag:
-            self.taudict_keys = self.zooniverse_keys
+        #if self.zooniverse_flag:
+        #    self.taudict_keys = self.zooniverse_keys
                 
         return
 
