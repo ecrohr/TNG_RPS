@@ -8,7 +8,6 @@ from functools import partial
 import glob
 import os
     
-
 def run_subfindsnapshot_flags(Config):
     """
     Create the FoF membership flags for all subhalos at each snapshot.
@@ -23,10 +22,7 @@ def run_subfindsnapshot_flags(Config):
     subfindsnapshot_outdirec, subfindsnapshot_outfname = return_outdirec_outfname(Config, snapshotflags=True)
             
     # initialize the subfindIDs of interest and final result shape
-    if Config.TNGCluster_flag:
-        subfindIDs, result = initialize_TNGCluster(Config)
-    else:
-        subfindIDs, result = initialize_allsubhalos(Config)
+    subfindIDs, result = initialize_result(Config)
         
     print('Number of subhalos of interest: %d'%subfindIDs.size)
     
@@ -71,29 +67,9 @@ def run_subfindsnapshot_flags(Config):
     return result
 
 
-def initialize_allsubhalos(Config):
+def initialize_result(Config):
     """
-    Create a list of the subfindIDs for all subhalos in the simulation.
-    """
-    
-    subfindIDs = Config.SubfindIDs
-    SnapNums = Config.SnapNums
-    subfind_flags = Config.subfind_flags
-    
-    # initlaize and fill finalize result
-    result = {}
-    for flag in subfind_flags:
-        if flag == Config.host_m200c_key:
-            result[flag] = np.zeros((subfindIDs.size, SnapNums.size), dtype=float) - 1.
-        else:
-            result[flag] = np.zeros((subfindIDs.size, SnapNums.size), dtype=int) - 1
-    
-    return subfindIDs, result
-
-
-def initialize_TNGCluster(Config):
-    """
-    Create a list of all TNGCluster subfindIDs of interest, namely those
+    Create a list of all subfindIDs of interest, namely those
     defined in Create_SubfindIndices. However, we want to use the subfindID
     as the index into the final result. So we create the result to be of size
     all subfindIDs (with all -1 values), and later calculate the flags only
@@ -102,8 +78,7 @@ def initialize_TNGCluster(Config):
     
     subfindIDs = Config.SubfindIDs
     SnapNums = Config.SnapNums
-    subfind_flags = Config.subfind_flags
-
+    subfind_flags = Config.subfindsnapshot_flags
     
     # use the full catalog for the number of subhalos
     Nsubhalos = il.groupcat.loadSubhalos(Config.basePath, Config.max_snap, fields='SubhaloGrNr').size
@@ -323,8 +298,8 @@ def init_result(Config):
     keys = Config.subfindsnapshot_flags
     
     false_return = np.zeros(Config.SnapNums.size, dtype=int)
-    inval_return = false_return.copy() * -1
-    float_return = false_return.copy() * -1.
+    inval_return = false_return.copy() - 1
+    float_return = false_return.copy() - 1.
 
     init_result = {}
     for key in keys:
