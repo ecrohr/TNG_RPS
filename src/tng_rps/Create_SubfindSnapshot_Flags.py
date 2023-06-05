@@ -194,6 +194,11 @@ def postprocess_flags(subfindIDs, Config):
     subfindsnapshot_outdirec, subfindsnapshot_outfname = return_outdirec_outfname(Config, snapshotflags=True)
     f = h5py.File(subfindsnapshot_outdirec + subfindsnapshot_outfname, 'r')
     group = f['group']
+
+    central_key = Config.central_key
+    in_tree_key = Config.in_tree_key
+    host_m200c_key = Config.host_m200c_key
+    in_z0_host_key = Config.in_z0_host_key
     
     classified_flag = Config.classified_flag
     central_z0_flag = Config.central_z0_flag
