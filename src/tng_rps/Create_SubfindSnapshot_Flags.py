@@ -77,6 +77,17 @@ def initialize_result(Config):
     """
     
     subfindIDs = Config.SubfindIDs
+    if Config.zooniverse_flag:
+        grp_dict = h5py.File(Config.outdirec + Config.GRPfname, 'r')
+        SubfindIDs = []
+        for key in grp_dict.keys():
+            group = grp_dict[key]
+            indices = group['SubfindID'][:] != -1
+            if (group['SnapNum'][indices].max() == 99):
+                SubfindIDs.append(group['SubfindID'][0])
+        subfindIDs = np.array(SubfindIDs)
+        subfindIDs.sort()
+
     SnapNums = Config.SnapNums
     subfind_flags = Config.subfindsnapshot_flags
     
