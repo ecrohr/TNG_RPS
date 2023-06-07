@@ -237,14 +237,13 @@ def split_inspected_branches(Config):
         group = insf[group_key]
         SnapNum = group['SnapNum'][:]
         jel_flag = np.max(group['jel_flags'][SnapNum >= zooniverse_snapfirst])
-        if (jel_flag):
+        if (jel_flag == 1):
             insf.copy(insf[group_key], jelf)
         else:
             insf.copy(insf[group_key], nonf)
             # check if the galaxy was a jellyfish before snap_first
-            if (SnapNum.max() < zooniverse_snapfirst):
-                if (np.max(group['jel_flags'][SnapNum < zooniverse_snapfirst])):
-                    jelbeforesnapfirst_keys.append(group_key)
+            if (np.max(group['jel_flags'][SnapNum < zooniverse_snapfirst])):
+                jelbeforesnapfirst_keys.append(group_key)
 
     print('Of the %d inspected clean branches in %s'%(len(insf.keys()), sim))
     print('%d are jellyfish and %d are nonjellyf.'%(len(jelf.keys()), len(nonf.keys())))
@@ -588,19 +587,3 @@ def return_outfname(Config, out_key=None, tau=False):
             
     return outfname
 
-"""
-zooniverse = False
-for sim in ['L680n8192TNG']:
-    outdirec = '../Output/%s_subfindGRP/'%sim
-    outfname = return_outfname(sim=sim, key=ins_key, zooniverse=zooniverse, clean=False)
-    
-    #clean_zooniverseGRP(zooniverse=zooniverse, savekeys=False)
-    return_taudict(zooniverse=False, clean=False)
-            
-if zooniverse:
-    for key in taudict_keys:
-        #_ = return_taudict(key)
-        split_tau_gasz0(key=key)
-
-#combine_taudicts()
-"""
