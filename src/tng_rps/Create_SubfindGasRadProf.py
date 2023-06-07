@@ -439,7 +439,7 @@ def load_zooniverseIDs(Config):
     jelIDs_raw_dict = {}
     Scores_dict = {}
     
-    for snapshot in snpashots:
+    for snapshot in snapshots:
         key = 'Snapshot_%03d'%snapshot
         group = jellyfish[key]
         
