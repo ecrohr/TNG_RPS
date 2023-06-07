@@ -84,7 +84,9 @@ class Configuration(dict):
         # set the subfindIDs and accompanying snapnums of interest
         # first check if the tau_dict already exists
         full_taufname = self.outdirec + self.taufname
-        if os.path.isfile(full_taufname):
+        if (self.zooniverse_flag):
+            SnapNums_SubfindIDs, SubfindIDs = initialize_zooniverseindices(self)
+        elif os.path.isfile(full_taufname):
             # yes, so just load the SubfindID (at z=0) for these
             print('File %s exists. Using SubfindIDs and SnapNums from there.'%(full_taufname))
             with h5py.File(full_taufname, 'r') as f:
@@ -95,12 +97,8 @@ class Configuration(dict):
         else:
             # based on the simulation and flags, find the appropriate initialziation function
             print('File %s does not exist. Initializing SubfindIDs and SnapNums elsewhere.'%(full_taufname))
-            # using the zooniverse results?
-            if (self.zooniverse_flag):
-                SnapNums_SubfindIDs, SubfindIDs = initialize_zooniverseindices(self)
-                
             # TNG-Cluster?
-            elif (self.TNGCluster_flag):
+            if (self.TNGCluster_flag):
                 SnapNums_SubfindIDs, SubfindIDs = initialize_TNGCluster_subfindindices(self)
 
             # all centrals with M200c > 10.**(11.15)?
