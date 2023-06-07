@@ -366,7 +366,7 @@ def add_zooniverseflags(Config):
 
     f = h5py.File(Config.outdirec + Config.outfname, 'a')
 
-    keys = ['ins_flags', 'jel_flags', 'jel_flags_raw', 'ScoreRaw', 'ScoreWeighted']
+    keys = ['ins_flags', 'jel_flags', 'jel_flags_raw', 'ScoreRaw', 'ScoreAdjusted']
 
     for group_key in f.keys():
         group     = f[group_key]
@@ -393,7 +393,7 @@ def add_zooniverseflags(Config):
             try:
                 scores = Scores_dict[snap_key]
                 ScoreRaw[index] = scores['ScoreRaw'][subfindID]
-                ScoreWeighted[index] = scores['ScoreWeighted'][subfindID]
+                ScoreWeighted[index] = scores['ScoreAdjusted'][subfindID]
                 if subfindID in insIDs_dict[snap_key]:
                     ins_flags[index] = 1
                     if subfindID in jelIDs_dict[snap_key]:
@@ -424,37 +424,42 @@ def load_zooniverseIDs(Config):
     Returns the dictionaries.
     """
     
-    # load in the filenames for each snapshot, starting at the last snap
-    indirec  = '../IllustrisTNG/%s/postprocessing/Zooniverse_CosmologicalJellyfish/flags/'%Config.sim
-    infname  = 'cosmic_jellyfish_flags_*.hdf5'
-    infnames = glob.glob(indirec + infname)
-    infnames.sort(reverse=True)
-
-    # create dictionaries with snapnum as the key and lists of subfindIDs as the entires
+    indirec  = '../IllustrisTNG/%s/postprocessing/Zooniverse_CosmologicalJellyfish/'%Config.sim
+    infname  = 'jellyfish.hdf5'
+    jellyfish = h5py.File(indirec + infname, 'r')
+    
+    # hardcode the snapshots of interest
+    snapshots = [99, 98, 97, 96, 95, 94, 93, 92, 91, 90,
+                 89, 88, 87, 86, 85, 84, 83, 82, 81, 80,
+                 79, 78, 77, 76, 75, 74, 73, 72, 71, 70,
+                 69, 68, 67, 59, 50, 40, 33]
+    
     insIDs_dict = {}
     jelIDs_dict = {}
     jelIDs_raw_dict = {}
     Scores_dict = {}
-    for filename in infnames:
-        snap_key = filename[-8:-5]
-        f        = h5py.File(filename, 'r')
-        done     = f['done'][0]
-        Score    = f['ScoreWeighted'][0]
-        ScoreRaw = f['ScoreRaw'][0]
-        
-        Scores_dict[snap_key] = {}
-        Scores_dict[snap_key]['ScoreRaw'] = ScoreRaw.copy()
-        Scores_dict[snap_key]['ScoreWeighted'] = Score.copy()
-        
-        insIDs_dict[snap_key] = np.where(done == 1)[0]
-        jelIDs_dict[snap_key] = np.where(Score >= Config.jellyscore_min)[0]
-        jelIDs_raw_dict[snap_key] = np.where(ScoreRaw >= Config.jellyscore_min)[0]
-
-        f.close()
-
-    return insIDs_dict, jelIDs_dict, jelIDs_raw_dict, Scores_dict
     
+    for snapshot in snpashots:
+        key = 'Snapshot_%03d'%snapshot
+        group = jellyfish[key]
+        
+        SubhaloIDs = group['SubhaloIDs'][:]
+        ScoreAdjusted = group['ScoreAdjusted'][:]
+        ScoreRaw = group['ScoreRaw'][:]
+        
+        insIDs_dict[key] = SubhaloIDs
+        jelIDs_dict[key] = np.where(ScoreAdjusted >= Config.jellyscore_min)[0]
+        jelIDs_raw_dict[key] = np.where(ScoreRaw >= Config.jellyscore_min)[0]
+        
+        Scores_dict[key] = {}
+        Scores_dict[key]['ScoreAdjusted'] = ScoreAdjusted
+        Scores_dict[key]['ScoreRaw'] = ScoreRaw
+        
+    jellyfish.close()
+    
+    return insIDs_dict, jelIDs_dict, jelIDs_raw_dict, Scores_dict
 
+    
 def add_times(Config):
     """
     Add redshift, cosmic time, and scale factor.
