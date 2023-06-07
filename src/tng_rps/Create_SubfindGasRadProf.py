@@ -386,7 +386,7 @@ def add_zooniverseflags(Config):
         ScoreWeighted = ScoreRaw.copy()
 
         for index, snap in enumerate(SnapNum):
-            snap_key = '%03d'%snap
+            snap_key = 'Snapshot_%03d'%snap
             subfindID = SubfindID[index]
             if subfindID == -1:
                 continue
