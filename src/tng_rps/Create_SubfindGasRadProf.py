@@ -383,7 +383,7 @@ def add_zooniverseflags(Config):
         jel_flags_raw[subfind_indices] = 0
 
         ScoreRaw = np.zeros(SnapNum.size, dtype=float) - 1
-        ScoreWeighted = ScoreRaw.copy()
+        ScoreAdjusted = ScoreRaw.copy()
 
         for index, snap in enumerate(SnapNum):
             snap_key = 'Snapshot_%03d'%snap
@@ -395,8 +395,8 @@ def add_zooniverseflags(Config):
                 if subfindID in insIDs:
                   ins_flags[index] = 1
                   subfind_index = np.where(subfindID == insIDs)[0]
-                  ScoreRaw[index] = Scores_dict['ScoreRaw'][subfind_index]
-                  ScoreWeighted[index] = Scores_dict['ScoreWeighted'][subfind_index]
+                  ScoreRaw[index] = Scores_dict[snap_key]['ScoreRaw'][subfind_index]
+                  ScoreAdjusted[index] = Scores_dict[snap_key]['ScoreAdjusted'][subfind_index]
                   if subfindID in jelIDs_dict[snap_key]:
                     jel_flags[index] = 1
                   if subfindID in jelIDs_raw_dict[snap_key]:
@@ -406,7 +406,7 @@ def add_zooniverseflags(Config):
                 continue
 
         # finish loop over SnapNum
-        dsets = [ins_flags, jel_flags, jel_flags_raw, ScoreRaw, ScoreWeighted]
+        dsets = [ins_flags, jel_flags, jel_flags_raw, ScoreRaw, ScoreAdjusted]
         for i, key in enumerate(keys):
             dset       = dsets[i]
             dataset    = group.require_dataset(key, shape=dset.shape, dtype=dset.dtype)
