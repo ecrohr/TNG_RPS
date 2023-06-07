@@ -134,7 +134,6 @@ def clean_subfindGRP(dic, Config):
         # confirm that the subhalo is a z=0 satellite
         if (subfind_flags[central_z0_flag][SubfindID_z0] == 1):
             centralz0_keys.append(key)
-            print('Using the wrong function for %d which is a z=0 central! Double check.'%SubfindID_z0)
             continue
             
         # pre-processed? if not then considered clean
