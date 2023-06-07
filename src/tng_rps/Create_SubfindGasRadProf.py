@@ -391,15 +391,16 @@ def add_zooniverseflags(Config):
             if subfindID == -1:
                 continue
             try:
-                scores = Scores_dict[snap_key]
-                ScoreRaw[index] = scores['ScoreRaw'][subfindID]
-                ScoreWeighted[index] = scores['ScoreAdjusted'][subfindID]
-                if subfindID in insIDs_dict[snap_key]:
-                    ins_flags[index] = 1
-                    if subfindID in jelIDs_dict[snap_key]:
-                        jel_flags[index] = 1
-                    if subfindID in jelIDs_raw_dict[snap_key]:
-                        jel_flags_raw[index] = 1
+                insIDs = insIDs_dict[snap_key]
+                if subfindID in insIDs:
+                  ins_flags[index] = 1
+                  subfind_index = np.where(subfindID == insIDs)[0]
+                  ScoreRaw[index] = Scores_dict['ScoreRaw'][subfind_index]
+                  ScoreWeighted[index] = Scores_dict['ScoreWeighted'][subfind_index]
+                  if subfindID in jelIDs_dict[snap_key]:
+                    jel_flags[index] = 1
+                  if subfindID in jelIDs_raw_dict[snap_key]:
+                    jel_flags_raw[index] = 1
 
             except KeyError: # no zooniverse classifications as this snap
                 continue
