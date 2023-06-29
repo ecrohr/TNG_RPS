@@ -59,9 +59,9 @@ def run_clean_zooniverseGRP(Config):
         if not Config.zooniverse_flag:
             split_tau_gasz0(Config)
         # and run for each of the out_keys
-        for out_key in Config.taudict_keys:
+        for out_key in Config.zooniverse_keys:
             print(out_key)
-            #create_taudict(Config, out_key=out_key)
+            create_taudict(Config, out_key=out_key)
             split_tau_gasz0(Config, out_key=out_key)
 
     return
@@ -303,6 +303,8 @@ def create_taudict(Config, out_key=None):
 
     # for backwards compatibility with Rohr+23 studying RPS in TNG jellyfish
     if tracers_flag and zooniverse_flag:
+        tau_infall_key = tau_keys[3]
+        tau_medpeak_key = tau_keys[0]
         tau_RPS_est_infall_key = 'tau_RPS_est'
         tau_RPS_tot_infall_key = 'tau_RPS_tot'
         tau_RPS_sRPS_key = 'tau_RPS_sRPS'
@@ -354,7 +356,7 @@ def create_taudict(Config, out_key=None):
                 for tau_key in tau_keys:
                     tauresult_key = tau_key + '_quench'
                     tauresult[tauresult_key] = np.zeros(len(result_keys),
-                                                        dtype=group[tau_key].dtype) - 1
+                                                        dtype=group[grp_key].dtype) - 1
                     
         tauresult['SubfindID'][group_index] = group['SubfindID'][0]
         tauresult['HostSubhaloGrNr'][group_index] = group['HostSubhaloGrNr'][0]
