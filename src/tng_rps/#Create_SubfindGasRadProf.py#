@@ -15,141 +15,129 @@ import rohr_utils as ru
 import os
 import glob
 import multiprocessing as mp
-from functools import partial
+from importlib import reload
+
+global sim, basePath, fname, direc
+global tlim, radii_binwidth, key
+global scalar_keys, dset_keys
+global rmin_norm, rmax_norm, radii_bins_norm, radii_bincents_norm, nbins
+global tracer_ptn, star_ptn, gas_ptn, bh_ptn, bary_ptns
+global jellyscore_min
+
+tlim = 10.**(4.5) # K; cutoff between cold and hot CGM gas
+radii_binwidth = 0.1
+key = 'inspected'
 
 scalar_keys = ['SubhaloColdGasMass', 'SubhaloGasMass', 'SubhaloHotGasMass']
-threed_keys = ['radii', 'vol_shells',
-               'SubhaloColdGasMassShells', 'SubhaloColdGasDensityShells',
-               'SubhaloHotGasMassShells', 'SubhaloHotGasDensityShells',
-               'SubhaloGasMassShells', 'SubhaloDensityShells']
+dset_keys = ['radii', 'mass_shells', 'vol_shells', 'densities_shells']
 
-# hardcode the snapshots of interest
-zooniverse_snapshots = [99, 98, 97, 96, 95, 94, 93, 92, 91, 90,
-                        89, 88, 87, 86, 85, 84, 83, 82, 81, 80,
-                        79, 78, 77, 76, 75, 74, 73, 72, 71, 70,
-                        69, 68, 67, 59, 50, 40, 33]
-
-def run_subfindGRP(Config):
-    """
-    Run the Create_SubfindGRP module.
-    """
+### define radial bins and bincenters ###
+rmin_norm = 10.**(-1.) # [r/rgal]
+rmax_norm = 10.**(2.)  # [r/rgal]
     
-    outdirec = Config.outdirec
-    outfname = Config.outfname
-
-    if Config.run_SGRP:
-        dics = []
-        
-        f = h5py.File(outdirec + outfname, 'a')
-        for group_key in f.keys():
-            dic = {}
-            dic[group_key] = {}
-            group = f[group_key]
-            for dset_key in group.keys():
-                dic[group_key][dset_key] = group[dset_key][:]
-            dics.append(dic)
-
-        Pool = mp.Pool(Config.Nmpcores)
-        
-        print(len(dics))
-
-        if Config.mp_flag:
-            result_list = Pool.map(partial(create_subfindGRP, Config=Config), dics)
-        else:
-            result_list = []
-            for dic in dics:
-                result_list.append(create_subfindGRP(dic, Config))
-
-        Pool.close()
-        Pool.join()
-
-        result = {}
-        for i, d in enumerate(result_list):
-            key = list(d.keys())[0]
-            result[key] = d[key]
-
-        new_keys = threed_keys + scalar_keys
-
-        for group_key in result.keys():
-            group = f.require_group(group_key)
-            for dset_key in new_keys:
-                dset = result[group_key][dset_key]
-                dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
-                dataset[:] = dset
-                
-        f.close()
-    
-    if Config.run_SGRP_PP:
-        run_postprocessing(Config)
-    
-    return
-    
-def run_postprocessing(Config):
-    """
-    run all post processing functions
-    """
-    
-    # standard datasets
-    #add_memberflags(Config)
-    #add_times(Config)
-    
-    # for satellites only
-    if not Config.centrals_flag:
-        #add_dmin(Config)
-        #add_Nperipass(Config)
-        #add_gastau(Config)
-        # quenching times require the appropriate catalogs
-        if not Config.TNGCluster_flag:
-            add_quenchtimes(Config)
+radii_bins_norm, radii_bincents_norm = ru.returnlogbins([rmin_norm, rmax_norm], radii_binwidth)
             
-    # if the tracers have already been calculated
-    if Config.tracers_flag:
-        add_tracers(Config)
-        add_tracers_postprocessing(Config)
-        add_coldgasmasstracerstau(Config)
-        
-    # for zooniverse only
-    if Config.zooniverse_flag:
-        add_zooniverseflags(Config)
-        
-    return
-    
+# prepend 0 to the radial bins to capture the center sphere
+radii_bins_norm     = np.insert(radii_bins_norm, 0, 0.)
+radii_bincents_norm = np.insert(radii_bincents_norm, 0, radii_bins_norm[1]/2.)
 
-def create_subfindGRP(dic, Config):
-    """
-    given the subhalo dictionary, calculate and add the gas radial profile
-    """
-        
-    # create a directory for the given subhalo,
-    # named after its subfindID at a given SnapNum
+nbins = len(radii_bins_norm)
+
+tracer_ptn = il.util.partTypeNum('tracer')
+star_ptn   = il.util.partTypeNum('star')
+gas_ptn    = il.util.partTypeNum('gas')
+bh_ptn     = il.util.partTypeNum('bh')
+
+bary_ptns   = [gas_ptn,
+               star_ptn,
+               bh_ptn]
+
+jellyscore_min = 16
+
+def run_subfindGRP():
+
+    dics = []
+    
+    f = h5py.File(direc + fname, 'a')
+    for group_key in f.keys():
+        dic = {}
+        dic[group_key] = {}
+        group = f[group_key]
+        for dset_key in group.keys():
+            dic[group_key][dset_key] = group[dset_key][:]
+        dics.append(dic)
+
+    Pool = mp.Pool(8) # should be 8 when running interactively; mp.cpu_count() for SLURM
+
+    result_list = Pool.map(create_subfindGRP, dics)
+
+    Pool.close()
+    Pool.join()
+
+    result = {}
+    for i, d in enumerate(result_list):
+        key = list(d.keys())[0]
+        result[key] = d[key]  
+
+    new_keys = ['radii', 'mass_shells', 'vol_shells', 'densities_shells',
+                'SubhaloColdGasMass', 'SubhaloGasMass', 'SubhaloHotGasMass']
+
+    for group_key in result.keys():
+        group = f.require_group(group_key)        
+        for dset_key in new_keys:  
+            dset = result[group_key][dset_key]
+            dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+            dataset[:] = dset
+
+    f.close()
+    
+    # post process the gas radial profiles
+    add_memberflags()
+    add_zooniverseflags()
+    add_times()
+    add_dmin()
+    add_Nperipass()
+    add_coldgasmasstau()
+    add_quenchtimes()
+    #add_tracers()
+    #add_coldgasmasstracerstau()
+    
+    return
+
+
+def create_subfindGRP(dic):
+    
+    # create a directory for the given jellyfish,
+    # named after its subfindID at last Zooniverse inspection
     dict_list = []
 
     gal_key   = list(dic.keys())[0]
     gal       = dic[gal_key]
     SnapNum   = gal['SnapNum']
     SubfindID = gal['SubfindID']
-    
+
     for snapnum_index, snapnum in enumerate(SnapNum):
         subfindID = SubfindID[snapnum_index]
     
-        dict_list.append(return_subfindGRP(snapnum, subfindID, Config))
+        dict_list.append(return_subfindGRP(snapnum, subfindID))
     
     radii_dict = {}
     for d in dict_list:
         radii_dict.update(d)
 
     # initialize and fill result dicitonary
-    # note that threed_keys are vectors, and scalar_keys are scalars
-    shape           = (SnapNum.size, radii_dict['%d'%SnapNum[0]]['radii'].size)
+    # note that result_keys are vectors, and scalar_keys are scalars
+    result_keys     = ['radii', 'mass_shells', 'vol_shells', 'densities_shells']
+    shape           = (len(SnapNum), len(radii_dict['%d'%snapnum]['radii']))
     result          = {}
     result[gal_key] = gal
-    for key in threed_keys:
+    for key in result_keys:
         result[gal_key][key] = np.zeros(shape, dtype=float)
     for key in scalar_keys:
-        result[gal_key][key] = np.zeros(shape[0])
+        result[gal_key][key] = np.zeros(len(SnapNum))
 
     for row, snap_key in enumerate(radii_dict.keys()):
-        for key in threed_keys:
+        for key in result_keys:
             result[gal_key][key][row,:] = radii_dict[snap_key][key]
         for key in scalar_keys:
             result[gal_key][key][row]   = radii_dict[snap_key][key]
@@ -157,80 +145,46 @@ def create_subfindGRP(dic, Config):
     return result
 
 
-def return_subfindGRP(snapnum, subfindID, Config):
-    """
-    for the given snapnum and subfindID, calculate the gas properties
-    """
+def return_subfindGRP(snapnum, subfindID):
     
-    print('Working on %s snap %s subfindID %d'%(Config.sim, snapnum, subfindID))
+    print('Working on %s snap %s subfindID %d'%(sim, snapnum, subfindID))
     
-    sim = Config.sim
-    basePath = Config.basePath
-    h = Config.h
-    tlim = Config.tlim
-    star_ptn = Config.star_ptn
-    gas_ptn = Config.gas_ptn
-    centrals_flag = Config.centrals_flag
-    
-    ### define radial bins and bincenters ###
-    if centrals_flag:
-        rmin_norm = 0.0 # r / Rvir
-        rmax_norm = 3.0 # r / Rvir
-        radii_binwidth = 0.1 # r / Rvir, linear
-
-        radii_bins_norm = np.arange(rmin_norm, rmax_norm + radii_binwidth*1.0e-3, radii_binwidth)
-        radii_bincents_norm = (radii_bins_norm[1:] + radii_bins_norm[:-1]) / 2.
-
-    else:
-        radii_binwidth = 0.1 # r / rgal, log spacing
-        rmin_norm = 10.**(-1.) # [r/rgal]
-        rmax_norm = 10.**(2.)  # [r/rgal]
-        radii_bins_norm, radii_bincents_norm = ru.returnlogbins([rmin_norm, rmax_norm], radii_binwidth)
-
-        # prepend 0 to the radial bins to capture the center sphere
-        radii_bins_norm = np.insert(radii_bins_norm, 0, 0.)
-        radii_bincents_norm = np.insert(radii_bincents_norm, 0, radii_bins_norm[1]/2.)
-
-    nbins = radii_bincents_norm.size
-      
     # initialize result
     result            = {}
     group_key         = '%d'%snapnum
     result[group_key] = {}
-    for threed_key in threed_keys:
-        result[group_key][threed_key] = np.zeros(nbins, dtype=float) - 1.
-    for scalar_key in scalar_keys:
-        result[group_key][scalar_key] = -1.
-  
+
     # check if the subhalo is identified at this snap
     if subfindID == -1:
+        for dset_key in dset_keys:
+            result[group_key][dset_key] = np.ones(nbins-1, dtype=float) * -1.     
+        for scalar_key in scalar_keys:
+            result[group_key][scalar_key] = -1.
         return result 
 
     # load general simulation parameters
     header  = il.groupcat.loadHeader(basePath, snapnum)
     a       = header['Time'] # scale factor
+    h       = header['HubbleParam'] # = 0.6774
     boxsize = header['BoxSize'] * a / h
         
-    subhalofields = ['SubhaloHalfmassRadType', 'SubhaloPos', 'SubhaloGrNr']
+    subhalofields = ['SubhaloHalfmassRadType', 'SubhaloPos']
     gasfields     = ['Coordinates', 'Masses', 'InternalEnergy',
                      'ElectronAbundance', 'StarFormationRate']
             
     subhalo      = ru.loadSingleFields(basePath, snapnum, subhaloID=subfindID, fields=subhalofields)
     subhalopos   = subhalo['SubhaloPos'] * a / h
-    subhalo_rgal = 2. * subhalo['SubhaloHalfmassRadType'][star_ptn] * a / h
-                     
-    if centrals_flag:
-        R200c = ru.loadSingleFields(basePath, snapnum, haloID=subhalo['SubhaloGrNr'], fields=['Group_R_Crit200']) * a / h
+    subhalo_rgal = 2. * subhalo['SubhaloHalfmassRadType'][star_ptn] * a / h 
                             
     # load gas particles for relevant halo
     gasparts = il.snapshot.loadSubhalo(basePath, snapnum, subfindID, gas_ptn, fields=gasfields)
     
-    # if the satellite has no gas, write 0 for all dsets
+    # if the satellite has no gas, write zeros for all dsets
     if gasparts['count'] == 0:
-        for threed_key in threed_keys:
-            result[group_key][threed_key][:] = 0
-        for scalar_key in scalar_keys:
-            result[group_key][scalar_key] = 0
+        for dset_index, dset_key in enumerate(dset_keys):
+            result[group_key][dset_key] = np.zeros(nbins-1, float)
+        for scalar_index, scalar_key in enumerate(scalar_keys):
+            result[group_key][scalar_key] = 0.
         return result
     
     gas_coordinates        = gasparts['Coordinates'] * a / h
@@ -238,19 +192,6 @@ def return_subfindGRP(snapnum, subfindID, Config):
     gas_internalenergies   = gasparts['InternalEnergy']
     gas_electronabundances = gasparts['ElectronAbundance']
     gas_starformationrates = gasparts['StarFormationRate']
-    
-    if Config.centrals_flag:
-        radii_bins     = radii_bins_norm * R200c # pkpc
-        radii_bincents = radii_bincents_norm * R200c # pkpc
-        vol_shells = (4./3.) * np.pi * ((radii_bins[1:])**3 - radii_bins[:-1]**3)
-                  
-    else:
-        radii_bins     = radii_bins_norm * subhalo_rgal # pkpc
-        radii_bincents = radii_bincents_norm * subhalo_rgal # pkpc
-    
-        # set the volume of the shells; len(volume) = len(bincents) = len(bins) - 1
-        vol_shells = (4./3.) * np.pi * ((radii_bins[2:])**3 - (radii_bins[1:-1])**3)
-        vol_shells = np.insert(vol_shells, 0, (4./3.) * np.pi * (radii_bins[1])**3)
 
     # save the total amount of gas
     subhalo_gasmass = np.sum(gas_masses)
@@ -263,41 +204,31 @@ def return_subfindGRP(snapnum, subfindID, Config):
     
     # separate the gas into cold component
     coldgas_masses = gas_masses[gas_temperatures < tlim] 
-    coldgas_radii  = gas_radii[gas_temperatures < tlim]
-    
-    hotgas_masses = gas_masses[gas_temperatures >= tlim]
-    hotgas_radii = gas_masses[gas_temperatures >= tlim]
+    coldgas_radii  = gas_radii[gas_temperatures < tlim]    
     
     # calculate and save the total cold and hot gas masses
     subhalo_coldgasmass = np.sum(coldgas_masses)
-    subhalo_hotgasmass  = np.sum(hotgas_masses)
+    subhalo_hotgasmass  = subhalo_gasmass - subhalo_coldgasmass
     
     # sort the gas masses by their radius
     coldgas_masses = coldgas_masses[np.argsort(coldgas_radii)]
     coldgas_radii  = coldgas_radii[np.argsort(coldgas_radii)]
-    
-    hotgas_masses = hotgas_masses[np.argsort(hotgas_radii)]
-    hotgas_radii  = hotgas_radii[np.argsort(hotgas_radii)]
-  
-    gas_masses = gas_masses[np.argsort(gas_radii)]
-    gas_radii = gas_radii[np.argsort(gas_radii)]
-    
-    # calculate the radial profile via histogram                      
-    coldgas_mass_shells = np.histogram(coldgas_radii, bins=radii_bins, weights=coldgas_masses)[0]
-    hotgas_mass_shells = np.histogram(hotgas_radii, bins=radii_bins, weights=hotgas_masses)[0]
-    gas_mass_shells = np.histogram(gas_radii, bins=radii_bins, weights=gas_masses)[0]
 
-    coldgas_densities_shells = coldgas_mass_shells / vol_shells
-    hotgas_densities_shells = hotgas_mass_shells / vol_shells
-    gas_densities_shells = gas_mass_shells / vol_shells
-
-    dsets = [radii_bincents, vol_shells,
-             coldgas_mass_shells, coldgas_densities_shells,
-             hotgas_mass_shells, hotgas_densities_shells,
-             gas_mass_shells, gas_densities_shells]
-             
-    for threed_index, threed_key in enumerate(threed_keys):
-        result[group_key][threed_key] = dsets[threed_index]
+    # calculate the radial profile via histogram 
+    radii_bins     = radii_bins_norm * subhalo_rgal # pkpc
+    radii_bincents = radii_bincents_norm * subhalo_rgal # pkpc
+    
+    # set the volume of the shells; len(volume) = len(bincents) = len(bins) - 1
+    vol_shells = (4./3.) * np.pi * ((radii_bins[2:])**3 - (radii_bins[1:-1])**3)
+    vol_shells = np.insert(vol_shells, 0, (4./3.) * np.pi * (radii_bins[1])**3)
+    
+    mass_shells = np.histogram(coldgas_radii, bins=radii_bins, weights=coldgas_masses)[0]
+            
+    densities_shells = mass_shells / vol_shells
+    
+    dsets = [radii_bincents, mass_shells, vol_shells, densities_shells]
+    for dset_index, dset_key in enumerate(dset_keys):
+        result[group_key][dset_key] = dsets[dset_index]
         
     scalars = [subhalo_coldgasmass, subhalo_gasmass, subhalo_hotgasmass]
     
@@ -308,13 +239,10 @@ def return_subfindGRP(snapnum, subfindID, Config):
 
 
 ### post processing functions ###
-def add_memberflags(Config):
-    """
-    add membership flags -- central flag, pre-processed flag, member of final FoF flag
-    this should be updated to use the subfindsnapshot flags rather than recalculating them here
-    """
+# add membership flags -- central flag, pre-processed flag, member of final FoF flag
+def add_memberflags():
 
-    f = h5py.File(Config.outdirec + Config.outfname, 'a')
+    f = h5py.File(direc+fname, 'a')
 
     keys = ['central_flags', 'preprocessed_flags', 'memberlifof_flags']
 
@@ -361,55 +289,38 @@ def add_memberflags(Config):
     return
 
 
-def add_zooniverseflags(Config):
+def add_zooniverseflags():
     """
     Load the zooniverse catalogs and add inspected + jellyfish flags to the branches.
     Saves the flags directly to the GRP catalogs. No returns.
     """
 
     # load the inpsected and jellyfish ID dictionaries
-    insIDs_dict, Scores_dict = load_zooniverseIDs(Config)
+    insIDs_dict, jelIDs_dict = load_zooniverseIDs()
 
-    f = h5py.File(Config.outdirec + Config.outfname, 'a')
+    f = h5py.File(direc + fname, 'a')
 
-    keys = ['ins_flags', 'jel_flags', 'jel_flags_raw', 'ScoreRaw', 'ScoreAdjusted']
+    keys = ['ins_flags', 'jel_flags']
 
     for group_key in f.keys():
         group     = f[group_key]
         SnapNum   = group['SnapNum'][:]
         SubfindID = group['SubfindID'][:]
-        subfind_indices = np.where(SubfindID != -1)[0]
-        
-        ins_flags = np.zeros(SnapNum.size, dtype=int) - 1
-        jel_flags = ins_flags.copy()
-        jel_flags_raw = ins_flags.copy()
-        
-        ins_flags[subfind_indices] = 0
-        jel_flags[subfind_indices] = 0
-        jel_flags_raw[subfind_indices] = 0
-
-        ScoreRaw = np.zeros(SnapNum.size, dtype=float) - 1
-        ScoreAdjusted = ScoreRaw.copy()
+        ins_flags = np.zeros(len(SnapNum), dtype=int)
+        jel_flags = np.zeros(len(SnapNum), dtype=int)
 
         for index, snap in enumerate(SnapNum):
-            snap_key = 'Snapshot_%03d'%snap
-            subfindID = SubfindID[index]
-            if subfindID == -1:
-                continue
-            if snap in zooniverse_snapshots:
-                insIDs = insIDs_dict[snap_key]
-                if subfindID in insIDs:
+            snap_key = '%03d'%snap
+            try:
+                if SubfindID[index] in insIDs_dict[snap_key]:
                     ins_flags[index] = 1
-                    subfind_index = np.where(subfindID == insIDs)[0]
-                    ScoreRaw[index] = Scores_dict[snap_key]['ScoreRaw'][subfind_index]
-                    if ScoreRaw[index] >= Config.jellyscore_min:
-                        jel_flags_raw[index] = 1
-                    ScoreAdjusted[index] = Scores_dict[snap_key]['ScoreAdjusted'][subfind_index]
-                    if ScoreAdjusted[index] >= Config.jellyscore_min:
+                    if SubfindID[index] in jelIDs_dict[snap_key]:
                         jel_flags[index] = 1
+            except KeyError: # no zooniverse classifications as this snap
+                continue
 
         # finish loop over SnapNum
-        dsets = [ins_flags, jel_flags, jel_flags_raw, ScoreRaw, ScoreAdjusted]
+        dsets = [ins_flags, jel_flags]
         for i, key in enumerate(keys):
             dset       = dsets[i]
             dataset    = group.require_dataset(key, shape=dset.shape, dtype=dset.dtype)
@@ -420,7 +331,7 @@ def add_zooniverseflags(Config):
 
     return
 
-def load_zooniverseIDs(Config):
+def load_zooniverseIDs():
     """
     Load all zooniverse catalogs. Create a dictionary with each snapshot as the key,
     and the entries are the subfindIDs of all inspected galaxies at that snapshot.
@@ -428,47 +339,49 @@ def load_zooniverseIDs(Config):
     Returns the dictionaries.
     """
     
-    indirec  = '../IllustrisTNG/%s/postprocessing/Zooniverse_CosmologicalJellyfish/'%Config.sim
-    infname  = 'jellyfish.hdf5'
-    jellyfish = h5py.File(indirec + infname, 'r')
-    
-    insIDs_dict = {}
-    Scores_dict = {}
-    
-    for snapshot in zooniverse_snapshots:
-        key = 'Snapshot_%03d'%snapshot
-        group = jellyfish[key]
-        
-        SubhaloIDs = group['SubhaloIDs'][:]
-        ScoreAdjusted = group['ScoreAdjusted'][:]
-        ScoreRaw = group['ScoreRaw'][:]
-        
-        insIDs_dict[key] = SubhaloIDs
-        
-        Scores_dict[key] = {}
-        Scores_dict[key]['ScoreAdjusted'] = ScoreAdjusted
-        Scores_dict[key]['ScoreRaw'] = ScoreRaw
-        
-    jellyfish.close()
-    
-    return insIDs_dict, jelIDs_dict, jelIDs_raw_dict, Scores_dict
+    # load in the filenames for each snapshot, starting at the last snap
+    indirec  = '../IllustrisTNG/%s/postprocessing/Zooniverse_CosmologicalJellyfish/flags/'%sim
+    infname  = 'cosmic_jellyfish_flags_*.hdf5'
+    infnames = glob.glob(indirec + infname)
+    infnames.sort(reverse=True)
 
+    # create dictionaries with snapnum as the key and lists of subfindIDs as the entires
+    insIDs_dict = {}
+    jelIDs_dict = {}
+    for filename in infnames:
+        snap_key = filename[-8:-5]
+        f        = h5py.File(filename, 'r')
+        done     = f['done'][0]
+        Score    = f['Score'][0]
+        
+        insIDs_dict[snap_key] = np.where(done == 1)[0]
+        jelIDs_dict[snap_key] = np.where(Score >= jellyscore_min)[0]
+
+        f.close()
+
+    return insIDs_dict, jelIDs_dict
     
-def add_times(Config):
+
+def add_times():
     """
     Add redshift, cosmic time, and scale factor.
     """
 
     # tabulate redshift, scale factor, and calculate cosmic time
     # as functions of the snap number
-    f = h5py.File(Config.outdirec+Config.outfname, 'a')
+    zs, cosmictimes = ru.timesfromsnap(basePath, range(100))
+    cosmictimes /= 1.0e9 # convert to [Gyr]
+    scales = 1. / (1. + zs)
+
+    f = h5py.File(direc+fname, 'a')
 
     keys = ['CosmicTime', 'Redshift', 'Time']
-    dsets = [Config.CosmicTimes, Config.Redshifts, Config.Times]
+    dsets = [cosmictimes, zs, scales]
     for group_key in f.keys():
         group = f[group_key]
+        indices = group['SnapNum']
         for dset_index, dset_key in enumerate(keys):
-            dset = dsets[dset_index]
+            dset = dsets[dset_index][indices]
             dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
             dataset[:] = dset
 
@@ -477,11 +390,11 @@ def add_times(Config):
     return
 
 
-def add_dmin(Config):
+def add_dmin():
     """
     add the min distance to the host.
     """
-    f = h5py.File(Config.outdirec+Config.outfname, 'a')
+    f = h5py.File(direc+fname, 'a')
     keys = ['min_HostCentricDistance_norm', 'min_HostCentricDistance_phys']
 
     for group_key in f.keys():
@@ -490,8 +403,8 @@ def add_dmin(Config):
         HostCentricDistance_phys = group['HostCentricDistance_phys'][:]        
         HostCentricDistance_norm = group['HostCentricDistance_norm'][:]
 
-        dmin_phys = np.zeros(HostCentricDistance_phys.size, dtype=HostCentricDistance_phys.dtype)
-        dmin_norm = np.zeros(HostCentricDistance_norm.size, dtype=HostCentricDistance_norm.dtype)
+        dmin_phys = np.zeros(len(HostCentricDistance_phys), dtype=HostCentricDistance_phys.dtype)
+        dmin_norm = np.zeros(len(HostCentricDistance_norm), dtype=HostCentricDistance_norm.dtype)
 
         for i, _ in enumerate(HostCentricDistance_phys):
             indices = group['SubfindID'][i:] != -1
@@ -513,12 +426,13 @@ def add_dmin(Config):
     return
         
     
-def add_Nperipass(Config, mindist_phys=1000.0, mindist_norm=2.0):
+
+def add_Nperipass(mindist_phys=1000.0, mindist_norm=2.0):
     """
     add flags for pericenter passages.
     """
     
-    f = h5py.File(Config.outdirec+Config.outfname, 'a')
+    f = h5py.File(direc+fname, 'a')
     keys = ['Nperipass', 'min_Dperi_norm', 'min_Dperi_phys', 'Napopass']
     
     for group_key in f.keys():
@@ -558,9 +472,11 @@ def add_Nperipass(Config, mindist_phys=1000.0, mindist_norm=2.0):
                 Dperi_phys_min[peri_indices[i-1]+1:peri_index+1] = np.min(Dperi_phys[i:])
                 
                 apo_start_index = peri_indices[i-1]
-                          
-            max_index_phys = np.argmax(HostCentricDistance_phys[apo_start_index:peri_index])
-            Napopass[:apo_start_index+max_index_phys+1] += 1                    
+                
+            
+            max_index_phys = argrelextrema(HostCentricDistance_phys[apo_start_index:peri_index], np.greater)[0]
+            if max_index_phys.size == 1:
+                Napopass[:apo_start_index+max_index_phys[0]+1] += 1
                 
         dsets = [Nperipass, Dperi_norm_min, Dperi_phys_min, Napopass]
 
@@ -575,17 +491,17 @@ def add_Nperipass(Config, mindist_phys=1000.0, mindist_norm=2.0):
     return 
 
 
-def add_quenchtimes(Config):
+def add_quenchtimes():
     """
     Use the quenching and stellar assembly times catalog to add the
     quenching time (if the subhalo is quenched) for each subhalo. 
     """
 
-    f = h5py.File(Config.outdirec + Config.outfname, 'a')
+    f = h5py.File(direc + fname, 'a')
     keys = np.array(list(f.keys()))
     
     # load the quenching catalog
-    quench_direc = '../IllustrisTNG/%s/postprocessing/QuenchingStellarAssemblyTimes/'%Config.sim
+    quench_direc = '../IllustrisTNG/%s/postprocessing/QuenchingStellarAssemblyTimes/'%sim
     with h5py.File(quench_direc + 'quenching_099.hdf5', 'r') as quench_cat:
         flag = quench_cat['Subhalo']['flag'][:]
         quenching_snap = quench_cat['Subhalo']['quenching_snap'][:]
@@ -613,8 +529,9 @@ def add_quenchtimes(Config):
 
     return
 
+
  
-def add_gastau(Config):
+def add_coldgasmasstau():
     """
     add the peak cold gas mass time and the respective tau
     """
@@ -623,7 +540,7 @@ def add_gastau(Config):
         """
         Calculate and return tau given the peak_index and the dset
         """
-        tau = np.zeros(dset.size, dtype=dset.dtype) - 1.
+        tau = np.ones(len(dset), dtype=float) * -1.
 
         peak = dset[peak_index]
         tau[peak_index] = 0.
@@ -642,54 +559,52 @@ def add_gastau(Config):
             
         return tau
 
-    f = h5py.File(Config.outdirec+Config.outfname, 'a')
+    f = h5py.File(direc+fname, 'a')
     
     N_RM = 3 # the number of snapshots to average over for running median
              # should be an odd number
 
-    keys = ['tau_medpeak', 'tau_infall']
-    gastypes = ['ColdGas', 'HotGas', 'Gas']
+    keys = ['tau_rawpeak', 'tau_medpeak', 'tau_infall']
 
     f_keys = list(f.keys())
 
     for group_index, group_key in enumerate(f_keys):
         group = f[group_key]
 
-        result = np.zeros(len(group['SnapNum'][:]), dtype=float) - 1.
+        result = np.ones(len(group['SnapNum'][:]), dtype=float) * -1.
         
         # find the indices that the subbhalo was identified at
-        subhalo_indices = np.where(group['SubfindID'][:] != -1)[0]
-        
+        SCGM_indices = np.where(group['SubfindID'][:] != -1)[0]        
+        SubhaloColdGasMass = group['SubhaloColdGasMass'][SCGM_indices]
+
+        # absolute maximum of the cold gas mass
+        rawpeak_tau = result.copy()
+        rawpeak_SCGM_index = np.argmax(SubhaloColdGasMass)
+        rawpeak_tau[SCGM_indices] = return_tau(rawpeak_SCGM_index, SubhaloColdGasMass)
+
+        # running median maximum of the cold gas mass
+        # ensure that there are enough snaps to calc the running median
+        # galaxies that do not reach z=0 will be ignored later anyways
+        medpeak_tau = result.copy()
+        if len(SubhaloColdGasMass) >=  N_RM:
+            med_SCGM = ru.RunningMedian(SubhaloColdGasMass, N_RM)
+            # choose the median x value corresponding to the max, as this is the peak
+            medpeak_SCGM_index = int(np.median(np.argwhere(med_SCGM == max(med_SCGM)).T))
+            #medpeak_SCGM_index = np.min(np.argwhere(med_SCGM == max(med_SCGM))) + int((N_RM - 1) / 2)
+            medpeak_tau[SCGM_indices] = return_tau(medpeak_SCGM_index, SubhaloColdGasMass)
+
         # first infall time
         infall_tau = result.copy()
         infall_index = np.max(np.argwhere(group['memberlifof_flags'][:] == 1))
-        infall_tau_index = np.where(group['SnapNum'][subhalo_indices] == group['SnapNum'][infall_index])[0][0]
+        infall_tau_index = np.where(group['SnapNum'][SCGM_indices] == group['SnapNum'][infall_index])[0][0]
+        infall_tau[SCGM_indices] = return_tau(infall_tau_index, SubhaloColdGasMass)
 
-        for gastype in gastypes:
+        dsets = [rawpeak_tau, medpeak_tau, infall_tau]
+        for dset_index, dset_key in enumerate(keys):
+            dset = dsets[dset_index]
+            dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+            dataset[:] = dset
         
-            gas_dset = group['Subhalo%sMass'%gastype][subhalo_indices]
-            
-            # infall time
-            infall_tau[subhalo_indices] = return_tau(infall_tau_index, gas_dset)
-
-            # running median maximum of the cold gas mass
-            # ensure that there are enough snaps to calc the running median
-            # galaxies that do not reach z=0 will be ignored later anyways
-            medpeak_tau = result.copy()
-            if len(gas_dset) >=  N_RM:
-                med_SGM = ru.RunningMedian(gas_dset, N_RM)
-                # choose the median x value corresponding to the max, as this is the peak
-                medpeak_SGM_index = int(np.median(np.argwhere(med_SGM == max(med_SGM)).T))
-                #medpeak_SCGM_index = np.min(np.argwhere(med_SCGM == max(med_SCGM))) + int((N_RM - 1) / 2)
-                medpeak_tau[subhalo_indices] = return_tau(medpeak_SGM_index, gas_dset)
-
-            dsets = [medpeak_tau, infall_tau]
-            outkeys = [key +'_'+ gastype for key in keys]
-            for dset_index, dset_key in enumerate(outkeys):
-                dset = dsets[dset_index]
-                dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
-                dataset[:] = dset
-            
     # finish loop over branches
     
     f.close()
@@ -697,35 +612,68 @@ def add_gastau(Config):
     return
 
 
-def add_tracers(Config):
+def add_quenchtimes():
+    """
+    Use the quenching and stellar assembly times catalog to add the
+    quenching time (if the subhalo is quenched) for each subhalo. 
+    """
+
+    f = h5py.File(direc + fname, 'a')
+    keys = np.array(list(f.keys()))
+    
+    # load the quenching catalog
+    quench_direc = '../IllustrisTNG/%s/postprocessing/QuenchingStellarAssemblyTimes/'%sim
+    with h5py.File(quench_direc + 'quenching_099.hdf5', 'r') as quench_cat:
+        flag = quench_cat['Subhalo']['flag'][:]
+        quenching_snap = quench_cat['Subhalo']['quenching_snap'][:]
+
+        quench_cat.close()
+
+    for i, key in enumerate(keys):
+        quench_snap = np.array([-1], dtype=int)
+        group = f[key]
+        indices = np.where(group['SubfindID'][:] != -1)[0]
+        
+        SnapNum = group['SnapNum'][indices]
+        if np.max(SnapNum) == 99:
+            subfindID = group['SubfindID'][0]
+            if flag[subfindID] == 1:
+                quench_snap = np.array([quenching_snap[subfindID]], dtype=int)
+
+        # save the quench snap
+        dataset = group.require_dataset('quenching_snap', shape=quench_snap.shape,
+                                       dtype=quench_snap.dtype)
+        dataset[:] = quench_snap
+
+    # finish loop over keys
+    f.close()
+
+    return
+    
+
+def add_tracers():
     """
     Add tracer particle post-processing datasets to the GRP catalog.
     """
-    
-    max_snap = Config.max_snap
-    min_snap = Config.min_snap
-    snaps = Config.SnapNums
-    CosmicTimes = Config.CosmicTimes
-    h = Config.h
-    basePath = Config.basePath
-    tracer_outdirec = Config.tracer_outdirec
-    tracer_ptn = Config.tracer_ptn
-    gas_ptn = Config.gas_ptn
-    tlim = Config.tlim
-    star_ptn = Config.star_ptn
-    bh_ptn = Config.bh_ptn
 
-    f = h5py.File(Config.outdirec + Config.outfname, 'a')
+    off_direc = '../Output/%s_tracers_zooniverse/'%sim
+
+    f = h5py.File(direc + fname, 'a')
     keys = np.array(list(f.keys()))
-    NsubfindIDs = keys.size
 
     group = f[keys[0]]
+    NsubfindIDs = keys.size
+    max_snap = np.max(group['SnapNum'])
+    min_snap = np.min(group['SnapNum'])
+    snaps = np.arange(max_snap, min_snap-1, -1)
+    CosmicTimes = group['CosmicTime'][:]
 
     header      = ru.loadHeader(basePath, max_snap)
+    h           = header['HubbleParam']
     tracer_mass = header['MassTable'][tracer_ptn] * 1.0e10 / h
     
     # initialize results
-    SubhaloColdGasTracer_Mass      = np.zeros((NsubfindIDs, snaps.size), dtype=float) - -1.
+    SubhaloColdGasTracer_Mass      = np.ones((NsubfindIDs, snaps.size)) * -1.
     SubhaloColdGasTracer_new       = SubhaloColdGasTracer_Mass.copy()
     SubhaloColdGasTracer_out       = SubhaloColdGasTracer_Mass.copy()
     SubhaloColdGasTracer_StripTot  = SubhaloColdGasTracer_Mass.copy()
@@ -743,8 +691,8 @@ def add_tracers(Config):
         
         print(snap_i, snap)
         
-        offsets = h5py.File(tracer_outdirec + 'offsets_%03d.hdf5'%snap, 'r')
-        tracers = h5py.File(tracer_outdirec + 'tracers_%03d.hdf5'%snap, 'r')
+        offsets = h5py.File(off_direc + 'offsets_%03d.hdf5'%snap, 'r')
+        tracers = h5py.File(off_direc + 'tracers_%03d.hdf5'%snap, 'r')
 
         offsets_group = offsets['group']
         tracers_group = tracers['group']
@@ -761,7 +709,7 @@ def add_tracers(Config):
                                                       * tracer_mass)
 
         # for every snap except min_snap (the last one), calculate the tracer derivatives
-        if snap_i != min_snap:
+        if snap_i != (snaps.size - 1):
 
             # loop over each subhalo at this snapshot to split the out sample into the various components
             for subfind_i, subfindID in enumerate(offsets_group['SubfindID'][:][tracers_indices]):
@@ -864,15 +812,15 @@ def add_tracers(Config):
     return
 
 
-def add_tracers_postprocessing(Config):
+def add_tracers_postprocessing():
     """
     post process the tracer quantities
     """
     
-    f = h5py.File(Config.outdirec+Config.outfname, 'a')
+    f = h5py.File(direc+fname, 'a')
     f_keys = np.array(list(f.keys()))
     
-    result = np.zeros(Config.SnapNums.size, dtype=float) - -1.
+    result = np.ones(f[f_keys[0]]['SnapNum'].size, dtype=float) * -1.
 
     keys = ['RPS_int_tot',
             'SFR_int_tot',
@@ -894,23 +842,20 @@ def add_tracers_postprocessing(Config):
         sSFR = result.copy()
         
         subhalo_indices = np.where(group['SubfindID'][:] != -1)[0]
-                
+        
         SCGM_flag = False
         
         if subhalo_indices.size > 1:
-                    
-            infall_index = np.where(group['memberlifof_flags'][subhalo_indices] == 1)[0].max() + 1
-
-            if subhalo_indices.size > 1:
-                SCGM = group[SCGM_key][subhalo_indices]
-                if 0 in SCGM:
-                    start_index = np.where(SCGM[:infall_index] == 0)[0]
-                    if start_index.size > 0:
-                        start_index = start_index.max()
-                        SCGM_flag = True
-                        subhalo_indices = subhalo_indices[start_index:]
-                        SCGM = SCGM[start_index:]
+            
+            SCGM = group[SCGM_key][subhalo_indices]
+            if 0 in SCGM:
+                SCGM_flag = True
+                start_index = np.where(SCGM == 0)[0].max()                
+                subhalo_indices = subhalo_indices[start_index:]
+                SCGM = SCGM[start_index:]
                 
+            if subhalo_indices.size > 1:
+
                 CosmicTimes = group['CosmicTime'][subhalo_indices]
                 RPS = group[RPS_key][subhalo_indices]
                 SFR = group[SFR_key][subhalo_indices]
@@ -951,7 +896,7 @@ def add_tracers_postprocessing(Config):
     return
 
 
-def add_coldgasmasstracerstau(Config):
+def add_coldgasmasstracerstau():
     """
     add tau clock definitions based on the tracer quantities.
     must be called after adding time and tracer datasets.
@@ -976,10 +921,10 @@ def add_coldgasmasstracerstau(Config):
     c) z=0
     """
     
-    f = h5py.File(Config.outdirec+Config.outfname, 'a')
+    f = h5py.File(direc+fname, 'a')
     f_keys = np.array(list(f.keys()))
 
-    result = np.zeros(Config.SnapNums.size, dtype=float) - -1.
+    result = np.ones(f[f_keys[0]]['SnapNum'].size, dtype=float) * -1.
 
     keys = ['tau_RPS_tot',
             'tau_RPS_est',
@@ -1108,5 +1053,22 @@ def add_coldgasmasstracerstau(Config):
     f.close()
 
     return
-                     
-                    
+              
+
+sims = ['TNG50-1']
+for sim in sims:
+    basePath = ru.ret_basePath(sim)
+    #direc = '../Output/zooniverse/'
+    fname = 'zooniverse_%s_%s_branches.hdf5'%(sim, key)
+
+    direc = '../Output/%s_subfindGRP/'%sim
+    #fname = 'subfind_%s_branches.hdf5'%sim
+
+    #run_subfindGRP()
+    #add_tracers()
+    #add_tracers_postprocessing()
+    #add_coldgasmasstracerstau()
+    add_Nperipass()
+
+
+
