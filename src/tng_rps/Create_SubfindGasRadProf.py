@@ -24,10 +24,12 @@ threed_keys = ['radii', 'vol_shells',
                'SubhaloGasMassShells', 'SubhaloDensityShells']
 
 # hardcode the snapshots of interest
-zooniverse_snapshots = [99, 98, 97, 96, 95, 94, 93, 92, 91, 90,
-                        89, 88, 87, 86, 85, 84, 83, 82, 81, 80,
-                        79, 78, 77, 76, 75, 74, 73, 72, 71, 70,
-                        69, 68, 67, 59, 50, 40, 33]
+zooniverse_snapshots_TNG50 = [99, 98, 97, 96, 95, 94, 93, 92, 91, 90,
+                              89, 88, 87, 86, 85, 84, 83, 82, 81, 80,
+                              79, 78, 77, 76, 75, 74, 73, 72, 71, 70,
+                              69, 68, 67, 59, 50, 40, 33]
+
+zooniverse_snapshots_TNG100 = [99, 91, 84, 78, 72, 67, 59, 50, 40, 33]
 
 def run_subfindGRP(Config):
     """
@@ -374,6 +376,13 @@ def add_zooniverseflags(Config):
 
     keys = ['ins_flags', 'jel_flags', 'jel_flags_raw', 'ScoreRaw', 'ScoreAdjusted']
 
+    if Config.sim == 'TNG50-1':
+        zooniverse_snapshots = zooniverse_snapshots_TNG50
+    elif Config.sim == 'TNG100-1':
+        zooniverse_snapshots = zooniverse_snapshots_TNG100
+    else:
+        raise ValueError('Config.sim %s and zooniverse flag are incompatible.'%Config.sim)
+
     for group_key in f.keys():
         group     = f[group_key]
         SubfindID = group['SubfindID'][:]
@@ -437,6 +446,13 @@ def load_zooniverseIDs(Config):
     
     insIDs_dict = {}
     Scores_dict = {}
+
+    if Config.sim == 'TNG50-1':
+        zooniverse_snapshots = zooniverse_snapshots_TNG50
+    elif Config.sim == 'TNG100-1':
+        zooniverse_snapshots = zooniverse_snapshots_TNG100
+    else:
+        raise ValueError('Config.sim %s and zooniverse flag are incompatible.'%Config.sim)
     
     for snapshot in zooniverse_snapshots:
         key = 'Snapshot_%03d'%snapshot
