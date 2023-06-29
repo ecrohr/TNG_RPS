@@ -92,14 +92,14 @@ def run_postprocessing(Config):
     """
     
     # standard datasets
-    #add_memberflags(Config)
-    #add_times(Config)
+    add_memberflags(Config)
+    add_times(Config)
     
     # for satellites only
     if not Config.centrals_flag:
-        #add_dmin(Config)
-        #add_Nperipass(Config)
-        #add_gastau(Config)
+        add_dmin(Config)
+        add_Nperipass(Config)
+        add_gastau(Config)
         # quenching times require the appropriate catalogs
         if not Config.TNGCluster_flag:
             add_quenchtimes(Config)
