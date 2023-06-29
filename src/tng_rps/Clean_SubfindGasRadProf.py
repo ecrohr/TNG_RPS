@@ -243,7 +243,7 @@ def split_inspected_branches(Config):
         else:
             insf.copy(insf[group_key], nonf)
             # check if the galaxy was a jellyfish before snap_first
-            if (np.max(group['jel_flags'][not SnapNum_indices])):
+            if (np.max(group['jel_flags'][~SnapNum_indices])):
                 jelbeforesnapfirst_keys.append(group_key)
 
     print('Of the %d inspected clean branches in %s'%(len(insf.keys()), sim))
