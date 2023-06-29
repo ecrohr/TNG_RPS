@@ -1,7 +1,7 @@
 sim: 'TNG50-1' # options are 'TNG*-*;, for 50, 100, 300 and -1, -2, -3 -4 or L680n8192TNG
 
 TNGCluster_flag: False
-mp_flag: False
+mp_flag: True
 zooniverse_flag: True
 centrals_flag: False
 tracers_flag: False
@@ -24,12 +24,12 @@ jel_key: 'jellyfish'
 non_key: 'nonjellyf'
 
 SubfindIndices: False
-SubfindGasRadProf: True
+SubfindGasRadProf: False
 run_SGRP: False
-run_SGRP_PP: True
-SubfindSnapshot: False
+run_SGRP_PP: False
+SubfindSnapshot: True
 run_SS: False
-run_SS_PP: False
+run_SS_PP: True
 TracerTracks: False
 track_tracers: False
 find_tracers: False
