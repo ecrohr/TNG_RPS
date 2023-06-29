@@ -220,10 +220,16 @@ def split_inspected_branches(Config):
         fname = outdirec + 'zooniverse_%s_%s_branches_clean.hdf5'%(sim, zooniverse_key)
         fnames.append(fname)
 
-        # if the jellyfish and nonjellyf files exist, delete them 
-        if zooniverse_key != ins_key:
-            if (os.path.exists(fname)):
+        # manually rename the cleaned inspected branch file to match old naming convention
+        if zooniverse_key == ins_key:
+            if os.path.exists(fname):
+                print('Manually creating file %s based on old naming convention'%fname)
                 os.system('rm %s'%fname)
+                os.system('ln -s %s %s'%(return_outfname(Config, out_key='clean'), fname))
+        else:
+            # if the jellyfish and nonjellyf files exist, delete them 
+            if (os.path.exists(fname)):
+                os.system('rm %s'%fname)        
     
     insf = h5py.File(fnames[0], 'a')
     jelf = h5py.File(fnames[1], 'a')
@@ -242,13 +248,13 @@ def split_inspected_branches(Config):
         else:
             insf.copy(insf[group_key], nonf)
             # check if the galaxy was a jellyfish before snap_first
-            if (np.max(group['jel_flags'][~SnapNum_indices])):
+            if (np.max(group['jel_flags'][~SnapNum_indices]) == 1):
                 jelbeforesnapfirst_keys.append(group_key) 
 
     print('Of the %d inspected clean branches in %s'%(len(insf.keys()), sim))
     print('%d are jellyfish and %d are nonjellyf.'%(len(jelf.keys()), len(nonf.keys())))
     print('%d were jellyfish before snap %d but are included in nonjellyf.'%(len(jelbeforesnapfirst_keys),
-                                                                                 zooniverse_snapfirst))
+                                                                             zooniverse_snapfirst))
 
     insf.close()
     jelf.close()
