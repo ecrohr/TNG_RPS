@@ -244,12 +244,12 @@ def split_inspected_branches(Config):
             insf.copy(insf[group_key], nonf)
             # check if the galaxy was a jellyfish before snap_first
             if (np.max(group['jel_flags'][~SnapNum_indices])):
-                jelbeforesnapfirst_keys.append(group_key)
+                jelbeforesnapfirst_keys.append(group_key) 
 
     print('Of the %d inspected clean branches in %s'%(len(insf.keys()), sim))
     print('%d are jellyfish and %d are nonjellyf.'%(len(jelf.keys()), len(nonf.keys())))
     print('%d were jellyfish before snap %d but are included in nonjellyf.'%(len(jelbeforesnapfirst_keys),
-                                                                                         zooniverse_snapfirst))
+                                                                                 zooniverse_snapfirst))
 
     insf.close()
     jelf.close()
