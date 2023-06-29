@@ -376,17 +376,12 @@ def add_zooniverseflags(Config):
 
     for group_key in f.keys():
         group     = f[group_key]
-        SnapNum   = group['SnapNum'][:]
         SubfindID = group['SubfindID'][:]
-        subfind_indices = np.where(SubfindID != -1)[0]
+        SnapNum   = group['SnapNum'][:]
         
         ins_flags = np.zeros(SnapNum.size, dtype=int) - 1
         jel_flags = ins_flags.copy()
         jel_flags_raw = ins_flags.copy()
-        
-        ins_flags[subfind_indices] = 0
-        jel_flags[subfind_indices] = 0
-        jel_flags_raw[subfind_indices] = 0
 
         ScoreRaw = np.zeros(SnapNum.size, dtype=float) - 1
         ScoreAdjusted = ScoreRaw.copy()
@@ -396,26 +391,34 @@ def add_zooniverseflags(Config):
             subfindID = SubfindID[index]
             if subfindID == -1:
                 continue
-            if snap in zooniverse_snapshots:
-                insIDs = insIDs_dict[snap_key]
-                if subfindID in insIDs:
-                    ins_flags[index] = 1
-                    subfind_index = np.where(subfindID == insIDs)[0]
-                    ScoreRaw[index] = Scores_dict[snap_key]['ScoreRaw'][subfind_index]
-                    if ScoreRaw[index] >= Config.jellyscore_min:
-                        jel_flags_raw[index] = 1
-                    ScoreAdjusted[index] = Scores_dict[snap_key]['ScoreAdjusted'][subfind_index]
-                    if ScoreAdjusted[index] >= Config.jellyscore_min:
-                        jel_flags[index] = 1
+            if snap not in zooniverse_snapshots:
+                continue
+            insIDs = insIDs_dict[snap_key]
+            if subfindID not in insIDs:
+                continue
+            ins_flags[index] = 1
+            jel_flags_raw[index] = 0
+            jel_flags[index] = 0
+            subfind_index = np.where(subfindID == insIDs)[0]
+            ScoreRaw[index] = Scores_dict[snap_key]['ScoreRaw'][subfind_index]
+            if ScoreRaw[index] >= Config.jellyscore_min:
+                jel_flags_raw[index] = 1
+            ScoreAdjusted[index] = Scores_dict[snap_key]['ScoreAdjusted'][subfind_index]
+            if ScoreAdjusted[index] >= Config.jellyscore_min:
+                jel_flags[index] = 1
 
-        # finish loop over SnapNum
+        # check that the key maximum inspected flag is 1 and jellyfish flag is 0
+        assert np.max(ins_flags) == 1
+        assert np.max(jel_flags) >= 0
+
+        # finish loop over SnapNum for the given group (subhalo)
         dsets = [ins_flags, jel_flags, jel_flags_raw, ScoreRaw, ScoreAdjusted]
         for i, key in enumerate(keys):
             dset       = dsets[i]
             dataset    = group.require_dataset(key, shape=dset.shape, dtype=dset.dtype)
             dataset[:] = dset
 
-    # finish loop over groups
+    # finish loop over groups (subhalos)
     f.close()
 
     return
@@ -451,7 +454,7 @@ def load_zooniverseIDs(Config):
         
     jellyfish.close()
     
-    return insIDs_dict, jelIDs_dict, jelIDs_raw_dict, Scores_dict
+    return insIDs_dict, Scores_dict
 
     
 def add_times(Config):

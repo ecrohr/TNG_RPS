@@ -21,7 +21,6 @@ def run_clean_zooniverseGRP(Config):
     GRPfname = Config.GRPfname
     
     if Config.run_cleanSGRP:
-    
         dic        = load_dict(GRPfname, Config)
         keys_dic   = clean_subfindGRP(dic, Config)
         
@@ -46,7 +45,6 @@ def run_clean_zooniverseGRP(Config):
                         
                 outf.close()
                                 
-
         if Config.zooniverse_flag:
             # now split the inspected branches into jellyfish, if there's a jellyfish classificaiton
             # at snap >= snap_first, and into nonjellyf, if there are no jelly classiifications at snap >= snap_first
@@ -124,7 +122,7 @@ def clean_subfindGRP(dic, Config):
         # there must be at least one inspection at snap >= snap_first for Zooniverse objects
         if Config.zooniverse_flag:
             ins_flag = max(ins_flags[SnapNum >= snap_first])
-            if not (ins_flag):
+            if (ins_flag != 1):
                 beforesnapfirst_keys.append(key)
                 continue
             
@@ -221,7 +219,7 @@ def split_inspected_branches(Config):
     for zooniverse_key in zooniverse_keys:
         fname = outdirec + 'zooniverse_%s_%s_branches_clean.hdf5'%(sim, zooniverse_key)
         fnames.append(fname)
-        
+
         # if the jellyfish and nonjellyf files exist, delete them 
         if zooniverse_key != ins_key:
             if (os.path.exists(fname)):
@@ -239,6 +237,7 @@ def split_inspected_branches(Config):
         SnapNum_indices = SnapNum >= zooniverse_snapfirst
         jel_flag = np.max(group['jel_flags'][SnapNum_indices])
         if (jel_flag == 1):
+        #if (jel_flag):
             insf.copy(insf[group_key], jelf)
         else:
             insf.copy(insf[group_key], nonf)
