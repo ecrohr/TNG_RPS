@@ -233,7 +233,7 @@ def return_outdirec_outfname(Config):
     outdirec = '../Output/%s_subfindGRP/'%Config.sim
     if (Config.zooniverse_flag):
         outfname = 'zooniverse_%s_%s_branches.hdf5'%(Config.sim, Config.zooniverse_key)
-        outdirec = '../Output/zooniverse/'
+        #outdirec = '../Output/zooniverse/'
     elif Config.centrals_flag:
         outfname = 'central_subfind_%s_branches.hdf5'%(Config.sim)
     elif Config.allsubhalos_flag:

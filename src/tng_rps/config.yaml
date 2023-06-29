@@ -1,4 +1,4 @@
-sim: 'TNG50-1' # options are 'TNG*-*;, for 50, 100, 300 and -1, -2, -3 -4 or L680n8192TNG
+sim: 'TNG100-1' # options are 'TNG*-*;, for 50, 100, 300 and -1, -2, -3 -4 or L680n8192TNG
 
 TNGCluster_flag: False
 mp_flag: True
@@ -24,12 +24,12 @@ jel_key: 'jellyfish'
 non_key: 'nonjellyf'
 
 SubfindIndices: False
-SubfindGasRadProf: False
+SubfindGasRadProf: True
 run_SGRP: False
-run_SGRP_PP: False
-SubfindSnapshot: True
+run_SGRP_PP: True
+SubfindSnapshot: False
 run_SS: False
-run_SS_PP: True
+run_SS_PP: False
 TracerTracks: False
 track_tracers: False
 find_tracers: False
@@ -39,7 +39,7 @@ run_createtau: False
 
 zooniverse_snapfirst: 67 # require a zooniverse inspection (or jellyfish classification) at or after this snap
 Nsnaps_PP: 5 # number of consecutive snaps to be considered pre-processed
-M200c0_lolim_PP: 3.2e+11 # minimum halo mass of a pre-processing host
+M200c0_lolim_PP: 1.e+11 # minimum halo mass of a pre-processing host
 
 # subfind flags
 in_tree_key: 'in_tree'

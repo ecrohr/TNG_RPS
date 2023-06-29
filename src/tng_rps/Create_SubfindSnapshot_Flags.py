@@ -347,7 +347,7 @@ def return_outdirec_outfname(Config, snapshotflags=True):
         else:
             print('File %s does not exists. Writing.'%(outdirec+outfname))
     else:
-        print('Directory %s does not exist. Creating it now.'%subfindsnapshot_outdirec)
-        os.system('mkdir %s'%subfindsnapshot_outdirec)
+        print('Directory %s does not exist. Creating it now.'%outdirec)
+        os.system('mkdir %s'%outdirec)
     
     return outdirec, outfname
