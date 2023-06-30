@@ -16,7 +16,7 @@ last_snap: 99
 
 tlim: 31622.776601683792 # = 10.**(4.5) K; cutoff between cold and hot gas
 jellyscore_min: 0.8
-jellyscore_min_raw: 16
+jellyscore_min_raw: 16 # legacy from original scoring convention
 treeName: 'SubLink_gal'
 zooniverse_key: 'inspected'
 ins_key: 'inspected'
@@ -24,9 +24,9 @@ jel_key: 'jellyfish'
 non_key: 'nonjellyf'
 
 SubfindIndices: False
-SubfindGasRadProf: True
+SubfindGasRadProf: False
 run_SGRP: False
-run_SGRP_PP: True
+run_SGRP_PP: False
 SubfindSnapshot: False
 run_SS: False
 run_SS_PP: False
@@ -38,8 +38,8 @@ run_cleanSGRP: True
 run_createtau: True
 
 zooniverse_snapfirst: 67 # require a zooniverse inspection (or jellyfish classification) at or after this snap
-Nsnaps_PP: 3 # number of consecutive snaps to be considered pre-processed
-M200c0_lolim_PP: 1.e+12 # minimum halo mass of a pre-processing host
+Nsnaps_PP: 5 # number of consecutive snaps to be considered pre-processed
+M200c0_lolim_PP: 1.e+11 # minimum halo mass of a pre-processing host
 
 # subfind flags
 in_tree_key: 'in_tree'
@@ -56,4 +56,6 @@ preprocessed_flag: 'preprocessed'
 nonz0_key: 'nonz0'
 beforesnapfirst_key: 'beforesnapfirst'
 clean_key: 'clean'
+no_infall_key: 'no_infall'
+
 

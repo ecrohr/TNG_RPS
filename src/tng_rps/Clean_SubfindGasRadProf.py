@@ -35,6 +35,10 @@ def run_clean_zooniverseGRP(Config):
                 result[new_key] = group
 
             fname = return_outfname(Config, out_key=out_key)
+            # if the file already exists, delete before making a new one.
+            if os.path.exists(outdirec + fname):
+                print('File %s already exists. Deleting before saving new version.'%(outdirec + fname))
+                os.system('rm %s '%(outdirec + fname))
             with h5py.File(outdirec + fname, 'a') as outf:
                 for group_key in result.keys():
                     group = outf.require_group(group_key)
@@ -55,8 +59,8 @@ def run_clean_zooniverseGRP(Config):
     
     if Config.run_createtau:
         # run once without out_key to run for all subhalos
-        #create_taudict(Config)
         if not Config.zooniverse_flag:
+            create_taudict(Config)
             split_tau_gasz0(Config)
         # and run for each of the out_keys
         for out_key in Config.zooniverse_keys:
@@ -91,6 +95,7 @@ def clean_subfindGRP(dic, Config):
     backsplash_prev_key = backsplash_prev_flag
     preprocessed_key = preprocessed_flag
     clean_key = Config.clean_key
+    no_infall_key = Config.no_infall_key
 
     # initalize empty lists to hold the various keys
     clean_keys           = []
@@ -98,6 +103,7 @@ def clean_subfindGRP(dic, Config):
     backsplash_prev_keys = []
     preprocessed_keys    = []
     centralz0_keys = []
+    no_infall_keys = []
     if Config.zooniverse_flag:
         beforesnapfirst_keys = []
         snap_first = Config.zooniverse_snapfirst
@@ -137,13 +143,25 @@ def clean_subfindGRP(dic, Config):
         # pre-processed? if not then considered clean
         if subfind_flags[preprocessed_flag][SubfindID_z0]:
             preprocessed_keys.append(key)
-        else:
-            clean_keys.append(key)
-        
+            continue
+
+        """
+        # well-defined infall time? use tau_infall to check
+        tau_infall = group['tau_infall'][indices]
+        # if Zooniverse, then require that there is some cold gas at infall
+        if Config.zooniverse_flag:
+            tau_infall = group['tau_infall_ColdGas']
+        if np.max(tau_infall) <= 0:
+            no_infall_keys.append(key)
+            continue
+        """
+
+        clean_keys.append(key)
+
         # was the z=0 satellite previous a backsplash galaxy?
         if subfind_flags[backsplash_prev_flag][SubfindID_z0]:
             backsplash_prev_keys.append(key)
-        
+
     # end loop over the branches
 
     print('satellite branches not reaching z=0: %d'%(len(nonz0_keys)))
@@ -151,6 +169,7 @@ def clean_subfindGRP(dic, Config):
         print('not inspected since %d: %d'%(snap_first, len(beforesnapfirst_keys)))
     print('central at z=0: %d'%len(centralz0_keys))
     print('backsplash_prev: %d; preprocessed: %d'%(len(backsplash_prev_keys), len(preprocessed_keys)))
+    #print('no infall time: %d'%(len(no_infall_keys)))
     print('clean (i.e., not preprocessed): %d'%(len(clean_keys)))
 
     # save the keys as a dictionary and return to main function
@@ -217,19 +236,22 @@ def split_inspected_branches(Config):
     
     fnames = []
     for zooniverse_key in zooniverse_keys:
-        fname = outdirec + 'zooniverse_%s_%s_branches_clean.hdf5'%(sim, zooniverse_key)
+        fname = outdirec + 'zooniverse_%s_%s_clean.hdf5'%(sim, zooniverse_key)
         fnames.append(fname)
 
-        # manually rename the cleaned inspected branch file to match old naming convention
+        # manually rename the zooniverse clean file to the old naming convention
         if zooniverse_key == ins_key:
             if os.path.exists(fname):
-                print('Manually creating file %s based on old naming convention'%fname)
+                print('File %s exists (but shouldn"t). Manually deleting and recreating from %s.'%(fname, return_outfname(Config, out_key='clean')))
                 os.system('rm %s'%fname)
                 os.system('ln -s %s %s'%(return_outfname(Config, out_key='clean'), fname))
+            else:
+                print('File %s doesn"t exist. Manually recreating from %s.'%(fname, return_outfname(Config, out_key='clean')))
+                os.system('ln -s %s %s'%(return_outfname(Config, out_key='clean'), fname))
         else:
-            # if the jellyfish and nonjellyf files exist, delete them 
-            if (os.path.exists(fname)):
-                os.system('rm %s'%fname)        
+            # if the jellyfish and nonjellyf files already exist, then delete them
+            if os.path.exists(fname):
+                os.system('rm %s'%fname)
     
     insf = h5py.File(fnames[0], 'a')
     jelf = h5py.File(fnames[1], 'a')
@@ -279,7 +301,7 @@ def create_taudict(Config, out_key=None):
     tracers_flag = Config.tracers_flag
     quench_flag = not Config.TNGCluster_flag # quenching catalogs not available for TNG-Cluster
 
-    GRPfname = return_outfname(Config, out_key=out_key)
+    GRPfname = 'zooniverse_%s_%s_clean.hdf5'%(Config.sim, out_key)
         
     result = load_dict(GRPfname, Config)
     result_keys = list(result.keys())
@@ -329,6 +351,7 @@ def create_taudict(Config, out_key=None):
     for group_index, group_key in enumerate(result_keys):
     
         group = result[group_key]
+
         subfind_indices = np.where(group['SubfindID'] != -1)[0]
     
         # if just starting, then initialize the dictionary 
@@ -443,7 +466,10 @@ def create_taudict(Config, out_key=None):
     # save the tau dictionary
     outdirec = Config.outdirec
     fname = return_outfname(Config, out_key=out_key, tau=True)
-    with h5py.File(outdirec + fname, 'a') as outf:
+    if os.path.exists(outdirec + fname):
+        print('File %s already exists. Deleting and recreating.'%(outdirec +fname))
+        os.system('rm %s'%(outdirec + fname))
+    with h5py.File(outdirec + fname, 'w') as outf:
         group = outf.require_group('Group')        
         for dset_key in tauresult.keys():  
             dset = tauresult[dset_key]
