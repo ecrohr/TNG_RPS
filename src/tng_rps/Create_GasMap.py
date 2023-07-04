@@ -62,6 +62,10 @@ outdirec = '../Output/zooniverse/'
 
     
 def run_creategasmap(sim, subfindIDs, mp_flag=False):
+    """
+    Wrapper function to create the arrays of mass-weighted
+    temperature and metallicity for example jellyfish galaxies.
+    """
 
     global grp_dict
 
