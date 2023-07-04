@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to my_package's documentation!
+Welcome to TNG_RPS's documentation!
 ======================================
 
 .. toctree::
@@ -22,7 +22,7 @@ Usage
 Installation
 ------------
 
-To use `my_package` you need to install X, Y and Z. 
+To use `TNG_RPS` you need to install X, Y and Z. 
 
 
 .. _code:
@@ -32,7 +32,7 @@ Code
 
 Here is an example of describing the use of your function.
 
-To add one to a number you can use the ``my_package.add_one()`` function:
+To add one to a number you can use the ``TNG_RPS.src.tng_rps.add_one()`` function:
 
 .. py:function:: my_package.add_one(number)
 
@@ -64,4 +64,4 @@ Indices and tables
  The following will add the signature of the individual functions and pull
  their docstrings.
 
-.. automodapi:: my_package.example
+.. automodapi:: TNG_RPS.src.tng.example
