@@ -14,6 +14,9 @@ import glob
 import argparse
 
 class Configuration(dict):
+    """
+    Class to store all relevant information for a given simulation and sample set.
+    """
     __slots__ = ()
     
     @classmethod
