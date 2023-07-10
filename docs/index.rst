@@ -64,4 +64,4 @@ Indices and tables
  The following will add the signature of the individual functions and pull
  their docstrings.
 
-.. automodapi:: TNG_RPS.src.tng_rps.example
+.. automodapi:: tng_rps
