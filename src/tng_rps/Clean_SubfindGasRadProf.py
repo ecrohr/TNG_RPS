@@ -301,7 +301,7 @@ def create_taudict(Config, out_key=None):
     tracers_flag = Config.tracers_flag
     quench_flag = not Config.TNGCluster_flag # quenching catalogs not available for TNG-Cluster
 
-    GRPfname = 'zooniverse_%s_%s_clean.hdf5'%(Config.sim, out_key)
+    GRPfname = Config.GRPfname
         
     result = load_dict(GRPfname, Config)
     result_keys = list(result.keys())
