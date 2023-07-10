@@ -815,7 +815,7 @@ def add_tracers(Config):
                 Nheat = np.where(~cold_indices & ~strip_indices)[0].size
                 Nheat_check = np.where(~strip_indices)[0].size
                 if Nheat != Nheat_check:
-                    print('Warning for bound heated gas cells for %s %s subfindID %s'%(sim, snap, subfindID))
+                    print('Warning for bound heated gas cells for %s %s subfindID %s'%(Config.sim, snap, subfindID))
                 
                 SubhaloColdGasTracer_StripTot[GRP_index,snap_i] = Ntot * tracer_mass
                 SubhaloColdGasTracer_StripCold[GRP_index,snap_i] = Ncold * tracer_mass
