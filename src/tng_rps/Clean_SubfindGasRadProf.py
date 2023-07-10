@@ -62,7 +62,7 @@ def run_clean_zooniverseGRP(Config):
         if not Config.zooniverse_flag:
             create_taudict(Config)
             split_tau_gasz0(Config)
-            out_keys = Config.out_keys
+            out_keys = Config.taudict_keys
         else:
             out_keys = Config.zooniverse_keys
         # and run for each of the out_keys
