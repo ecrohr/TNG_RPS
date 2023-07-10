@@ -32,9 +32,9 @@ Code
 
 Here is an example of describing the use of your function.
 
-To add one to a number you can use the ``TNG_RPS.src.tng_rps.add_one()`` function:
+To add one to a number you can use the ``TNG_RPS.src.tng_rps.example.add_one()`` function:
 
-.. py:function:: my_package.add_one(number)
+.. py:function:: example.add_one(number)
 
 
     :param number: Should be integer, floating point number or a string. 
@@ -64,4 +64,4 @@ Indices and tables
  The following will add the signature of the individual functions and pull
  their docstrings.
 
-.. automodapi:: TNG_RPS.src.tng.example
+.. automodapi:: TNG_RPS.src.tng_rps.example
