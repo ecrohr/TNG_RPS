@@ -56,6 +56,6 @@ preprocessed_flag: 'preprocessed'
 nonz0_key: 'nonz0'
 beforesnapfirst_key: 'beforesnapfirst'
 clean_key: 'clean'
-no_infall_key: 'no_infall'
+all_key: 'all'
 
 

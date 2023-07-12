@@ -23,10 +23,10 @@ def run_subfindsnapshot_flags(Config):
             
     # initialize the subfindIDs of interest and final result shape
     subfindIDs, result = initialize_result(Config)
-        
-    print('Number of subhalos of interest: %d'%subfindIDs.size)
-    
+            
     if Config.run_SS:
+
+        print('run_SS: Number of subhalos of interest: %d'%subfindIDs.size)
 
         if Config.mp_flag:
             pool = mp.Pool(Config.Nmpcores)
@@ -52,6 +52,8 @@ def run_subfindsnapshot_flags(Config):
     
     if Config.run_SS_PP:
         
+        print('run_SS_PP: Number of subhalos of interest: %d'%subfindIDs.size)
+
         # post process the catalog to create one flag per z=0 subhalo of interest
         result = postprocess_flags(subfindIDs, Config)
         subfindsnapshot_outdirec, subfind_outfname = return_outdirec_outfname(Config, snapshotflags=False)
@@ -122,6 +124,8 @@ def create_flags(subfindID, Config):
     and potentially it's z=0 host's branch. For each snapshot,
     assign values for the flags, and return the result.
     """
+
+    print('Working on %s subfindID %s at snapshot 099.'%(Config.sim, subfindID))
         
     result = init_result(Config)
     

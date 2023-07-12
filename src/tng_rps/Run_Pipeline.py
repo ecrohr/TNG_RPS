@@ -97,9 +97,24 @@ class Configuration(dict):
                 SubfindIDs = Group['SubfindID'][:]
                 SnapNums_SubfindIDs = np.zeros(SubfindIDs.size, dtype=int) + 99
                 f.close()
+        # does the GRP file exist? If so, then use this file. 
+        # Note that this assumes that the branches exist at z=0
+        elif os.path.isfile(self.outdirec + self.GRPfname):
+            print('File %s exists. Using SubfindIDs and SnapNums from there.'%(self.outdirec + self.GRPfname))
+            with h5py.File(self.outdirec + self.GRPfname) as f:
+                SubfindIDs = np.zeros(len(f.keys()), dtype=int) - 1
+                SnapNums_SubfindIDs = SubfindIDs.copy() + 100
+                for i, key in enumerate(f.keys()):
+                    group = f[key]
+                    SubfindIDs[i] = group['SubfindID'][0]
+                f.close()
+            if np.min(SubfindIDs) < 0:
+                raise ValueError('Not all SubfindIDs are >=0 at z=0.')
+        # no tau or GRP files, so initialize SnapNums and SubfindIDs here
         else:
             # based on the simulation and flags, find the appropriate initialziation function
-            print('File %s does not exist. Initializing SubfindIDs and SnapNums elsewhere.'%(full_taufname))
+            print('Files %s and %s do not exist. Initializing SubfindIDs and SnapNums elsewhere.'%(full_taufname,
+                                                                                                   self.outdirec + self.GRPfname))
             # TNG-Cluster?
             if (self.TNGCluster_flag):
                 SnapNums_SubfindIDs, SubfindIDs = initialize_TNGCluster_subfindindices(self)
@@ -140,12 +155,14 @@ class Configuration(dict):
                               self.preprocessed_flag]
                               
         # tau dictionary keys
-        if not self.centrals_flag:
+        if self.centrals_flag:
+            self.taudict_keys = [self.all_key,
+                                 self.clean_key,
+                                 self.backsplash_z0_flag]
+        else:
             self.taudict_keys = [self.backsplash_prev_flag,
                                  self.preprocessed_flag,
                                  self.clean_key]
-        #if self.zooniverse_flag:
-        #    self.taudict_keys = self.zooniverse_keys
                 
         return
 
@@ -263,11 +280,11 @@ def return_taufname(Config):
     if Config.zooniverse_flag:
         return 'zooniverse_%s_%s_clean_tau.hdf5'%(Config.sim, Config.zooniverse_key)
     elif Config.centrals_flag:
-        return 'central_subfind_%s_clean_tau.hdf5'%(Config.sim)
+        return 'central_subfind_%s_tau.hdf5'%(Config.sim)
     elif Config.allsubhalos_flag:
         return 'all_subfind_%s_clean_tau.hdf5'%(Config.sim)
     else:
-        return 'subfind_%s_clean_tau.hdf5'%(Config.sim)
+        return 'subfind_%s_tau.hdf5'%(Config.sim)
 
         
 def return_Mstar_lolim(Config):
