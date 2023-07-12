@@ -27,6 +27,7 @@ def run_clean_zooniverseGRP(Config):
         # for each set of keys, save the resulting GRP dictionaries
         for out_key in Config.taudict_keys:
             keys = keys_dic[out_key]
+
             result = {}
             for key in keys:
                 group = dic[key]
@@ -76,17 +77,28 @@ def run_clean_zooniverseGRP(Config):
 
 def clean_subfindGRP(dic, Config):
     """
+    Wrapper function for cleaning branches based on either
+    satellites or centrals of interest.
+    """
+
+    if Config.centrals_flag:
+        return clean_subfindGRP_centrals(dic, Config)
+    else:
+        return clean_subfindGRP_satellites(dic, Config)
+
+
+def clean_subfindGRP_satellites(dic, Config):
+    """
     For each branch, load the various flags and sort them.
     Based on the flags defined in Config, decided on which criteria
-    to clean the subfindGRP branches.
+    to clean the satellite subfindGRP branches.
     """
 
     keys = np.array(list(dic.keys()))
     
     print('We are going through %s branches of interest.'%keys.size)
 
-    # let's clean the zooniverse jellyfish branches, noting the keys of the objects
-    # excised at each step
+    # let's clean the branches, noting the keys of the objects excised at each step
 
     subfind_flags = load_subfindsnapshot_flags(Config)
     central_z0_flag = Config.central_z0_flag
@@ -98,7 +110,6 @@ def clean_subfindGRP(dic, Config):
     backsplash_prev_key = backsplash_prev_flag
     preprocessed_key = preprocessed_flag
     clean_key = Config.clean_key
-    no_infall_key = Config.no_infall_key
 
     # initalize empty lists to hold the various keys
     clean_keys           = []
@@ -106,7 +117,6 @@ def clean_subfindGRP(dic, Config):
     backsplash_prev_keys = []
     preprocessed_keys    = []
     centralz0_keys = []
-    no_infall_keys = []
     if Config.zooniverse_flag:
         beforesnapfirst_keys = []
         snap_first = Config.zooniverse_snapfirst
@@ -148,17 +158,6 @@ def clean_subfindGRP(dic, Config):
             preprocessed_keys.append(key)
             continue
 
-        """
-        # well-defined infall time? use tau_infall to check
-        tau_infall = group['tau_infall'][indices]
-        # if Zooniverse, then require that there is some cold gas at infall
-        if Config.zooniverse_flag:
-            tau_infall = group['tau_infall_ColdGas']
-        if np.max(tau_infall) <= 0:
-            no_infall_keys.append(key)
-            continue
-        """
-
         clean_keys.append(key)
 
         # was the z=0 satellite previous a backsplash galaxy?
@@ -172,7 +171,6 @@ def clean_subfindGRP(dic, Config):
         print('not inspected since %d: %d'%(snap_first, len(beforesnapfirst_keys)))
     print('central at z=0: %d'%len(centralz0_keys))
     print('backsplash_prev: %d; preprocessed: %d'%(len(backsplash_prev_keys), len(preprocessed_keys)))
-    #print('no infall time: %d'%(len(no_infall_keys)))
     print('clean (i.e., not preprocessed): %d'%(len(clean_keys)))
 
     # save the keys as a dictionary and return to main function
@@ -206,6 +204,83 @@ def clean_subfindGRP(dic, Config):
 
     return result
 
+
+def clean_subfindGRP_centrals(dic, Config):
+    """
+    For each branch, load the various flags and sort them.
+    Based on the flags defined in Config, decided on which criteria
+    to clean the central subfindGRP branches.
+    """
+
+    keys = np.array(list(dic.keys()))
+    
+    print('We are going through %s branches of interest.'%keys.size)
+
+    # let's clean the branches, noting the keys of the objects excised at each step
+
+    subfind_flags = load_subfindsnapshot_flags(Config)
+    central_z0_flag = Config.central_z0_flag
+    backsplash_z0_flag = Config.backsplash_z0_flag
+    
+    all_key = Config.all_key
+    clean_key = Config.clean_key
+
+    # initalize empty lists to hold the various keys
+    all_keys = []
+    clean_keys = []
+    backsplash_z0_keys = []
+        
+    # begin loop over the subhalos in the GRP dictionary
+    for key in keys:
+        group = dic[key]
+
+        # ignore the snaps where the subahlo was not identified
+        indices = group['SubfindID'] != -1
+
+        SnapNum            = group['SnapNum'][indices]
+        SubfindID          = group['SubfindID'][indices]
+
+        # the MDB must reach z=0 (snap 99)
+        if SnapNum.max() < 99:
+            raise ValueError('branch %s does not reach z=0'%key)
+            
+        # the subhalo exists at z=0, so use subfind flags to append to the appropriate list
+        SubfindID_z0  = SubfindID[0]
+        
+        # confirm that the subhalo is a z=0 central
+        if (subfind_flags[central_z0_flag][SubfindID_z0] == 0):
+            raise ValueError('branch %s has %s == 0'%(key, central_z0_flag))
+            
+        all_keys.append(key)
+
+        # backsplash at z=0? if not then considered clean
+        if subfind_flags[backsplash_z0_flag][SubfindID_z0]:
+            backsplash_z0_keys.append(key)
+            continue
+
+        clean_keys.append(key)
+
+    # end loop over the branches
+
+    print('all (backsplash + non backsplash) %d'%(len(all_keys)))
+    print('backsplash at z=0: %d'%len(backsplash_z0_keys))
+    print('clean (i.e., not backsplash at z=0): %d'%(len(clean_keys)))
+
+    # save the keys as a dictionary and return to main function
+    result  = {}
+    
+    result_keys  = [all_key,
+                    clean_key,
+                    backsplash_z0_flag]
+    
+    result_dsets = [all_keys,
+                    clean_keys,
+                    backsplash_z0_keys]
+
+    for result_i, result_key in enumerate(result_keys):
+        result[result_key] = result_dsets[result_i]
+
+    return result
 
 
 def load_subfindsnapshot_flags(Config):
@@ -304,7 +379,7 @@ def create_taudict(Config, out_key=None):
     tracers_flag = Config.tracers_flag
     quench_flag = not Config.TNGCluster_flag # quenching catalogs not available for TNG-Cluster
 
-    GRPfname = Config.GRPfname
+    GRPfname = return_outfname(Config, out_key=out_key, tau=False)
         
     result = load_dict(GRPfname, Config)
     result_keys = list(result.keys())
@@ -326,7 +401,7 @@ def create_taudict(Config, out_key=None):
             tau_keys.append(key)
             tauvals_dict[key] = np.array([0., 100.])
 
-    # for backwards compatibility with Rohr+23 studying RPS in TNG jellyfish
+    # for backwards compatibility with Rohr+23 studying RPS in TNG50 jellyfish
     if tracers_flag and zooniverse_flag:
         tau_infall_key = tau_keys[3]
         tau_medpeak_key = tau_keys[0]
@@ -353,6 +428,10 @@ def create_taudict(Config, out_key=None):
     # begin loop over subhalos
     for group_index, group_key in enumerate(result_keys):
     
+        ### currently a bug affects only one branch... ignore for now
+        if group_key == '04707799':
+            continue
+
         group = result[group_key]
 
         subfind_indices = np.where(group['SubfindID'] != -1)[0]
@@ -495,7 +574,8 @@ def split_tau_gasz0(Config, split_key='SubhaloHotGasMass_z0', out_key=None):
     print(outdirec + fname)
     
     if not os.path.isfile(outdirec + fname):
-        raise ValueError('file %s does not exist.'%(outdirec + fname))
+        print('Warning file %s does not exist. Returning'%(outdirec + fname))
+        return
 
     tau_dict = h5py.File(outdirec + fname, 'r')
     group = tau_dict['Group']
@@ -558,15 +638,14 @@ def return_outfname(Config, out_key=None, tau=False):
             outfname = Config.GRPfname
         else:
             ftype = 'tau'
-            out_key = 'all'
             if Config.zooniverse_flag:
-                outfname = 'zooniverse_%s_%s_%s_%s.hdf5'%(Config.sim, Config.zooniverse_key, out_key, ftype)
+                outfname = 'zooniverse_%s_%s_%s.hdf5'%(Config.sim, Config.zooniverse_key, ftype)
             elif Config.centrals_flag:
-                outfname = 'central_subfind_%s_%s_%s.hdf5'%(Config.sim, ftype, out_key)
+                outfname = 'central_subfind_%s_%s.hdf5'%(Config.sim, ftype)
             elif Config.allsubhalos_flag:
-                outfname = 'all_subfind_%s_%s_%s.hdf5'%(Config.sim, ftype, out_key)
+                outfname = 'all_subfind_%s_%s.hdf5'%(Config.sim, ftype)
             else:
-                outfname = 'subfind_%s_%s_%s.hdf5'%(Config.sim, ftype, out_key)
+                outfname = 'subfind_%s_%s.hdf5'%(Config.sim, ftype)
     else:
         if tau:
             ftype = 'tau'
