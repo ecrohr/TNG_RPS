@@ -418,12 +418,19 @@ def create_taudict(Config, out_key=None):
     print(tau_keys)
             
     # pick the datasets we want to output at given times for all subhalos
-    grp_keys = ['SnapNum', 'CosmicTime', 'HostCentricDistance_norm', 'HostGroup_M_Crit200',
-                'HostGroup_R_Crit200', 'HostSubhalo_Mstar_Rgal', 'SubhaloMass',
-                'Subhalo_Mstar_Rgal',
-                'SubhaloColdGasMass', 'SubhaloHotGasMass', 'SubhaloGasMass',
-                'Nperipass', 'min_Dperi_norm', 'min_Dperi_phys', 'Napopass',
-                'min_HostCentricDistance_norm', 'min_HostCentricDistance_phys']
+    if Config.centrals_flag:
+        grp_keys = ['SnapNum', 'CosmicTime', 'HostCentricDistance_norm', 'HostGroup_M_Crit200',
+                    'HostGroup_R_Crit200', 'HostSubhalo_Mstar_Rgal', 'SubhaloMass',
+                    'Subhalo_Mstar_Rgal',
+                    'SubhaloColdGasMass', 'SubhaloHotGasMass', 'SubhaloGasMass',
+                    'min_HostCentricDistance_norm', 'min_HostCentricDistance_phys']
+    else:
+        grp_keys = ['SnapNum', 'CosmicTime', 'HostCentricDistance_norm', 'HostGroup_M_Crit200',
+                    'HostGroup_R_Crit200', 'HostSubhalo_Mstar_Rgal', 'SubhaloMass',
+                    'Subhalo_Mstar_Rgal',
+                    'SubhaloColdGasMass', 'SubhaloHotGasMass', 'SubhaloGasMass',
+                    'Nperipass', 'min_Dperi_norm', 'min_Dperi_phys', 'Napopass',
+                    'min_HostCentricDistance_norm', 'min_HostCentricDistance_phys']
     
     # begin loop over subhalos
     for group_index, group_key in enumerate(result_keys):
