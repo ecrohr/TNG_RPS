@@ -419,11 +419,10 @@ def create_taudict(Config, out_key=None):
             
     # pick the datasets we want to output at given times for all subhalos
     if Config.centrals_flag:
-        grp_keys = ['SnapNum', 'CosmicTime', 'HostCentricDistance_norm', 'HostGroup_M_Crit200',
+        grp_keys = ['SnapNum', 'CosmicTime', 'HostGroup_M_Crit200',
                     'HostGroup_R_Crit200', 'HostSubhalo_Mstar_Rgal', 'SubhaloMass',
                     'Subhalo_Mstar_Rgal',
-                    'SubhaloColdGasMass', 'SubhaloHotGasMass', 'SubhaloGasMass',
-                    'min_HostCentricDistance_norm', 'min_HostCentricDistance_phys']
+                    'SubhaloColdGasMass', 'SubhaloHotGasMass', 'SubhaloGasMass']
     else:
         grp_keys = ['SnapNum', 'CosmicTime', 'HostCentricDistance_norm', 'HostGroup_M_Crit200',
                     'HostGroup_R_Crit200', 'HostSubhalo_Mstar_Rgal', 'SubhaloMass',
