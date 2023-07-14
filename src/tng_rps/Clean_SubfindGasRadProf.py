@@ -585,7 +585,10 @@ def split_tau_gasz0(Config, split_key='SubhaloHotGasMass_z0', out_key=None):
 
     tau_dict = h5py.File(outdirec + fname, 'r')
     group = tau_dict['Group']
-    mask = (group[split_key][:] <= 0.0)
+
+    # manually check either whether the there is no gas at z=0 or if tau100 has already been reached.
+    mask = np.logical_or(group[split_key][:] == 0., np.logical_and(group['CosmicTime_tau_infall_HotGas100'][:] <= 13.7,
+                                                                   group['CosmicTime_tau_infall_HotGas100'][:] > 0.))
 
     if Config.zooniverse_flag:
         mask = np.logical_or(group['SubhaloColdGasMass_z0'][:] == 0., group['CosmicTime_tau_RPS_tot100'][:] <= 13.7)
