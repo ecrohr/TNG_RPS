@@ -111,12 +111,17 @@ def clean_subfindGRP_satellites(dic, Config):
     preprocessed_key = preprocessed_flag
     clean_key = Config.clean_key
 
+    # note that all means all branches for analysis, not necessarily all branches originally
+    # in general, all branches includes preprocessed, clean, and backsplash_prev branches
+    all_key = Config.all_key
+
     # initalize empty lists to hold the various keys
     clean_keys           = []
     nonz0_keys           = []
     backsplash_prev_keys = []
     preprocessed_keys    = []
     centralz0_keys = []
+    all_keys = []
     if Config.zooniverse_flag:
         beforesnapfirst_keys = []
         snap_first = Config.zooniverse_snapfirst
@@ -156,9 +161,11 @@ def clean_subfindGRP_satellites(dic, Config):
         # pre-processed? if not then considered clean
         if subfind_flags[preprocessed_flag][SubfindID_z0]:
             preprocessed_keys.append(key)
+            all_keys.append(key)
             continue
 
         clean_keys.append(key)
+        all_keys,append(key)
 
         # was the z=0 satellite previous a backsplash galaxy?
         if subfind_flags[backsplash_prev_flag][SubfindID_z0]:
@@ -181,23 +188,27 @@ def clean_subfindGRP_satellites(dic, Config):
                         beforesnapfirst_key,
                         backsplash_prev_key,
                         preprocessed_key,
-                        clean_key]
+                        clean_key,
+                        all_key]
         
         result_dsets = [nonz0_keys,
                         beforesnapfirst_keys,
                         backsplash_prev_keys,
                         preprocessed_keys,
-                        clean_keys]
+                        clean_keys,
+                        all_keys]
     else:
         result_keys  = [nonz0_key,
                         backsplash_prev_key,
                         preprocessed_key,
-                        clean_key]
+                        clean_key,
+                        all_key]
         
         result_dsets = [nonz0_keys,
                         backsplash_prev_keys,
                         preprocessed_keys,
-                        clean_keys]
+                        clean_keys,
+                        all_keys]
 
     for result_i, result_key in enumerate(result_keys):
         result[result_key] = result_dsets[result_i]
