@@ -38,8 +38,8 @@ run_cleanSGRP: False
 run_createtau: False
 
 zooniverse_snapfirst: 67 # require a zooniverse inspection (or jellyfish classification) at or after this snap
-Nsnaps_PP: 5 # number of consecutive snaps to be considered pre-processed
-M200c0_lolim_PP: 1.e+11 # minimum halo mass of a pre-processing host
+Nsnaps_PP: 3 # number of consecutive snaps to be considered pre-processed
+M200c0_lolim_PP: 1.e+12 # minimum halo mass of a pre-processing host
 
 # subfind flags
 in_tree_key: 'in_tree'

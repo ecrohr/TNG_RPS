@@ -268,7 +268,7 @@ def return_subfindGRP(snapnum, subfindID, Config):
     coldgas_radii  = gas_radii[gas_temperatures < tlim]
     
     hotgas_masses = gas_masses[gas_temperatures >= tlim]
-    hotgas_radii = gas_masses[gas_temperatures >= tlim]
+    hotgas_radii = gas_radii[gas_temperatures >= tlim]
     
     # calculate and save the total cold and hot gas masses
     subhalo_coldgasmass = np.sum(coldgas_masses)
@@ -665,9 +665,10 @@ def add_gastau(Config):
     
     N_RM = 3 # the number of snapshots to average over for running median
              # should be an odd number
+    Nsnaps_PP = Config.Nsnaps_PP
 
     keys = ['tau_medpeak', 'tau_infall']
-    gastypes = ['ColdGas', 'HotGas', 'Gas']
+    gastypes = ['ColdGas', 'HotGas', 'Gas', '']
 
     f_keys = list(f.keys())
 
@@ -684,11 +685,23 @@ def add_gastau(Config):
         infall_index = np.max(np.argwhere(group['memberlifof_flags'][:] == 1))
         infall_tau_index = np.where(group['SnapNum'][subhalo_indices] == group['SnapNum'][infall_index])[0][0]
 
+        # find infall time as the first time subhalo was a satellite for Nsnaps_PP consecutive snapshots
+        satellite_indices = group['central_flags'][subhalo_indices] == 0
+        satellite_check = [True] * Nsnaps_PP
+        satellite_indices_bool = ru.where_is_slice_in_list(satellite_indices, satellite_check)
+        if any(satellite_indices_bool):
+            # from this first time that the subhalo was a satellite, find the index of
+            # the first conescutive snapshot.
+            infall_tau_index = np.where(satellite_indices_bool)[0].min()
+        else:
+            infall_tau_index = 0
+
         for gastype in gastypes:
         
             gas_dset = group['Subhalo%sMass'%gastype][subhalo_indices]
             
             # infall time
+            infall_tau = result.copy()
             infall_tau[subhalo_indices] = return_tau(infall_tau_index, gas_dset)
 
             # running median maximum of the cold gas mass
