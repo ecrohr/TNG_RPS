@@ -165,7 +165,7 @@ def clean_subfindGRP_satellites(dic, Config):
             continue
 
         clean_keys.append(key)
-        all_keys,append(key)
+        all_keys.append(key)
 
         # was the z=0 satellite previous a backsplash galaxy?
         if subfind_flags[backsplash_prev_flag][SubfindID_z0]:
