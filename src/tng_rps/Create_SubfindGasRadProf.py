@@ -692,7 +692,7 @@ def add_gastau(Config):
         if any(satellite_indices_bool):
             # from this first time that the subhalo was a satellite, find the index of
             # the first conescutive snapshot.
-            infall_tau_index = np.where(satellite_indices_bool)[0].min()
+            infall_tau_index = np.where(satellite_indices_bool)[0].max()
         else:
             infall_tau_index = 0
 
