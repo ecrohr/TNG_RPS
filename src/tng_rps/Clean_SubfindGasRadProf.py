@@ -403,7 +403,7 @@ def create_taudict(Config, out_key=None):
     tauvals_dict = {}
     tau_keys = []
     tautypes = ['tau_medpeak', 'tau_infall']
-    gastypes = ['ColdGas', 'HotGas', 'Gas']
+    gastypes = ['ColdGas', 'HotGas', 'Gas', 'Mass']
     for tautype in tautypes:
         for gastype in gastypes:
             key = tautype + '_' + gastype

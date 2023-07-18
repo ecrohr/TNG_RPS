@@ -716,6 +716,8 @@ def add_gastau(Config):
                 medpeak_tau[subhalo_indices] = return_tau(medpeak_SGM_index, gas_dset)
 
             dsets = [medpeak_tau, infall_tau]
+            if gastype == '':
+                gastype = 'Mass'
             outkeys = [key +'_'+ gastype for key in keys]
             for dset_index, dset_key in enumerate(outkeys):
                 dset = dsets[dset_index]
