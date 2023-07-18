@@ -162,7 +162,8 @@ class Configuration(dict):
         else:
             self.taudict_keys = [self.backsplash_prev_flag,
                                  self.preprocessed_flag,
-                                 self.clean_key]
+                                 self.clean_key,
+                                 self.all_key]
                 
         return
 
