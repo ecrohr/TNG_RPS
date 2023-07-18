@@ -179,7 +179,7 @@ def clean_subfindGRP_satellites(dic, Config):
     print('central at z=0: %d'%len(centralz0_keys))
     print('backsplash_prev: %d; preprocessed: %d'%(len(backsplash_prev_keys), len(preprocessed_keys)))
     print('clean (i.e., not preprocessed): %d'%(len(clean_keys)))
-
+    print('all keys (clean + preprocessed): %d'%(len(all_keys)
     # save the keys as a dictionary and return to main function
     result  = {}
     
