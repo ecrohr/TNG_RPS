@@ -61,8 +61,6 @@ def run_clean_zooniverseGRP(Config):
     if Config.run_createtau:
         # run once without out_key to run for all subhalos
         if not Config.zooniverse_flag:
-            create_taudict(Config)
-            split_tau_gasz0(Config)
             out_keys = Config.taudict_keys
         else:
             out_keys = Config.zooniverse_keys
@@ -179,7 +177,7 @@ def clean_subfindGRP_satellites(dic, Config):
     print('central at z=0: %d'%len(centralz0_keys))
     print('backsplash_prev: %d; preprocessed: %d'%(len(backsplash_prev_keys), len(preprocessed_keys)))
     print('clean (i.e., not preprocessed): %d'%(len(clean_keys)))
-    print('all keys (clean + preprocessed): %d'%(len(all_keys)
+    print('all keys (clean + preprocessed): %d'%(len(all_keys)))
     # save the keys as a dictionary and return to main function
     result  = {}
     
