@@ -666,6 +666,7 @@ def add_gastau(Config):
     N_RM = 3 # the number of snapshots to average over for running median
              # should be an odd number
     Nsnaps_PP = Config.Nsnaps_PP
+    M200c0_lolim_PP = Config.M200c0_lolim_PP
 
     keys = ['tau_medpeak', 'tau_infall']
     gastypes = ['ColdGas', 'HotGas', 'Gas', '']
@@ -685,16 +686,21 @@ def add_gastau(Config):
         infall_index = np.max(np.argwhere(group['memberlifof_flags'][:] == 1))
         infall_tau_index = np.where(group['SnapNum'][subhalo_indices] == group['SnapNum'][infall_index])[0][0]
 
-        # find infall time as the first time subhalo was a satellite for Nsnaps_PP consecutive snapshots
-        satellite_indices = group['central_flags'][subhalo_indices] == 0
-        satellite_check = [True] * Nsnaps_PP
-        satellite_indices_bool = ru.where_is_slice_in_list(satellite_indices, satellite_check)
-        if any(satellite_indices_bool):
-            # from this first time that the subhalo was a satellite, find the index of
-            # the first conescutive snapshot.
-            infall_tau_index = np.where(satellite_indices_bool)[0].max()
-        else:
-            infall_tau_index = 0
+        # for TNG-Cluster galaxies, allow for infall time to be into another host
+        if Config.TNGCluster_flag:
+            # find infall time as the first time subhalo was a satellite for Nsnaps_PP consecutive snapshots
+            satellite_indices = ((group['central_flags'][subhalo_indices] == 0) &
+                                 (group['HostGroup_M_Crit200'][subhalo_indices] >= M200c0_lolim_PP))
+
+            satellite_check = [True] * Nsnaps_PP
+            satellite_indices_bool = ru.where_is_slice_in_list(satellite_check, satellite_indices)
+
+            if any(satellite_indices_bool):
+                # from this first time that the subhalo was a satellite, find the index of
+                # the first conescutive snapshot.
+                infall_tau_index = np.where(satellite_indices_bool)[0].max()
+            else:
+                infall_tau_index = 0
 
         for gastype in gastypes:
         
@@ -702,6 +708,8 @@ def add_gastau(Config):
             
             # infall time
             infall_tau = result.copy()
+            if infall_tau_index >= gas_dset.size:
+                print(infall_tau_index, gas_dset.size, gastype, group_index, group_key)
             infall_tau[subhalo_indices] = return_tau(infall_tau_index, gas_dset)
 
             # running median maximum of the cold gas mass

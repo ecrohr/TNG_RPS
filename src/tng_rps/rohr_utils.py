@@ -202,6 +202,51 @@ def retfig2dhist(x, y, binwidth_log, fig=None, ax=None):
     return (fig,ax)
 
 
+def return2dhiststats_dict(x, y, bin_width, percentiles=[5, 16, 50, 84, 95]):
+    """
+    in the x-y plane (assumed either both log or both linear),
+    calculate the percentiles [5, 16, 50, 84, 95] within each x bin. 
+    Returns a dictionary that contains 'bin_cents' and the percentiles
+    within each bin. 
+    Note: help came from this StackOverflow answer:
+    https://stackoverflow.com/questions/32159869/how-to-make-user-defined-functions-for-binned-statistic
+
+    Parameters
+    ----------
+    x : array
+        the log(x)-axis parameter, passed from retfig2dhsit
+    y : array
+        the log(y)-axis parameter, passed from retfig2dhist
+    bin_width : float
+        the binwidth for x to create 1dhist of y (all in log)
+        passed from retfig2dhist
+
+    Returns
+    -------
+    dict{bins, bin_cents, **percentiles}
+    """
+    
+    # create bins between the min and max of x and width bin_width
+    
+    if type(x) is list:
+        x = np.concatenate(x)
+    if type(y) is list:
+        y = np.concatenate(y)
+    
+    bin_min = floor_to_value(x.min(), bin_width)
+    bin_max = ceil_to_value(x.max(), bin_width)
+    bins = np.arange(bin_min, bin_max+bin_width*1.0e-3, bin_width)
+    bin_cents = bins[1:] - bin_width/2.0
+    result = {}
+    result['bin_cents'] = bin_cents
+    result['bins'] = bins
+    for percentile in percentiles:
+        result[percentile] = stats.binned_statistic(x, y, statistic=lambda y: np.percentile(y, percentile), bins=bins)[0]
+        
+    return result
+
+
+
 def return2dhiststats(x, y, bin_width):
     """
     
