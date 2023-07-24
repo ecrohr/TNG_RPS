@@ -442,10 +442,11 @@ def create_taudict(Config, out_key=None):
     
     # begin loop over subhalos
     for group_index, group_key in enumerate(result_keys):
-    
+        """
         ### currently a bug affects only one branch... ignore for now
         if group_key == '04707799':
             continue
+        """
 
         group = result[group_key]
 
@@ -578,7 +579,7 @@ def create_taudict(Config, out_key=None):
     return tauresult
 
 
-def split_tau_gasz0(Config, split_key='SubhaloHotGasMass_z0', out_key=None):
+def split_tau_gasz0(Config, split_key='SubhaloGasMass_z0', out_key=None):
     """
     Split the tau catalog into two samples: those with cold gas 
     at z=0, and those without 
