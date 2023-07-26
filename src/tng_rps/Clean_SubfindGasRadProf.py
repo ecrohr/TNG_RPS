@@ -613,8 +613,8 @@ def split_tau_gasz0(Config, split_key='SubhaloGasMass_z0', out_key=None):
     group = tau_dict['Group']
 
     # manually check either whether the there is no gas at z=0 or if tau100 has already been reached.
-    mask = np.logical_or(group[split_key][:] == 0., np.logical_and(group['CosmicTime_tau_infall_HotGas100'][:] <= 13.7,
-                                                                   group['CosmicTime_tau_infall_HotGas100'][:] > 0.))
+    mask = np.logical_or(group[split_key][:] == 0., np.logical_and(group['CosmicTime_tau_infall_Gas100'][:] <= 13.7,
+                                                                   group['CosmicTime_tau_infall_Gas100'][:] > 0.))
 
     if Config.zooniverse_flag:
         mask = np.logical_or(group['SubhaloColdGasMass_z0'][:] == 0., group['CosmicTime_tau_RPS_tot100'][:] <= 13.7)
@@ -627,6 +627,12 @@ def split_tau_gasz0(Config, split_key='SubhaloGasMass_z0', out_key=None):
 
     fname_gas = fname[:-5] + '_gasz0.hdf5'
     fname_nogas = fname[:-5] + '_nogasz0.hdf5'
+    
+    # also make a symbolic link for all to maintain conventions
+    fname_tot = fname[:-5] + '_tot.hdf5'
+    if os.path.exists(outdirec + fname_tot):
+        os.system('rm %s'%(outdirec + fname_tot))
+    os.system('ln -s %s %s'%(outdirec + fname, outdirec + fname_tot))
 
     tau_fnames = [fname_gas, fname_nogas]
     results = [result_gas, result_nogas]
