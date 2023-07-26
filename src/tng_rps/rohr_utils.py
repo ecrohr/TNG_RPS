@@ -153,7 +153,7 @@ def multiline(xs, ys, c, ax=None, **kwargs):
     lc.set_array(np.asarray(c))
 
     # add lines to axes and rescale 
-    #    Note: adding a collection doesn't autoscalee xlim/ylim
+    #    Note: adding a collection doesn't autoscale xlim/ylim
     ax.add_collection(lc)
     #ax.autoscale()
     return lc
