@@ -155,20 +155,36 @@ def clean_subfindGRP_satellites(dic, Config):
         if (subfind_flags[central_z0_flag][SubfindID_z0] == 1):
             centralz0_keys.append(key)
             continue
-            
-        # pre-processed? if not then considered clean
-        if subfind_flags[preprocessed_flag][SubfindID_z0]:
-            preprocessed_keys.append(key)
-            all_keys.append(key)
-            continue
 
-        clean_keys.append(key)
+        # the subhalo meets criteria to be considered in further analysis
         all_keys.append(key)
 
-        # was the z=0 satellite previous a backsplash galaxy?
-        if subfind_flags[backsplash_prev_flag][SubfindID_z0]:
-            backsplash_prev_keys.append(key)
+        # for the zooniverse project, conisder backsplash_prev clean and separate from pre-processed:
+        if Config.zooinverse_flag:
+            if subfind_flags[preprocessed_flag][SubfindID_z0]:
+                preprocessed_keys.append(key)
+            else:
+                clean_keys.append(key)
 
+                # clean keys could also include backsplash_prev
+                if subfind_flags[backsplash_prev_flag][SubfindID_z0]:
+                    backsplash_prev_keys.append(key)
+
+        else:
+            # in general, consider the following groups all separately
+            # consider backsplash galaxies together, regardless if they 
+            # are backsplashes of their z=0 or a pre-processing host
+            if subfind_flags[backsplash_prev_flag][SubfindID_z0]:
+                backsplash_prev_keys.append(key)
+                continue
+
+            if subfind_flags[preprocessed_flag][SubfindID_z0]:
+                preprocessed_keys.append(key)
+                continue
+
+            # not a backsplash or a pre-processed galaxy, so consider clean
+            clean_keys.append(key)
+    
     # end loop over the branches
 
     print('satellite branches not reaching z=0: %d'%(len(nonz0_keys)))
@@ -176,8 +192,8 @@ def clean_subfindGRP_satellites(dic, Config):
         print('not inspected since %d: %d'%(snap_first, len(beforesnapfirst_keys)))
     print('central at z=0: %d'%len(centralz0_keys))
     print('backsplash_prev: %d; preprocessed: %d'%(len(backsplash_prev_keys), len(preprocessed_keys)))
-    print('clean (i.e., not preprocessed): %d'%(len(clean_keys)))
-    print('all keys (clean + preprocessed): %d'%(len(all_keys)))
+    print('clean: %d'%(len(clean_keys)))
+    print('all keys (clean + preprocessed + backsplash_prev): %d'%(len(all_keys)))
     # save the keys as a dictionary and return to main function
     result  = {}
     
