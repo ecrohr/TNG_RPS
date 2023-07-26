@@ -286,7 +286,7 @@ def postprocess_flags(subfindIDs, Config):
         # first, find the first time that the subhalo spent at least Nsnaps_PP in a massive host
         satellite_indices = ~central & host_m200c
         satellite_check = [True] * Nsnaps_PP
-        satellite_indices_bool = ru.where_is_slice_in_list(satellite_indices, satellite_check)
+        satellite_indices_bool = ru.where_is_slice_in_list(satellite_check, satellite_indices)
         if any(satellite_indices_bool):
             # from this first time that the subhalo was a satellite, find the index of
             # the last conescutive snapshot.
