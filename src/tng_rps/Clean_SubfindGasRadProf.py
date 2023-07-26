@@ -160,7 +160,7 @@ def clean_subfindGRP_satellites(dic, Config):
         all_keys.append(key)
 
         # for the zooniverse project, conisder backsplash_prev clean and separate from pre-processed:
-        if Config.zooinverse_flag:
+        if Config.zooniverse_flag:
             if subfind_flags[preprocessed_flag][SubfindID_z0]:
                 preprocessed_keys.append(key)
             else:
