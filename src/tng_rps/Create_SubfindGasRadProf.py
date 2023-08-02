@@ -634,6 +634,8 @@ def add_Lxmaps(Config):
         Lx_all = f[Lx_key][:]
 
     for key in f.keys():
+
+        print('add_Lxmap: Working on %s.'%key)
         group = f[key]
 
         haloID = group['HostSubhaloGrNr'][z0_index]
