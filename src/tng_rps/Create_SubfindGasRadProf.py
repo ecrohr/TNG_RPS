@@ -16,6 +16,8 @@ import os
 import glob
 import multiprocessing as mp
 from functools import partial
+from tenet.tenet.util import sphMap
+from scipy.ndimage import gaussian_filter
 
 scalar_keys = ['SubhaloColdGasMass', 'SubhaloGasMass', 'SubhaloHotGasMass']
 threed_keys = ['radii', 'vol_shells',
@@ -103,7 +105,11 @@ def run_postprocessing(Config):
         # quenching times require the appropriate catalogs
         if not Config.TNGCluster_flag:
             add_quenchtimes(Config)
-            
+
+    # only for TNG-Cluster centrals
+    elif Config.TNGCluster_flag:
+        add_Lxmaps(Config)
+
     # if the tracers have already been calculated
     if Config.tracers_flag:
         add_tracers(Config)
@@ -589,6 +595,120 @@ def add_Nperipass(Config, mindist_phys=1000.0, mindist_norm=2.0):
             dataset[:] = dset
 
         
+    f.close()
+
+    return 
+
+
+def add_Lxmaps(Config):
+    """
+    For TNGCluster centrals, add the soft x-ray maps in 3 projections.
+    The x-ray luminosities are computed using the APEC lookup tables, 
+    following the methods of Truong+21, Nelson+23. In addition to the 
+    three projections of the maps, we also save smoothed versions of the maps.
+    """
+
+    f = h5py.File(Config.outdirec+Config.outfname, 'a')
+
+    # load basic simulation parameters
+    sim = Config.sim
+    basePath = Config.basePath
+    z0_index = 0
+    snapNum = Config.SnapNums[z0_index]
+    a = Config.Times[z0_index]
+    boxsize = Config.BoxSizes[z0_index]
+    h = Config.h
+    gas_ptn = Config.gas_ptn
+
+    Lx_key = 'xray_lum_0.5-2.0kev'
+
+    gas_fields = ['Masses', 'Coordinates', 'Density']
+
+    gas_hsml_fact = 1.5
+    pixel_size = 5. # kpc
+    smoothing_scale = 300. / pixel_size # keep constant at 200 or 500 kpc
+
+    # load the soft x-ray luminosities
+    Lx_direc = '/vera/ptmp/gc/dnelson/sims.TNG/L680n8192TNG/data.files/cache/'
+    Lx_fname = 'cached_gas_xray_lum_0.5-2.0kev_99.hdf5'
+    with h5py.File(Lx_direc + Lx_fname, 'r') as f:
+        Lx_all = f[Lx_key][:]
+
+    for key in f.keys():
+        group = f[key]
+
+        haloID = group['HostSubhaloGrNr'][z0_index]
+
+        # load all gas cells,
+        total_gas_cells = il.snapshot.loadOriginalZoom(basePath, snapNum, haloID, gas_ptn, fields=gas_fields)
+        total_gas_cells[Lx_key] = np.zeros(total_gas_cells['count'], dtype=float) - 1.
+
+        ### find the relevant indices to load the Lx dataset
+        # load fuzz length, compute offset, call loadSubset                                                                     
+        subset = il.snapshot.getSnapOffsets(basePath, snapNum, haloID, "Group")
+
+        # identify original halo ID and corresponding index
+        halo = il.snapshot.loadSingle(basePath, snapNum, haloID=haloID)
+        assert 'GroupOrigHaloID' in halo, 'Error: loadOriginalZoom() only for the TNG-Cluster simulation.'
+        orig_index = np.where(subset['HaloIDs'] == halo['GroupOrigHaloID'])[0][0]
+
+        # (1) load all FoF particles/cells
+        length_FoF = subset['GroupsTotalLengthByType'][orig_index, gas_ptn]
+        start_FoF = subset['GroupsSnapOffsetByType'][orig_index, gas_ptn]
+        total_gas_cells[Lx_key][:length_FoF] = Lx_all[start_FoF:start_FoF+length_FoF]
+
+        # (2) load all non-FoF particles/cells
+        length_fuzz = subset['OuterFuzzTotalLengthByType'][orig_index, gas_ptn]
+        start_fuzz = subset['OuterFuzzSnapOffsetByType'][orig_index, gas_ptn]
+        total_gas_cells[Lx_key][length_FoF:] = Lx_all[start_fuzz:start_fuzz+length_fuzz]
+
+        assert total_gas_cells[Lx_key].min() >= 0, 'Error: not all Lx array indices were set.'
+
+        # convert units
+        Masses = total_gas_cells['Masses'] * 1.0e10 / h
+        Coordinates = total_gas_cells['Coordinates'] * a / h
+        Densities = total_gas_cells['Density'] * 1.0e10 / h / (a / h)**3
+        Sizes = (Masses / (Densities * 4./3. * np.pi))**(1./3.) * gas_hsml_fact
+        Lxsoft = total_gas_cells[Lx_key]
+
+        R200c = group['HostGroup_R_Crit200'][z0_index]
+        halo_pos = group['HostSubhaloPos'][z0_index]
+
+        axes_list = [[0,1],
+                     [0,2],
+                     [1,2]]
+
+        labels_list = ['xy',
+                       'xz',
+                       'yz']
+
+        for axes_i, axes in enumerate(axes_list):
+            label = labels_list[axes_i]
+
+            pos = Coordinates[:,axes]
+            hsml = Sizes
+            mass = Lxsoft
+            quant = None
+            boxSizeImg = [3.*R200c, 3.*R200c] # kpc
+            boxSizeSim = [boxsize, boxsize, boxsize]
+            boxCen = halo_pos[axes]    
+            nPixels = [int(boxSizeImg[0] / pixel_size), int(boxSizeImg[1] / pixel_size)]
+            ndims = 3
+
+            Lx_map = sphMap.sphMap(pos, hsml, mass, quant, [0,1], boxSizeImg, boxSizeSim, boxCen, nPixels, ndims, colDens=True)
+            Lx_map_smooth = gaussian_filter(Lx_map, smoothing_scale, mode='constant')
+
+            Lx_map_key = Lx_key + '_' + label
+            Lx_map_smooth_key = Lx_map_key + '_smooth'
+
+            dsets = [Lx_map, Lx_map_smooth]
+            dset_keys = [Lx_map_key, Lx_map_smooth_key]
+            for dset_index, dset_key in enumerate(dset_keys):
+                dset = dsets[dset_index]
+                dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+                dataset[:] = dset
+
+    # finish loop over keys
     f.close()
 
     return 
