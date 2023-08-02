@@ -609,7 +609,8 @@ def add_Lxmaps(Config):
     """
 
     f = h5py.File(Config.outdirec+Config.outfname, 'a')
-
+    f_keys = np.array(list(f.keys()))
+    
     # load basic simulation parameters
     basePath = Config.basePath
     z0_index = 0
@@ -625,15 +626,15 @@ def add_Lxmaps(Config):
 
     gas_hsml_fact = 1.5
     pixel_size = 5. # kpc
-    smoothing_scale = 300. / pixel_size # keep constant at 200 or 500 kpc
+    smoothing_scale = 300. / pixel_size # keep constant at 300 kpc
 
     # load the soft x-ray luminosities
     Lx_direc = '/vera/ptmp/gc/dnelson/sims.TNG/L680n8192TNG/data.files/cache/'
     Lx_fname = 'cached_gas_xray_lum_0.5-2.0kev_99.hdf5'
-    with h5py.File(Lx_direc + Lx_fname, 'r') as f:
-        Lx_all = f[Lx_key][:]
+    with h5py.File(Lx_direc + Lx_fname, 'r') as Lx_f:
+        Lx_all = Lx_f[Lx_key][:]
 
-    for key in f.keys():
+    for key in f_keys:
 
         print('add_Lxmap: Working on %s.'%key)
         group = f[key]
