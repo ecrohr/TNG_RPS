@@ -611,7 +611,6 @@ def add_Lxmaps(Config):
     f = h5py.File(Config.outdirec+Config.outfname, 'a')
 
     # load basic simulation parameters
-    sim = Config.sim
     basePath = Config.basePath
     z0_index = 0
     snapNum = Config.SnapNums[z0_index]
