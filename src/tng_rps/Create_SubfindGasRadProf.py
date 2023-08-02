@@ -16,7 +16,7 @@ import os
 import glob
 import multiprocessing as mp
 from functools import partial
-from tenet.tenet.util import sphMap
+from tenet.util import sphMap
 from scipy.ndimage import gaussian_filter
 
 scalar_keys = ['SubhaloColdGasMass', 'SubhaloGasMass', 'SubhaloHotGasMass']
