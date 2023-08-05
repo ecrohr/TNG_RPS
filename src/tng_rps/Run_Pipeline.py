@@ -47,7 +47,7 @@ class Configuration(dict):
 
     def add_vals(self):
         """ Add additional attributes """
-        
+
         self = argparse_Config(self)
         
         self.basePath = ru.loadbasePath(self.sim)
@@ -180,18 +180,24 @@ def argparse_Config(Config):
     parser.add_argument('--sim', default=None, type=str,
                         help='which simulation to use for the analysis.')
     
-    parser.add_argument('--TNGCluster-flag', default=None, type=bool,
+    parser.add_argument('--TNGCluster-flag', default=None, type=str2bool,
+                        action=argparse.BooleanOptionalAction,
                         help='analysis for TNG-Cluster')
-    parser.add_argument('--zooniverse-flag', default=None, type=bool,
+    parser.add_argument('--zooniverse-flag', default=None, type=str2bool,
+                        action=argparse.BooleanOptionalAction,
                         help='analysis using CJF zooniverse results')
-    parser.add_argument('--centrals-flag', default=None, type=bool,
+    parser.add_argument('--centrals-flag', default=None, type=str2bool,
+                        action=argparse.BooleanOptionalAction,
                         help='analysis for central galaxies')
-    parser.add_argument('--tracers-flag', default=None, type=bool,
+    parser.add_argument('--tracers-flag', default=None, type=str2bool,
+                        action=argparse.BooleanOptionalAction,
                         help='use tracer post-processing catalogs in analysis.')
-    parser.add_argument('--allsubhalos-flag', default=None, type=bool,
+    parser.add_argument('--allsubhalos-flag', default=None, type=str2bool,
+                        action=argparse.BooleanOptionalAction,
                         help='use all subhalos in the simulation.')
     # mp flags
-    parser.add_argument('--mp-flag', default=None, type=bool,
+    parser.add_argument('--mp-flag', default=None, type=str2bool,
+                        action=argparse.BooleanOptionalAction,
                         help='use multiprocessing for analysis.')
     parser.add_argument('--Nmpcores', default=None, type=int,
                         help='Number of cores to use for multiprocessing tasks.')
@@ -211,31 +217,44 @@ def argparse_Config(Config):
                         help='minimum score to be considered a jellyfish galaxy')
 
     # which types of analysis should be run
-    parser.add_argument('--SubfindIndices', default=None, type=bool,
+    parser.add_argument('--SubfindIndices', default=None, type=str2bool,
+                        
                         help='flag to run Create_SubfindIndices.py.')
-    parser.add_argument('--SubfindGasRadProf', default=None, type=bool,
+    parser.add_argument('--SubfindGasRadProf', default=None, type=str2bool,
+                        
                         help='flag to run Create_SubfindGasRadProf.py.')
-    parser.add_argument('--run-SGRP', default=None, type=bool,
+    parser.add_argument('--run-SGRP', default=None, type=str2bool,
+                        
                         help='flag to run the main analysis in SubfindGasRadProf.py.')
-    parser.add_argument('--run-SGRP-PP', default=None, type=bool,
+    parser.add_argument('--run-SGRP-PP', default=None, type=str2bool,
+                        
                         help='flag to run the post processing of SGRP.')
-    parser.add_argument('--SubfindSnapshot', default=None, type=bool,
+    parser.add_argument('--SubfindSnapshot', default=None, type=str2bool,
+                        
                         help='flag to run Create_SubfindSnapshot_Flags.py.')
-    parser.add_argument('--run-SS', default=None, type=bool,
+    parser.add_argument('--run-SS', default=None, type=str2bool,
+                        
                         help='flag to run main analysis in Create_SS_Flags.py.')
-    parser.add_argument('--run-SS-PP', default=None, type=bool,
+    parser.add_argument('--run-SS-PP', default=None, type=str2bool,
+                        
                         help='flag to run post-processing of Create_SS_Flags.py.')
-    parser.add_argument('--TracerTracks', default=None, type=bool,
+    parser.add_argument('--TracerTracks', default=None, type=str2bool,
+                        
                         help='flag to run Create_TracerTracks.py.')
-    parser.add_argument('--track-tracers', default=None, type=bool,
+    parser.add_argument('--track-tracers', default=None, type=str2bool,
+                        
                         help='flag to run track_tracers().')
-    parser.add_argument('--find-tracers', default=None, type=bool,
+    parser.add_argument('--find-tracers', default=None, type=str2bool,
+                        
                         help='flag to run find_unmatched_tracers().')
-    parser.add_argument('--CleanSubfindGasRadProf', default=None, type=bool,
+    parser.add_argument('--CleanSubfindGasRadProf', default=None, type=str2bool,
+                        
                         help='flag to run Clean_SubfindGasRadProf.py.')
-    parser.add_argument('--run-cleanSGRP', default=None, type=bool,
+    parser.add_argument('--run-cleanSGRP', default=None, type=str2bool,
+                        
                         help='flag to run clean_subfindGRP().')
-    parser.add_argument('--run-createtau', default=None, type=bool,
+    parser.add_argument('--run-createtau', default=None, type=str2bool,
+                        
                         help='flag to run create_taudict().')
 
     args = vars(parser.parse_args())
@@ -435,11 +454,27 @@ def initialize_zooniverseindices(Config):
     
     return snapnums, subfindIDs
 
+
+def str2bool(v):
+    """
+    functionality for bool arguments to be passed via command line.
+    """
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
     
 fname = 'config.yaml'
 config_dict = Configuration.from_yaml(fname)
 Config = Configuration(config_dict)
 Config.add_vals()
+
+print(Config)
 
 # create the indices
 if Config.SubfindIndices:
