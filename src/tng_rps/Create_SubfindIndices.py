@@ -121,8 +121,8 @@ def return_subfindindices(snap, subfindID, Config):
     # main subhalo of its z=0 FoF Host -- then tabulate various properties
     sub_fields  = ['SnapNum', 'SubfindID', 'SubhaloMassInRadType', 'GroupFirstSub', 'SubhaloParent',
                    'SubhaloHalfmassRadType', 'SubhaloPos', 'SubhaloGrNr', 'SubhaloSFR',
-                   'SubhaloSFRinRad', 'SubhaloMass', 'SubhaloBHMdot', 'SubhaloBHMass',
-                   'SubhaloVel']
+                   'SubhaloSFRinRad', 'SubhaloMass', 'SubhaloMassType', 
+                   'SubhaloBHMdot', 'SubhaloBHMass', 'SubhaloVel']
     
     host_fields = ['SnapNum', 'SubfindID', 'SubhaloMassInRadType',
                    'SubhaloHalfmassRadType', 'SubhaloPos', 'SubhaloGrNr',
