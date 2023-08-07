@@ -83,7 +83,7 @@ def return_subfindindices(snap, subfindID, Config):
                    'SubhaloSFR', 'SubhaloSFRinRad',
                    'SubhaloMass', 'SubhaloDMMass',
                    'SubhaloPos', 'SubhaloBHMdot',
-                   'SubhaloBHMass',
+                   'SubhaloBHMass', 'SubhaloSpin',
                    'SubhaloVel', 'HostSubhaloVel',
                    'HostSubhaloPos', 'HostSubfindID',
                    'HostSubhalo_Mstar_Rgal',
@@ -101,7 +101,7 @@ def return_subfindindices(snap, subfindID, Config):
                 'SubhaloParent',
                 'HostSubfindID', 'HostSubhaloGrNr']
 
-    threed_keys = ['SubhaloPos', 'SubhaloVel',
+    threed_keys = ['SubhaloPos', 'SubhaloVel', 'SubhaloSpin',
                    'HostSubhaloVel', 'HostSubhaloPos']
 
     for key in result_keys:
@@ -122,7 +122,7 @@ def return_subfindindices(snap, subfindID, Config):
     sub_fields  = ['SnapNum', 'SubfindID', 'SubhaloMassInRadType', 'GroupFirstSub', 'SubhaloParent',
                    'SubhaloHalfmassRadType', 'SubhaloPos', 'SubhaloGrNr', 'SubhaloSFR',
                    'SubhaloSFRinRad', 'SubhaloMass', 'SubhaloMassType', 
-                   'SubhaloBHMdot', 'SubhaloBHMass', 'SubhaloVel']
+                   'SubhaloBHMdot', 'SubhaloBHMass', 'SubhaloSpin', 'SubhaloVel']
     
     host_fields = ['SnapNum', 'SubfindID', 'SubhaloMassInRadType',
                    'SubhaloHalfmassRadType', 'SubhaloPos', 'SubhaloGrNr',
@@ -169,6 +169,7 @@ def return_subfindindices(snap, subfindID, Config):
              sub_tree['SubhaloMassType'][sub_indices,dm_ptn] * 1.0e10 / h,
              SubPos, sub_tree['SubhaloBHMdot'][sub_indices] * 10.22,
              sub_tree['SubhaloBHMass'][sub_indices] * 1.0e10 / h,
+             sub_tree['SubhaloSpin'][sub_indices] / h,
              sub_tree['SubhaloVel'][sub_indices], host_tree['SubhaloVel'][host_indices],
              HostPos, host_tree['SubfindID'][host_indices],
              host_tree['SubhaloMassInRadType'][host_indices,star_ptn] * 1.0e10 / h,
