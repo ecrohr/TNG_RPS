@@ -78,7 +78,7 @@ def clean_subfindGRP(dic, Config):
     Wrapper function for cleaning branches based on either
     satellites or centrals of interest.
     """
-
+    
     if Config.centrals_flag:
         return clean_subfindGRP_centrals(dic, Config)
     else:
