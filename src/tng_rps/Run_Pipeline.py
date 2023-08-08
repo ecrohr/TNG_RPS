@@ -409,6 +409,10 @@ def initialize_TNGCluster_subfindindices(Config):
     
     satellite_subhaloIDs = subhaloIDs[~isin]
     central_subhaloIDs = GroupFirstSub 
+
+    if Config.centrals_flag:
+        snaps = np.ones(central_subhaloIDs.size, dtype=central_subfindIDs.dtype) * max_snap
+        return snaps, central_subhaloIDs
     
     lowratio_subfindIDs = []
     for halo_i, haloID in enumerate(haloIDs): 
