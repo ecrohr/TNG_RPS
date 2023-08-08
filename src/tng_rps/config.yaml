@@ -40,6 +40,7 @@ run_createtau: False
 zooniverse_snapfirst: 67 # require a zooniverse inspection (or jellyfish classification) at or after this snap
 Nsnaps_PP: 3 # number of consecutive snaps to be considered pre-processed
 M200c0_lolim_PP: 1.e+12 # minimum halo mass of a pre-processing host
+massratio_frac: 0.1 # the maximum mass ratio M_star^sat / M_star^host < massratio_frac for TNG-Cluster satellites
 
 # subfind flags
 in_tree_key: 'in_tree'
