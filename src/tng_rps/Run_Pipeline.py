@@ -135,6 +135,8 @@ class Configuration(dict):
         self.SubfindIDs = SubfindIDs
         self.SnapNums_SubfindIDs = SnapNums_SubfindIDs
 
+        print('There are %d subhalos of interest.'%SubfindIDs.size)
+        
         if self.tracers_flag:
             if self.zooniverse_flag:
                 self.tracer_outdirec = '../Output/%s_tracers_zooniverse/'%(self.sim)
