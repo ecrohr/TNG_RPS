@@ -383,9 +383,10 @@ def initialize_TNGCluster_subfindindices(Config):
     h = Config.h
     Mstar_lolim = Config.Mstar_lolim
     centrals_flag = Config.centrals_flag
+    massratio_frac = Config.massratio_frac
     
     # load all halos and find the primary zoom target IDs
-    halo_fields = ['Group_M_Crit200', 'GroupFirstSub', 'GroupPrimaryZoomTarget']
+    halo_fields = ['GroupFirstSub', 'GroupPrimaryZoomTarget']
     halos = il.groupcat.loadHalos(basePath, max_snap, fields=halo_fields)
     haloIDs = np.where(halos['GroupPrimaryZoomTarget'])[0]
     GroupFirstSub = halos['GroupFirstSub'][haloIDs]
@@ -395,7 +396,8 @@ def initialize_TNGCluster_subfindindices(Config):
     # load all subhalos and find which ones:
     # 1) are z=0 satellites of primary zooms
     # 2) have Mstar(z=0) > Mstar_lolim
-    subhalo_fields = ['SubhaloGrNr', 'SubhaloMassInRadType']
+    # 3) have M_star^sat / M_star^host (z=0) < massratio_frac
+    subhalo_fields = ['SubhaloGrNr', 'SubhaloMassInRadType', 'SubhaloFlag']
     subhalos = il.groupcat.loadSubhalos(basePath, max_snap, fields=subhalo_fields)
     subhalo_indices_massive = subhalos['SubhaloMassInRadType'][:,star_ptn] * 1.0e10 / h > Mstar_lolim
     
@@ -405,14 +407,24 @@ def initialize_TNGCluster_subfindindices(Config):
     subhaloIDs = np.where(subhalo_indices_massive)[0][subhalo_match_indices]
     isin = np.isin(subhaloIDs, GroupFirstSub, assume_unique=True)
     
-    if centrals_flag:
-        subfindIDs = subhaloIDs[isin]
-    else:
-        subfindIDs = subhaloIDs[~isin]
-        
-    snaps = np.ones(subfindIDs.size, dtype=subfindIDs.dtype) * max_snap
+    satellite_subhaloIDs = subhaloIDs[~isin]
+    central_subhaloIDs = GroupFirstSub 
     
-    return snaps, subfindIDs
+    lowratio_subfindIDs = []
+    for halo_i, haloID in enumerate(haloIDs): 
+
+        satellite_indices = subhalos['SubhaloGrNr'][satellite_subhaloIDs] == haloID
+        satelliteIDs = satellite_subhaloIDs[satellite_indices]
+        Mstar_host = subhalos['SubhaloMassInRadType'][central_subhaloIDs[halo_i],star_ptn]
+        Mstar_sats = subhalos['SubhaloMassInRadType'][satelliteIDs,star_ptn]
+        lowratio_indices = Mstar_sats / Mstar_host < massratio_frac
+
+        lowratio_subfindIDs.append(satelliteIDs[lowratio_indices])
+
+    lowratio_subfindIDs = np.concatenate(lowratio_subfindIDs)
+    snaps = np.ones(lowratio_subfindIDs.size, dtype=lowratio_subfindIDs.dtype) * max_snap
+
+    return snaps, lowratio_subfindIDs
 
     
 def initialize_zooniverseindices(Config):
