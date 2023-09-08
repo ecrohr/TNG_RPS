@@ -169,7 +169,7 @@ def return_subfindindices(snap, subfindID, Config):
 
     dsets = [sub_tree['SubfindID'][sub_indices],
              sub_tree['SubhaloMassInRadType'][sub_indices,star_ptn] * 1.0e10 / h,
-             sub_tree['SubhaloStellarPhotometrics'][sub_indices,:],
+             sub_tree['SubhaloStellarPhotometrics'][sub_indices],
              sub_tree['SubhaloHalfmassRadType'][sub_indices,star_ptn] * a / h,
              sub_tree['SubhaloGrNr'][sub_indices], sub_tree['GroupFirstSub'][sub_indices],
              sub_tree['SubhaloParent'][sub_indices],
@@ -189,7 +189,7 @@ def return_subfindindices(snap, subfindID, Config):
              hostcentricdistances, hostcentricdistances_norm]
     
     for i, key in enumerate(result_keys):
-        if key in threed_keys or eightd_keys:
+        if (key in threed_keys) or (key in eightd_keys):
             result[return_key][key][snap_indices,:] = dsets[i]
         else:
             result[return_key][key][snap_indices] = dsets[i]
