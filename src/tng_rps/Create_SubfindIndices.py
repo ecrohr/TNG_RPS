@@ -77,6 +77,7 @@ def return_subfindindices(snap, subfindID, Config):
 
     result_keys = ['SubfindID',
                    'Subhalo_Mstar_Rgal',
+                   'SubhaloStellarPhotometrics',
                    'Subhalo_Rgal',
                    'SubhaloGrNr', 'SubGroupFirstSub',
                    'SubhaloParent',
@@ -103,14 +104,18 @@ def return_subfindindices(snap, subfindID, Config):
 
     threed_keys = ['SubhaloPos', 'SubhaloVel', 'SubhaloSpin',
                    'HostSubhaloVel', 'HostSubhaloPos']
+    
+    eightd_keys = ['SubhaloStellarPhotometrics']
 
     for key in result_keys:
         if key in int_keys:
-            result[return_key][key] = np.ones(SnapNums.size, dtype=int) * -1
+            result[return_key][key] = np.zeros(SnapNums.size, dtype=int) - 1
         elif key in threed_keys:
-            result[return_key][key] = np.ones((SnapNums.size, 3), dtype=float) * -1
+            result[return_key][key] = np.zeros((SnapNums.size, 3), dtype=float) - 1
+        elif key in eightd_keys:
+            result[return_key][key] = np.zeros((SnapNums.size, 8), dtype=float) - 1
         else:
-            result[return_key][key] = np.ones(SnapNums.size, dtype=float) * -1.
+            result[return_key][key] = np.zeros(SnapNums.size, dtype=float) - 1
 
     result[return_key]['SnapNum'] = SnapNums
 
@@ -119,7 +124,7 @@ def return_subfindindices(snap, subfindID, Config):
     
     # now load the whole main progenitor branches of the subhalo and the
     # main subhalo of its z=0 FoF Host -- then tabulate various properties
-    sub_fields  = ['SnapNum', 'SubfindID', 'SubhaloMassInRadType', 'GroupFirstSub', 'SubhaloParent',
+    sub_fields  = ['SnapNum', 'SubfindID', 'SubhaloMassInRadType', 'SubhaloStellarPhotometrics', 'GroupFirstSub', 'SubhaloParent',
                    'SubhaloHalfmassRadType', 'SubhaloPos', 'SubhaloGrNr', 'SubhaloSFR',
                    'SubhaloSFRinRad', 'SubhaloMass', 'SubhaloMassType', 
                    'SubhaloBHMdot', 'SubhaloBHMass', 'SubhaloSpin', 'SubhaloVel']
@@ -164,6 +169,7 @@ def return_subfindindices(snap, subfindID, Config):
 
     dsets = [sub_tree['SubfindID'][sub_indices],
              sub_tree['SubhaloMassInRadType'][sub_indices,star_ptn] * 1.0e10 / h,
+             sub_tree['SubhaloStellarPhotometrics'][sub_indices,:],
              sub_tree['SubhaloHalfmassRadType'][sub_indices,star_ptn] * a / h,
              sub_tree['SubhaloGrNr'][sub_indices], sub_tree['GroupFirstSub'][sub_indices],
              sub_tree['SubhaloParent'][sub_indices],
@@ -183,7 +189,7 @@ def return_subfindindices(snap, subfindID, Config):
              hostcentricdistances, hostcentricdistances_norm]
     
     for i, key in enumerate(result_keys):
-        if key in threed_keys:
+        if key in threed_keys or eightd_keys:
             result[return_key][key][snap_indices,:] = dsets[i]
         else:
             result[return_key][key][snap_indices] = dsets[i]
