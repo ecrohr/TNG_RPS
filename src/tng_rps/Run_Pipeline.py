@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# !/usr/bin/env python3
 
 # wrapper script to run all analysis related to tracking subhalos across time.
 
@@ -48,7 +48,7 @@ class Configuration(dict):
     def add_vals(self):
         """ Add additional attributes """
 
-        self = argparse_Config(self)
+        #self = argparse_Config(self)
         
         self.basePath = ru.loadbasePath(self.sim)
         self.outdirec, self.outfname = return_outdirec_outfname(self)
@@ -262,7 +262,11 @@ def return_outdirec_outfname(Config):
         outfname = 'all_subfind_%s_branches.hdf5'%(Config.sim)
     else:
         outfname = 'subfind_%s_branches.hdf5'%(Config.sim)
-        
+
+    # if only caring about z=0 data, then name accordingly
+    if Config.max_snap == Config.min_snap == 99:
+        outfname = outfname[:-5] + '_z0.hdf5'
+    
     if (os.path.isdir(outdirec)):
         print('Directory %s exists.'%outdirec)
         if os.path.isfile(outdirec + outfname):
@@ -297,9 +301,9 @@ def return_Mstar_lolim(Config):
     elif 'TNG100' in sim:
         res = 10.**(9.5)
     elif 'TNG300' in sim:
-        res = 10.**(10)
+        res = 10.**(9)
     elif 'L680n8192TNG' in sim:
-        return 10.**(10)
+        return 10.**(9)
     else:
         raise ValueError('sim %s not recognized.'%sim)
         
@@ -399,6 +403,7 @@ def initialize_TNGCluster_subfindindices(Config):
     # 1) are z=0 satellites of primary zooms
     # 2) have Mstar(z=0) > Mstar_lolim
     # 3) have M_star^sat / M_star^host (z=0) < massratio_frac
+     # 4) have SubhaloFlag == True
     subhalo_fields = ['SubhaloGrNr', 'SubhaloMassInRadType', 'SubhaloFlag']
     subhalos = il.groupcat.loadSubhalos(basePath, max_snap, fields=subhalo_fields)
     subhalo_indices_massive = subhalos['SubhaloMassInRadType'][:,star_ptn] * 1.0e10 / h > Mstar_lolim
@@ -412,8 +417,8 @@ def initialize_TNGCluster_subfindindices(Config):
     satellite_subhaloIDs = subhaloIDs[~isin]
     central_subhaloIDs = GroupFirstSub 
 
-    if Config.centrals_flag:
-        snaps = np.ones(central_subhaloIDs.size, dtype=central_subfindIDs.dtype) * max_snap
+    if centrals_flag:
+        snaps = np.ones(central_subhaloIDs.size, dtype=central_subhaloIDs.dtype) * max_snap
         return snaps, central_subhaloIDs
     
     lowratio_subfindIDs = []
@@ -428,8 +433,9 @@ def initialize_TNGCluster_subfindindices(Config):
         lowratio_subfindIDs.append(satelliteIDs[lowratio_indices])
 
     lowratio_subfindIDs = np.concatenate(lowratio_subfindIDs)
-    snaps = np.ones(lowratio_subfindIDs.size, dtype=lowratio_subfindIDs.dtype) * max_snap
-
+    subfindIDs = np.where(subhalos['SubhaloFlag'][lowratio_subfindIDs])[0]
+    snaps = np.ones(subfindIDs.size, dtype=subfindIDs.dtype) * max_snap
+    
     return snaps, lowratio_subfindIDs
 
     
@@ -471,9 +477,7 @@ fname = 'config.yaml'
 config_dict = Configuration.from_yaml(fname)
 Config = Configuration(config_dict)
 Config.add_vals()
-
-print(Config)
-
+#
 # create the indices
 if Config.SubfindIndices:
     from Create_SubfindIndices import run_subfindindices

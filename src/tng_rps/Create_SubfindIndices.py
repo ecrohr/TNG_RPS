@@ -132,6 +132,10 @@ def return_subfindindices(snap, subfindID, Config):
     sub_tree = ru.loadMainTreeBranch(sim, snap, subfindID, fields=sub_fields,
                                     min_snap=min_snap, max_snap=max_snap, treeName=treeName)
     
+    # check that the subhalo is in the merger tree
+    if not sub_tree:
+        return
+
     # load the host_tree MPB using the GroupFirstSub from the last identified snap of the subhalo        
     host_tree = il.sublink.loadTree(basePath, sub_tree['SnapNum'][0], sub_tree['GroupFirstSub'][0],
                                     treeName=treeName, fields=host_fields, onlyMPB=True)
@@ -141,7 +145,6 @@ def return_subfindindices(snap, subfindID, Config):
                                                                    sub_tree['SnapNum'],
                                                                    host_tree['SnapNum'])
 
-    
     # calculate the host-centric distance
     a                    = Times[snap_indices]
     boxsizes             = BoxSizes[snap_indices]
