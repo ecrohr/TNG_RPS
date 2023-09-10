@@ -436,7 +436,7 @@ def initialize_TNGCluster_subfindindices(Config):
     subfindIDs = np.where(subhalos['SubhaloFlag'][lowratio_subfindIDs])[0]
     snaps = np.ones(subfindIDs.size, dtype=subfindIDs.dtype) * max_snap
     
-    return snaps, lowratio_subfindIDs
+    return snaps, subfindIDs
 
     
 def initialize_zooniverseindices(Config):

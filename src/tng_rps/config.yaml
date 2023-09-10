@@ -1,7 +1,7 @@
 sim: 'L680n8192TNG' # options are 'TNG*-*;, for 50, 100, 300 and -1, -2, -3 -4 or L680n8192TNG
 
 TNGCluster_flag: True
-mp_flag: False
+mp_flag: True
 zooniverse_flag: False
 centrals_flag: False
 tracers_flag: False
