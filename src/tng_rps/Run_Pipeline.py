@@ -433,8 +433,9 @@ def initialize_TNGCluster_subfindindices(Config):
         lowratio_subfindIDs.append(satelliteIDs[lowratio_indices])
 
     lowratio_subfindIDs = np.concatenate(lowratio_subfindIDs)
-    subfindIDs = np.where(subhalos['SubhaloFlag'][lowratio_subfindIDs])[0]
-    snaps = np.ones(subfindIDs.size, dtype=subfindIDs.dtype) * max_snap
+    subfind_indices = subhalos['SubhaloFlag'][lowratio_subfindIDs] == 1
+    subfindIDs = lowratio_subfindIDs[subfind_indices]
+    snaps = np.zeros(subfindIDs.size, dtype=subfindIDs.dtype) + max_snap
     
     return snaps, subfindIDs
 
