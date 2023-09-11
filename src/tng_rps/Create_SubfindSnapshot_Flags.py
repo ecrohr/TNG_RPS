@@ -295,7 +295,7 @@ def postprocess_flags(subfindIDs, Config):
             if end_index > 0:
                 # after this time, was the galaxy a central for at least Nsnaps_PP?
                 central_indices = central[:end_index]
-                central_check = [True]
+                central_check = [True] * Nsnaps_PP
                 if central_indices.size >= Nsnaps_PP:
                     if ru.is_slice_in_list(central_check, central_indices):
                         result[backsplash_prev_flag][subfindID] = 1

@@ -23,6 +23,8 @@ def run_subfindindices(Config):
     SnapNum = Config.SnapNums_SubfindIDs
     SubfindID = Config.SubfindIDs
 
+    print(SnapNum.size, SubfindID.size)
+
     # run return_subfindindices
     if Config.mp_flag:
         pool = mp.Pool(Config.Nmpcores) # should be 8 if running interactively
