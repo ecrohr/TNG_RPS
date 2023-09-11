@@ -1,4 +1,4 @@
-# !/usr/bin/env python3
+#!/usr/bin/env python3
 
 # wrapper script to run all analysis related to tracking subhalos across time.
 
@@ -49,13 +49,34 @@ class Configuration(dict):
         """ Add additional attributes """
 
         #self = argparse_Config(self)
+
+        self.zooniverse_keys = [self.ins_key, self.jel_key, self.non_key]
+        self.subfindsnapshot_flags = [self.in_tree_key, self.central_key,
+                                      self.in_z0_host_key, self.host_m200c_key]
+        self.subfind_flags = [self.classified_flag, self.central_z0_flag,
+                              self.backsplash_z0_flag, self.backsplash_prev_flag,
+                              self.preprocessed_flag]
+
+        self.gas_keys = [self.tot_key, self.gasz0_key, self.nogasz0_key]
+    
+        # tau dictionary keys
+        if self.centrals_flag:
+            self.taudict_keys = [self.all_key,
+                                 self.clean_key,
+                                 self.backsplash_z0_flag]
+        else:
+            self.taudict_keys = [self.backsplash_prev_flag,
+                                 self.preprocessed_flag,
+                                 self.clean_key,
+                                 self.all_key]
         
         self.basePath = ru.loadbasePath(self.sim)
-        self.outdirec, self.outfname = return_outdirec_outfname(self)
-        # for backwards compatibility
-        self.GRPfname = self.outfname
-        self.taufname = return_taufname(self)
-        
+
+        self.outdirec = '../Output/%s_subfindGRP/'%self.sim
+        GRPfname, taufname = self.return_fnames()
+        self.outfname = self.GRPfname = GRPfname
+        self.taufname = taufname
+
         self.Header = il.groupcat.loadHeader(self.basePath, self.max_snap)
         self.h = self.Header['HubbleParam']
         
@@ -148,26 +169,42 @@ class Configuration(dict):
                 os.system('mkdir %s'%self.tracer_outdirec)
             else:
                 print('Directory %s exists. Potentially overwriting files.'%self.tracer_outdirec)
-                
-        self.zooniverse_keys = [self.ins_key, self.jel_key, self.non_key]
-        self.subfindsnapshot_flags = [self.in_tree_key, self.central_key,
-                                      self.in_z0_host_key, self.host_m200c_key]
-        self.subfind_flags = [self.classified_flag, self.central_z0_flag,
-                              self.backsplash_z0_flag, self.backsplash_prev_flag,
-                              self.preprocessed_flag]
-                              
-        # tau dictionary keys
-        if self.centrals_flag:
-            self.taudict_keys = [self.all_key,
-                                 self.clean_key,
-                                 self.backsplash_z0_flag]
-        else:
-            self.taudict_keys = [self.backsplash_prev_flag,
-                                 self.preprocessed_flag,
-                                 self.clean_key,
-                                 self.all_key]
+    
                 
         return
+    
+    def return_fnames(self, subsample=None):
+        """ Determine and return the appropriate GRP and tau filenames. """
+        # input validation
+        subsamples = self.taudict_keys
+        if subsample and subsample not in subsamples:
+            raise ValueError('given subsample %s not accepted.'%subsample) 
+        
+        if self.zooniverse_flag:
+            sample = 'zooniverse'
+        elif self.centrals_flag:
+            sample = 'central_subfind'
+        elif self.allsubhalos_flag:
+            sample = 'all_subfind'
+        else:
+            sample = 'subfind'
+            
+        sim = self.sim
+        
+        GRPfname = '%s_%s_branches'%(sample, sim)
+        taufname = '%s_%s_tau'%(sample, sim)
+        if self.min_snap == self.max_snap and self.min_snap == 99:
+            GRPfname += '_z0'
+            taufname += '_z0'
+
+        if not subsample:
+            GRPfname += '.hdf5'
+            taufname += '_all.hdf5'
+        else:
+            GRPfname += '_%s.hdf5'%subsample
+            taufname += '_%s.hdf5'%subsample
+
+        return GRPfname, taufname
 
 
 def argparse_Config(Config):
@@ -266,7 +303,7 @@ def return_outdirec_outfname(Config):
     # if only caring about z=0 data, then name accordingly
     if Config.max_snap == Config.min_snap == 99:
         outfname = outfname[:-5] + '_z0.hdf5'
-    
+        
     if (os.path.isdir(outdirec)):
         print('Directory %s exists.'%outdirec)
         if os.path.isfile(outdirec + outfname):
@@ -433,11 +470,10 @@ def initialize_TNGCluster_subfindindices(Config):
         lowratio_subfindIDs.append(satelliteIDs[lowratio_indices])
 
     lowratio_subfindIDs = np.concatenate(lowratio_subfindIDs)
-    subfind_indices = subhalos['SubhaloFlag'][lowratio_subfindIDs] == 1
-    subfindIDs = lowratio_subfindIDs[subfind_indices]
-    snaps = np.zeros(subfindIDs.size, dtype=subfindIDs.dtype) + max_snap
+    subfindIDs = np.where(subhalos['SubhaloFlag'][lowratio_subfindIDs])[0]
+    snaps = np.ones(subfindIDs.size, dtype=subfindIDs.dtype) * max_snap
     
-    return snaps, subfindIDs
+    return snaps, lowratio_subfindIDs
 
     
 def initialize_zooniverseindices(Config):
@@ -478,6 +514,8 @@ fname = 'config.yaml'
 config_dict = Configuration.from_yaml(fname)
 Config = Configuration(config_dict)
 Config.add_vals()
+
+
 #
 # create the indices
 if Config.SubfindIndices:

@@ -35,7 +35,7 @@ def run_clean_zooniverseGRP(Config):
                 new_key = '%08d'%(group['SubfindID'][0])
                 result[new_key] = group
 
-            fname = return_outfname(Config, out_key=out_key)
+            fname = Config.return_fnames(subsample=out_key)[1]
             # if the file already exists, delete before making a new one.
             if os.path.exists(outdirec + fname):
                 print('File %s already exists. Deleting before saving new version.'%(outdirec + fname))
@@ -59,7 +59,6 @@ def run_clean_zooniverseGRP(Config):
  
     
     if Config.run_createtau:
-        # run once without out_key to run for all subhalos
         if not Config.zooniverse_flag:
             out_keys = Config.taudict_keys
         else:
@@ -404,7 +403,7 @@ def create_taudict(Config, out_key=None):
     tracers_flag = Config.tracers_flag
     quench_flag = not Config.TNGCluster_flag # quenching catalogs not available for TNG-Cluster
 
-    GRPfname = return_outfname(Config, out_key=out_key, tau=False)
+    GRPfname = Config.return_fnames(out_key)[0]
         
     result = load_dict(GRPfname, Config)
     result_keys = list(result.keys())
@@ -458,11 +457,6 @@ def create_taudict(Config, out_key=None):
     
     # begin loop over subhalos
     for group_index, group_key in enumerate(result_keys):
-        """
-        ### currently a bug affects only one branch... ignore for now
-        if group_key == '04707799':
-            continue
-        """
 
         group = result[group_key]
 
@@ -579,7 +573,7 @@ def create_taudict(Config, out_key=None):
     
     # save the tau dictionary
     outdirec = Config.outdirec
-    fname = return_outfname(Config, out_key=out_key, tau=True)
+    fname = Config.return_fnames(out_key)[1]
     if os.path.exists(outdirec + fname):
         print('File %s already exists. Deleting and recreating.'%(outdirec +fname))
         os.system('rm %s'%(outdirec + fname))
@@ -602,7 +596,7 @@ def split_tau_gasz0(Config, split_key='SubhaloGasMass_z0', out_key=None):
     """
     
     outdirec = Config.outdirec
-    fname = return_outfname(Config, out_key=out_key, tau=True)
+    fname = Config.return_fnames(out_key)[1]
     print(outdirec + fname)
     
     if not os.path.isfile(outdirec + fname):
@@ -615,9 +609,14 @@ def split_tau_gasz0(Config, split_key='SubhaloGasMass_z0', out_key=None):
     # manually check either whether the there is no gas at z=0 or if tau100 has already been reached.
     mask = np.logical_or(group[split_key][:] == 0., np.logical_and(group['CosmicTime_tau_infall_Gas100'][:] <= 13.7,
                                                                    group['CosmicTime_tau_infall_Gas100'][:] > 0.))
-
+    
+    if Config.TNGCluster_flag:
+        mask = np.logical_or(group[split_key][:] < 1.0e9, np.logical_and(group['CosmicTime_tau_infall_Gas100'][:] <= 13.7,
+                                                                         group['CosmicTime_tau_infall_Gas100'][:] > 0.))
+       
     if Config.zooniverse_flag:
         mask = np.logical_or(group['SubhaloColdGasMass_z0'][:] == 0., group['CosmicTime_tau_RPS_tot100'][:] <= 13.7)
+    
     result_gas = {}
     result_nogas = {}
 
@@ -632,7 +631,7 @@ def split_tau_gasz0(Config, split_key='SubhaloGasMass_z0', out_key=None):
     fname_tot = fname[:-5] + '_tot.hdf5'
     if os.path.exists(outdirec + fname_tot):
         os.system('rm %s'%(outdirec + fname_tot))
-    os.system('ln -s %s %s'%(outdirec + fname, outdirec + fname_tot))
+    os.symlink(outdirec + fname, outdirec + fname_tot)
 
     tau_fnames = [fname_gas, fname_nogas]
     results = [result_gas, result_nogas]
