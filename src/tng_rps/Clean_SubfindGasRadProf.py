@@ -35,7 +35,7 @@ def run_clean_zooniverseGRP(Config):
                 new_key = '%08d'%(group['SubfindID'][0])
                 result[new_key] = group
 
-            fname = Config.return_fnames(subsample=out_key)[1]
+            fname = Config.return_fnames(subsample=out_key)[0]
             # if the file already exists, delete before making a new one.
             if os.path.exists(outdirec + fname):
                 print('File %s already exists. Deleting before saving new version.'%(outdirec + fname))
@@ -387,6 +387,90 @@ def split_inspected_branches(Config):
     return
 
 
+def create_taudict_onlyz0(Config, out_key=None):
+    """
+    reorganize the standard GRP file into a large 2D array
+    """
+
+    GRPfname = Config.return_fnames(out_key)[0]
+    result = load_dict(GRPfname, Config)
+    result_keys = list(result.keys())
+    result_keys.sort()
+
+    # if there are no subhalos of interest in this file, don't create a tau file
+    if len(result_keys) == 0:
+        print('There are no subhalos of interest in this file %s.'%GRPfname)
+        return
+
+
+    # pick the datasets we want to output at given times for all subhalos
+    if Config.centrals_flag:
+        grp_keys = ['SnapNum', 'CosmicTime', 'HostGroup_M_Crit200',
+                    'HostGroup_R_Crit200', 'HostSubhalo_Mstar_Rgal', 'SubhaloMass',
+                    'Subhalo_Mstar_Rgal',
+                    'SubhaloColdGasMass', 'SubhaloHotGasMass', 'SubhaloGasMass']
+    else:
+        grp_keys = ['SnapNum', 'CosmicTime', 'HostCentricDistance_norm', 'HostGroup_M_Crit200',
+                    'HostGroup_R_Crit200', 'HostSubhalo_Mstar_Rgal', 'SubhaloMass',
+                    'Subhalo_Mstar_Rgal',
+                    'SubhaloColdGasMass', 'SubhaloHotGasMass', 'SubhaloGasMass',
+                    'Nperipass', 'min_Dperi_norm', 'min_Dperi_phys', 'Napopass',
+                    'min_HostCentricDistance_norm', 'min_HostCentricDistance_phys',
+                    'SubhaloStellarPhotometricsU',
+                    'SubhaloStellarPhotometricsB',
+                    'SubhaloStellarPhotometricsV',
+                    'SubhaloStellarPhotometricsK',
+                    'SubhaloStellarPhotometricsg',
+                    'SubhaloStellarPhotometricsr',
+                    'SubhaloStellarPhotometricsi',
+                    'SubhaloStellarPhotometricsz']
+        
+    tauresult = {}
+
+    # begin loop over subhalos
+    for group_index, group_key in enumerate(result_keys):
+
+        group = result[group_key]
+    
+        # if just starting, then initialize the dictionary 
+        if group_index == 0:
+            tauresult['SubfindID'] = np.zeros(len(result_keys), dtype=int)
+            tauresult['HostSubhaloGrNr'] = np.zeros(len(result_keys), dtype=int)
+            for grp_key in grp_keys:
+                tauresult_key = grp_key + '_z0'
+                tauresult[tauresult_key] = np.zeros(len(result_keys),
+                                                    dtype=group[grp_key].dtype) - 1
+
+                    
+        tauresult['SubfindID'][group_index] = group['SubfindID'][0]
+        tauresult['HostSubhaloGrNr'][group_index] = group['HostSubhaloGrNr'][0]
+        # finish initializing the the result
+
+        # assign the values at z=0, which are always the 0th element in the array
+        for grp_key in grp_keys:
+            tauresult_key = grp_key + '_z0'
+            tauresult[tauresult_key][group_index] = group[grp_key][0]
+    
+    # finish loop over the branches
+      
+    # save the tau dictionary
+    outdirec = Config.outdirec
+    fname = Config.return_fnames(out_key)[1]
+    if os.path.exists(outdirec + fname):
+        print('File %s already exists. Deleting and recreating.'%(outdirec +fname))
+        os.system('rm %s'%(outdirec + fname))
+    with h5py.File(outdirec + fname, 'w') as outf:
+        group = outf.require_group('Group')        
+        for dset_key in tauresult.keys():  
+            dset = tauresult[dset_key]
+            dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+            dataset[:] = dset
+
+        outf.close()        
+    
+    return 
+
+
 def create_taudict(Config, out_key=None):
     """
     reorganize the evolutionary tracks into 1D arrays with scalars at specific times.
@@ -398,6 +482,10 @@ def create_taudict(Config, out_key=None):
     def return_tauresult_key(grp_key, tau_key, tau_val):
         """ helper function to determine the key name """
         return (grp_key + '_' + tau_key + '%d'%tau_val)
+    
+    if Config.min_snap == Config.max_snap and Config.min_snap == 99:
+        create_taudict_onlyz0(Config, out_key)
+        return
     
     zooniverse_flag = Config.zooniverse_flag
     tracers_flag = Config.tracers_flag
@@ -453,8 +541,16 @@ def create_taudict(Config, out_key=None):
                     'Subhalo_Mstar_Rgal',
                     'SubhaloColdGasMass', 'SubhaloHotGasMass', 'SubhaloGasMass',
                     'Nperipass', 'min_Dperi_norm', 'min_Dperi_phys', 'Napopass',
-                    'min_HostCentricDistance_norm', 'min_HostCentricDistance_phys']
-    
+                    'min_HostCentricDistance_norm', 'min_HostCentricDistance_phys',
+                    'SubhaloStellarPhotometricsU',
+                    'SubhaloStellarPhotometricsB',
+                    'SubhaloStellarPhotometricsV',
+                    'SubhaloStellarPhotometricsK',
+                    'SubhaloStellarPhotometricsg',
+                    'SubhaloStellarPhotometricsr',
+                    'SubhaloStellarPhotometricsi',
+                    'SubhaloStellarPhotometricsz']
+        
     # begin loop over subhalos
     for group_index, group_key in enumerate(result_keys):
 
@@ -586,7 +682,7 @@ def create_taudict(Config, out_key=None):
 
         outf.close()        
     
-    return tauresult
+    return
 
 
 def split_tau_gasz0(Config, split_key='SubhaloGasMass_z0', out_key=None):
@@ -611,9 +707,12 @@ def split_tau_gasz0(Config, split_key='SubhaloGasMass_z0', out_key=None):
                                                                    group['CosmicTime_tau_infall_Gas100'][:] > 0.))
     
     if Config.TNGCluster_flag:
-        mask = np.logical_or(group[split_key][:] < 1.0e9, np.logical_and(group['CosmicTime_tau_infall_Gas100'][:] <= 13.7,
-                                                                         group['CosmicTime_tau_infall_Gas100'][:] > 0.))
-       
+        if Config.min_snap == Config.max_snap and Config.min_snap == 99:
+            mask = group[split_key][:] < 1.0e9
+        else:
+            mask = np.logical_or(group[split_key][:] < 1.0e9, np.logical_and(group['CosmicTime_tau_infall_Gas100'][:] <= 13.7,
+                                                                            group['CosmicTime_tau_infall_Gas100'][:] > 0.))
+        
     if Config.zooniverse_flag:
         mask = np.logical_or(group['SubhaloColdGasMass_z0'][:] == 0., group['CosmicTime_tau_RPS_tot100'][:] <= 13.7)
     
