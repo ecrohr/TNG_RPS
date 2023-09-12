@@ -193,7 +193,7 @@ class Configuration(dict):
         
         GRPfname = '%s_%s_branches'%(sample, sim)
         taufname = '%s_%s_tau'%(sample, sim)
-        if self.min_snap == self.max_snap and self.min_snap == 99:
+        if (self.min_snap == self.max_snap) and (self.min_snap == 99):
             GRPfname += '_z0'
             taufname += '_z0'
 
