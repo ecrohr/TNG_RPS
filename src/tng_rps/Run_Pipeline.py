@@ -104,6 +104,7 @@ class Configuration(dict):
                           self.bh_ptn]
                           
         self.Mstar_lolim = return_Mstar_lolim(self)
+        self.gas_lolim = return_gas_lolim(self)
         
         # set the subfindIDs and accompanying snapnums of interest
         # first check if the tau_dict already exists
@@ -355,6 +356,33 @@ def return_Mstar_lolim(Config):
             raise ValueError('sim %s not recongized.'%sim)
             
     return Mstar_lolim
+
+def return_gas_lolim(Config):
+    """ 
+    given the simulation, determine the minimum gas resolution, ~1.5 dex below the
+    target resolution mass, to fill in when the simulated gas mass is 0.
+    """
+    sim = Config.sim
+    if 'TNG50' in sim:
+        res = 1.0e3
+    elif 'TNG100' in sim:
+        res = 1.0e5
+    elif 'TNG300' in sim:
+        res = 10.**(5.5)
+    elif 'L680n8192TNG' in sim:
+        return 10.**(5.5)
+    else:
+        raise ValueError('sim %s not recognized.'%sim)
+    
+    for i in range(1,5):
+        if '-%d'%i in sim:
+            res *= 8**(i-1)
+            break
+        elif i == 4:
+            raise ValueError('sim %s not recongized.'%sim)
+            
+    return res
+
  
 
 def initialize_allsubhalos(Config):

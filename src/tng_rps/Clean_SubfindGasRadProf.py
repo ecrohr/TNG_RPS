@@ -65,6 +65,9 @@ def run_clean_zooniverseGRP(Config):
             out_keys = Config.zooniverse_keys
         # and run for each of the out_keys
         for out_key in out_keys:
+            if Config.min_snap == Config.max_snap & Config.min_snap == 99:
+                if out_key != Config.all_key:
+                    continue
             print(out_key)
             create_taudict(Config, out_key=out_key)
             split_tau_gasz0(Config, out_key=out_key)
@@ -703,18 +706,21 @@ def split_tau_gasz0(Config, split_key='SubhaloGasMass_z0', out_key=None):
     group = tau_dict['Group']
 
     # manually check either whether the there is no gas at z=0 or if tau100 has already been reached.
-    mask = np.logical_or(group[split_key][:] == 0., np.logical_and(group['CosmicTime_tau_infall_Gas100'][:] <= 13.7,
-                                                                   group['CosmicTime_tau_infall_Gas100'][:] > 0.))
-    
-    if Config.TNGCluster_flag:
-        if Config.min_snap == Config.max_snap and Config.min_snap == 99:
+    if Config.min_snap == Config.max_snap and Config.min_snap == 99:
+        if Config.TNGCluster_flag:
             mask = group[split_key][:] < 1.0e9
-        else:
+        else: 
+            mask = group[split_key][:] <= 0.
+    else:
+        mask = np.logical_or(group[split_key][:] == 0., np.logical_and(group['CosmicTime_tau_infall_Gas100'][:] <= 13.7,
+                                                                    group['CosmicTime_tau_infall_Gas100'][:] > 0.))
+        
+        if Config.TNGCluster_flag:
             mask = np.logical_or(group[split_key][:] < 1.0e9, np.logical_and(group['CosmicTime_tau_infall_Gas100'][:] <= 13.7,
                                                                             group['CosmicTime_tau_infall_Gas100'][:] > 0.))
-        
-    if Config.zooniverse_flag:
-        mask = np.logical_or(group['SubhaloColdGasMass_z0'][:] == 0., group['CosmicTime_tau_RPS_tot100'][:] <= 13.7)
+            
+        if Config.zooniverse_flag:
+            mask = np.logical_or(group['SubhaloColdGasMass_z0'][:] == 0., group['CosmicTime_tau_RPS_tot100'][:] <= 13.7)
     
     result_gas = {}
     result_nogas = {}
