@@ -179,6 +179,7 @@ def return_subfindGRP(snapnum, subfindID, Config):
     star_ptn = Config.star_ptn
     gas_ptn = Config.gas_ptn
     centrals_flag = Config.centrals_flag
+    gas_lolim = Config.gas_lolim
     
     ### define radial bins and bincenters ###
     if centrals_flag:
@@ -294,6 +295,11 @@ def return_subfindGRP(snapnum, subfindID, Config):
     coldgas_mass_shells = np.histogram(coldgas_radii, bins=radii_bins, weights=coldgas_masses)[0]
     hotgas_mass_shells = np.histogram(hotgas_radii, bins=radii_bins, weights=hotgas_masses)[0]
     gas_mass_shells = np.histogram(gas_radii, bins=radii_bins, weights=gas_masses)[0]
+
+    # if the gas mass within the shell is 0, replace it with the low limit value
+    coldgas_mass_shells[coldgas_mass_shells == 0] = gas_lolim
+    hotgas_mass_shells[hotgas_mass_shells == 0] = gas_lolim
+    gas_mass_shells[gas_mass_shells == 0] = 2.0 * gas_lolim
 
     coldgas_densities_shells = coldgas_mass_shells / vol_shells
     hotgas_densities_shells = hotgas_mass_shells / vol_shells
