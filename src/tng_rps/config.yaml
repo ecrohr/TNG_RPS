@@ -9,7 +9,7 @@ allsubhalos_flag: False
 Nmpcores: 8
     
 max_snap: 99
-min_snap: 99
+min_snap: 0
 
 first_snap: 0
 last_snap: 99
@@ -23,7 +23,7 @@ ins_key: 'inspected'
 jel_key: 'jellyfish'
 non_key: 'nonjellyf'
 
-SubfindIndices: False
+SubfindIndices: True
 SubfindGasRadProf: True
 run_SGRP: True
 run_SGRP_PP: True
@@ -41,6 +41,7 @@ zooniverse_snapfirst: 67 # require a zooniverse inspection (or jellyfish classif
 Nsnaps_PP: 3 # number of consecutive snaps to be considered pre-processed
 M200c0_lolim_PP: 1.e+12 # minimum halo mass of a pre-processing host
 massratio_frac: 100.0 # the maximum mass ratio M_star^sat / M_star^host < massratio_frac for TNG-Cluster satellites
+                      # a value >=1 means to include all satellites regardless of stellar mass ratio
 
 # subfind flags
 in_tree_key: 'in_tree'
