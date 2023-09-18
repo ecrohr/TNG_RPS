@@ -341,7 +341,10 @@ def return_Mstar_lolim(Config):
     elif 'TNG300' in sim:
         res = 10.**(9)
     elif 'L680n8192TNG' in sim:
-        return 10.**(9)
+        if Config.min_snap == Config.max_snap and Config.min_snap == 99:
+            return 10.**(9)
+        else:
+            return 10.**(10)
     else:
         raise ValueError('sim %s not recognized.'%sim)
         
@@ -543,6 +546,7 @@ config_dict = Configuration.from_yaml(fname)
 Config = Configuration(config_dict)
 Config.add_vals()
 
+print(Config)
 
 #
 # create the indices
