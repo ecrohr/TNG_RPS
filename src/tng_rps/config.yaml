@@ -23,7 +23,7 @@ ins_key: 'inspected'
 jel_key: 'jellyfish'
 non_key: 'nonjellyf'
 
-SubfindIndices: True
+SubfindIndices: False
 SubfindGasRadProf: True
 run_SGRP: True
 run_SGRP_PP: True

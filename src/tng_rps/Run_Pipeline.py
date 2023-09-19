@@ -457,6 +457,7 @@ def initialize_TNGCluster_subfindindices(Config):
     h = Config.h
     Mstar_lolim = Config.Mstar_lolim
     centrals_flag = Config.centrals_flag
+
     massratio_frac = Config.massratio_frac
     
     # load all halos and find the primary zoom target IDs
@@ -501,7 +502,7 @@ def initialize_TNGCluster_subfindindices(Config):
         lowratio_subfindIDs.append(satelliteIDs[lowratio_indices])
 
     lowratio_subfindIDs = np.concatenate(lowratio_subfindIDs)
-    subfindIDs = np.where(subhalos['SubhaloFlag'][lowratio_subfindIDs])[0]
+    subfindIDs = np.where(subhalos['SubhaloFlag'][lowratio_subfindIDs] == 1)[0]
     snaps = np.ones(subfindIDs.size, dtype=subfindIDs.dtype) * max_snap
     
     return snaps, lowratio_subfindIDs
