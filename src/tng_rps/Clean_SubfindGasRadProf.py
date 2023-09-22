@@ -734,9 +734,11 @@ def split_tau_gasz0(Config, split_key='SubhaloGasMass_z0', out_key=None):
     
     # also make a symbolic link for all to maintain conventions
     fname_tot = fname[:-5] + '_tot.hdf5'
-    if os.path.exists(outdirec + fname_tot):
-        os.system('rm %s'%(outdirec + fname_tot))
-    os.symlink(outdirec + fname, outdirec + fname_tot)
+    # for symbolic links, they require full path names not relative
+    outdirec_symlink = '/u/reric/Output/%s_subfindGRP/'%Config.sim
+    if os.path.exists(outdirec_symlink + fname_tot):
+        os.system('rm %s'%(outdirec_symlink + fname_tot))
+    os.symlink(outdirec_symlink + fname, outdirec_symlink + fname_tot)
 
     tau_fnames = [fname_gas, fname_nogas]
     results = [result_gas, result_nogas]
