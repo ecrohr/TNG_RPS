@@ -300,6 +300,7 @@ def postprocess_flags(subfindIDs, Config):
                     if ru.is_slice_in_list(central_check, central_indices):
                         result[backsplash_prev_flag][subfindID] = 1
                         continue
+        
         result[backsplash_prev_flag][subfindID] = 0
                 
     # finish loop over SubfindIDs

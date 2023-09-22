@@ -37,6 +37,9 @@ def run_subfindGRP(Config):
     """
     Run the Create_SubfindGRP module.
     """
+
+    add_memberflags(Config)
+    add_times(Config)
     
     outdirec = Config.outdirec
     outfname = Config.outfname
@@ -94,8 +97,6 @@ def run_postprocessing(Config):
     """
     
     # standard datasets
-    add_memberflags(Config)
-    add_times(Config)
     add_gastau(Config)
     
     # for satellites only
@@ -134,8 +135,31 @@ def create_subfindGRP(dic, Config):
 
     gal_key   = list(dic.keys())[0]
     gal       = dic[gal_key]
-    SnapNum   = gal['SnapNum']
-    SubfindID = gal['SubfindID']
+    SubfindID = gal['SubfindID'].copy()
+    SnapNum   = gal['SnapNum'].copy()
+
+    # if TNG-Cluster satellties, only calculate between z=0 and infall or else it takes too long
+    if Config.TNGCluster_flag and not Config.centrals_flag:
+        M200c0_lolim_PP = Config.M200c0_lolim_PP
+        Nsnaps_PP = Config.Nsnaps_PP
+        group = gal
+        subhalo_indices = np.where(group['SubfindID'][:] != -1)[0]
+        # find infall time as the first time subhalo was a satellite for Nsnaps_PP consecutive snapshots
+        satellite_indices = ((group['central_flags'][subhalo_indices] == 0) &
+                             (group['HostGroup_M_Crit200'][subhalo_indices] >= M200c0_lolim_PP))
+
+        satellite_check = [True] * Nsnaps_PP
+        satellite_indices_bool = ru.where_is_slice_in_list(satellite_check, satellite_indices)
+
+        if any(satellite_indices_bool):
+            # from this first time that the subhalo was a satellite, find the index of
+            # the first conescutive snapshot.
+            infall_tau_index = np.where(satellite_indices_bool)[0].max()
+            SnapNum[infall_tau_index+2:] = -1
+            SubfindID[infall_tau_index+2:] = -1
+        else:
+            SnapNum[1:] = -1
+            SubfindID[1:] = -1
     
     for snapnum_index, snapnum in enumerate(SnapNum):
         subfindID = SubfindID[snapnum_index]
@@ -148,7 +172,7 @@ def create_subfindGRP(dic, Config):
 
     # initialize and fill result dicitonary
     # note that threed_keys are vectors, and scalar_keys are scalars
-    shape           = (SnapNum.size, radii_dict['%d'%SnapNum[0]]['radii'].size)
+    shape           = (len(SnapNum), len(radii_dict['%d'%SnapNum[0]]['radii']))
     result          = {}
     result[gal_key] = gal
     for key in threed_keys:
@@ -636,13 +660,15 @@ def add_Lxmaps(Config):
     pixel_size = 5. # kpc
     smoothing_scale = 300. / pixel_size # keep constant at 300 kpc
 
+    Npixels_4k = 4096
+
     # load the soft x-ray luminosities
     Lx_direc = '/vera/ptmp/gc/dnelson/sims.TNG/L680n8192TNG/data.files/cache/'
     Lx_fname = 'cached_gas_xray_lum_0.5-2.0kev_99.hdf5'
     with h5py.File(Lx_direc + Lx_fname, 'r') as Lx_f:
         Lx_all = Lx_f[Lx_key][:]
 
-    for key in f_keys:
+    for key in f_keys[:30]:
 
         print('add_Lxmap: Working on %s.'%key)
         group = f[key]
@@ -693,6 +719,9 @@ def add_Lxmaps(Config):
                        'yz']
 
         for axes_i, axes in enumerate(axes_list):
+            if axes_i != 0:
+                continue
+
             label = labels_list[axes_i]
 
             pos = Coordinates[:,axes]
@@ -705,11 +734,12 @@ def add_Lxmaps(Config):
             nPixels = [int(boxSizeImg[0] / pixel_size), int(boxSizeImg[1] / pixel_size)]
             ndims = 3
 
-            Lx_map = sphMap.sphMap(pos, hsml, mass, quant, [0,1], boxSizeImg, boxSizeSim, boxCen, nPixels, ndims, colDens=True)
-            Lx_map_smooth = gaussian_filter(Lx_map, smoothing_scale, mode='constant')
-
             Lx_map_key = Lx_key + '_' + label
             Lx_map_smooth_key = Lx_map_key + '_smooth'
+
+            """
+            Lx_map = sphMap.sphMap(pos, hsml, mass, quant, [0,1], boxSizeImg, boxSizeSim, boxCen, nPixels, ndims, colDens=True)
+            Lx_map_smooth = gaussian_filter(Lx_map, smoothing_scale, mode='constant')
 
             dsets = [Lx_map, Lx_map_smooth]
             dset_keys = [Lx_map_key, Lx_map_smooth_key]
@@ -717,6 +747,24 @@ def add_Lxmaps(Config):
                 dset = dsets[dset_index]
                 dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
                 dataset[:] = dset
+            """
+                
+            Lx_map_4k_key = Lx_key + '_' + label + '_4k'
+            Lx_map_4k_smooth_key = Lx_map_key + '_4k_smooth'
+            
+            pixel_size_4k_phys = boxSizeImg[0] / Npixels_4k
+            smoothing_scale_4k = 300. / pixel_size_4k_phys
+
+            Lx_map_4k = sphMap.sphMap(pos, hsml, mass, quant, [0,1], boxSizeImg, boxSizeSim, boxCen, [Npixels_4k, Npixels_4k], ndims, colDens=True)
+            Lx_map_4k_smooth = gaussian_filter(Lx_map_4k, smoothing_scale_4k, mode='constant')
+
+            dsets = [Lx_map_4k, Lx_map_4k_smooth]
+            dset_keys = [Lx_map_4k_key, Lx_map_4k_smooth_key]
+            for dset_index, dset_key in enumerate(dset_keys):
+                dset = dsets[dset_index]
+                dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+                dataset[:] = dset
+
 
     # finish loop over keys
     f.close()
@@ -800,6 +848,10 @@ def add_gastau(Config):
 
     keys = ['tau_medpeak', 'tau_infall']
     gastypes = ['ColdGas', 'HotGas', 'Gas', '']
+
+    # for TNGCluster we don't have the Hot and Cold Gas Masses at each snapshot
+    if Config.TNGCluster_flag:
+        gastypes = ['Gas', '']
 
     f_keys = list(f.keys())
 
