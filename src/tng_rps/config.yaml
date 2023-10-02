@@ -6,7 +6,7 @@ zooniverse_flag: False
 centrals_flag: False
 tracers_flag: False
 allsubhalos_flag: False
-Nmpcores: 8
+Nmpcores: 72
     
 max_snap: 99
 min_snap: 0
@@ -23,7 +23,7 @@ ins_key: 'inspected'
 jel_key: 'jellyfish'
 non_key: 'nonjellyf'
 
-SubfindIndices: False
+SubfindIndices: True
 SubfindGasRadProf: True
 run_SGRP: True
 run_SGRP_PP: True
