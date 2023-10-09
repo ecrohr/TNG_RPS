@@ -99,6 +99,7 @@ class Configuration(dict):
         self.tracer_ptn = il.util.partTypeNum('tracer')
         self.star_ptn = il.util.partTypeNum('star')
         self.bh_ptn = il.util.partTypeNum('bh')
+        self.dmlowres_ptn =il.util.partTypeNum('dmlowres')
         self.bary_ptns = [self.gas_ptn,
                           self.star_ptn,
                           self.bh_ptn]
