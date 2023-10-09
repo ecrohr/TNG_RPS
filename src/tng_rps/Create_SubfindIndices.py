@@ -74,6 +74,7 @@ def return_subfindindices(snap, subfindID, Config):
     treeName = Config.treeName
     star_ptn = Config.star_ptn
     dm_ptn = Config.dm_ptn
+    dmlowres_ptn = Config.dmlowres_ptn
     
     return_key = '%03d_%08d'%(snap, subfindID)
 
@@ -102,6 +103,9 @@ def return_subfindindices(snap, subfindID, Config):
                    'HostGroup_R_Crit200',
                    'HostSubhaloGrNr',
                    'HostCentricDistance_phys', 'HostCentricDistance_norm']
+
+    if Config.TNGCluster_flag:
+        result_keys.append('SubhaloDMLowResMass')
     
     result = {}
     result[return_key] = {}
@@ -199,6 +203,9 @@ def return_subfindindices(snap, subfindID, Config):
              host_tree['Group_R_Crit200'][host_indices] * a / h,
              host_tree['SubhaloGrNr'][host_indices],
              hostcentricdistances, hostcentricdistances_norm]
+    
+    if Config.TNGCluster_flag:
+        dsets.append(sub_tree['SubhaloMassType'][sub_indices,dmlowres_ptn] * 1.e10 / h)
     
     for i, key in enumerate(result_keys):
         if (key in threed_keys):
