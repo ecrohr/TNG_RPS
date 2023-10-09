@@ -19,11 +19,10 @@ from functools import partial
 from tenet.util import sphMap
 from scipy.ndimage import gaussian_filter
 
-scalar_keys = ['SubhaloColdGasMass', 'SubhaloGasMass', 'SubhaloHotGasMass', 'SubhaloNeutralHydrogenGasMass']
+scalar_keys = ['SubhaloColdGasMass', 'SubhaloGasMass', 'SubhaloHotGasMass']
 threed_keys = ['radii', 'vol_shells',
                'SubhaloColdGasMassShells', 'SubhaloColdGasDensityShells',
                'SubhaloHotGasMassShells', 'SubhaloHotGasDensityShells',
-               'SubhaloNeutralHydrogenGasMassShells', 'SubhaloNeutralHydrogenGasDensityShells',
                'SubhaloGasMassShells', 'SubhaloDensityShells']
 
 # hardcode the snapshots of interest
@@ -111,6 +110,10 @@ def run_postprocessing(Config):
     # only for TNG-Cluster centrals
     elif Config.TNGCluster_flag:
         add_Lxmaps(Config)
+
+    # add mass of low res particles for TNG-Cluster galaxies at z=0
+    if Config.TNGCluster_flag:
+        add_lowresmass(Config)
 
     # if the tracers have already been calculated
     if Config.tracers_flag:
@@ -247,7 +250,7 @@ def return_subfindGRP(snapnum, subfindID, Config):
         
     subhalofields = ['SubhaloHalfmassRadType', 'SubhaloPos', 'SubhaloGrNr']
     gasfields     = ['Coordinates', 'Masses', 'InternalEnergy',
-                     'ElectronAbundance', 'StarFormationRate', 'NeutralHydrogenAbundance']
+                     'ElectronAbundance', 'StarFormationRate']
             
     subhalo      = ru.loadSingleFields(basePath, snapnum, subhaloID=subfindID, fields=subhalofields)
     subhalopos   = subhalo['SubhaloPos'] * a / h
@@ -272,9 +275,6 @@ def return_subfindGRP(snapnum, subfindID, Config):
     gas_internalenergies   = gasparts['InternalEnergy']
     gas_electronabundances = gasparts['ElectronAbundance']
     gas_starformationrates = gasparts['StarFormationRate']
-    gas_neutralhydrogenabundance = gasparts['NeutralHydrogenAbundance']
-    gas_neutralhydrogenabundance[gas_starformationrates > 0] = 1.
-    gas_neutralhydrogenmasses = gas_masses * gas_neutralhydrogenabundance
     
     if Config.centrals_flag:
         radii_bins     = radii_bins_norm * R200c # pkpc
@@ -307,17 +307,13 @@ def return_subfindGRP(snapnum, subfindID, Config):
     
     # calculate and save the total cold and hot gas masses
     subhalo_coldgasmass = np.sum(coldgas_masses)
-    subhalo_hotgasmass  = np.sum(hotgas_masses)
-    subhalo_neutralhydrogengasmass = np.sum(gas_neutralhydrogenmasses)
-    
+    subhalo_hotgasmass  = np.sum(hotgas_masses)    
     # sort the gas masses by their radius
     coldgas_masses = coldgas_masses[np.argsort(coldgas_radii)]
     coldgas_radii  = coldgas_radii[np.argsort(coldgas_radii)]
     
     hotgas_masses = hotgas_masses[np.argsort(hotgas_radii)]
     hotgas_radii  = hotgas_radii[np.argsort(hotgas_radii)]
-  
-    neutralhydrogengas_masses = gas_neutralhydrogenmasses[np.argsort(gas_radii)]
 
     gas_masses = gas_masses[np.argsort(gas_radii)]
     gas_radii = gas_radii[np.argsort(gas_radii)]
@@ -325,25 +321,22 @@ def return_subfindGRP(snapnum, subfindID, Config):
     # calculate the radial profile via histogram                      
     coldgas_mass_shells = np.histogram(coldgas_radii, bins=radii_bins, weights=coldgas_masses)[0]
     hotgas_mass_shells = np.histogram(hotgas_radii, bins=radii_bins, weights=hotgas_masses)[0]
-    neutralhydrogengas_mass_shells = np.histogram(gas_radii, bins=radii_bins, weights=neutralhydrogengas_masses)[0]
     gas_mass_shells = np.histogram(gas_radii, bins=radii_bins, weights=gas_masses)[0]
 
     coldgas_densities_shells = coldgas_mass_shells / vol_shells
     hotgas_densities_shells = hotgas_mass_shells / vol_shells
     gas_densities_shells = gas_mass_shells / vol_shells
-    neutralhydrogen_densities_shells = neutralhydrogengas_mass_shells / vol_shells
 
     dsets = [radii_bincents, vol_shells,
              coldgas_mass_shells, coldgas_densities_shells,
              hotgas_mass_shells, hotgas_densities_shells,
-             neutralhydrogengas_mass_shells, neutralhydrogen_densities_shells,
              gas_mass_shells, gas_densities_shells]
+    
+    scalars = [subhalo_coldgasmass, subhalo_gasmass, subhalo_hotgasmass]
              
     for threed_index, threed_key in enumerate(threed_keys):
         result[group_key][threed_key] = dsets[threed_index]
-        
-    scalars = [subhalo_coldgasmass, subhalo_gasmass, subhalo_hotgasmass, subhalo_neutralhydrogengasmass]
-    
+            
     for scalar_index, scalar_key in enumerate(scalar_keys):
         result[group_key][scalar_key] = scalars[scalar_index]
 
@@ -671,7 +664,7 @@ def add_Lxmaps(Config):
     with h5py.File(Lx_direc + Lx_fname, 'r') as Lx_f:
         Lx_all = Lx_f[Lx_key][:]
 
-    for key in f_keys[:30]:
+    for key in f_keys:
 
         print('add_Lxmap: Working on %s.'%key)
         group = f[key]
@@ -722,8 +715,6 @@ def add_Lxmaps(Config):
                        'yz']
 
         for axes_i, axes in enumerate(axes_list):
-            if axes_i != 0:
-                continue
 
             label = labels_list[axes_i]
 
@@ -740,7 +731,6 @@ def add_Lxmaps(Config):
             Lx_map_key = Lx_key + '_' + label
             Lx_map_smooth_key = Lx_map_key + '_smooth'
 
-            """
             Lx_map = sphMap.sphMap(pos, hsml, mass, quant, [0,1], boxSizeImg, boxSizeSim, boxCen, nPixels, ndims, colDens=True)
             Lx_map_smooth = gaussian_filter(Lx_map, smoothing_scale, mode='constant')
 
@@ -750,8 +740,8 @@ def add_Lxmaps(Config):
                 dset = dsets[dset_index]
                 dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
                 dataset[:] = dset
-            """
-                
+
+            """                
             Lx_map_4k_key = Lx_key + '_' + label + '_4k'
             Lx_map_4k_smooth_key = Lx_map_key + '_4k_smooth'
             
@@ -767,12 +757,24 @@ def add_Lxmaps(Config):
                 dset = dsets[dset_index]
                 dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
                 dataset[:] = dset
+            """
 
 
     # finish loop over keys
     f.close()
 
     return 
+
+
+def add_lowresmass(Config):
+    """
+    for TNG-Cluster galaxies, add the mass of low res particles at z=0.
+    this can later be used to check contamination fractions and such.
+    """
+    f = h5py.File(Config.outdirec + Config.outfname, 'a')
+    keys = np.array(list(f.keys()))
+
+
 
 
 def add_quenchtimes(Config):
