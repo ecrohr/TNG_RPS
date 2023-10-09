@@ -417,6 +417,7 @@ def create_taudict_onlyz0(Config, out_key=None):
                     'HostGroup_R_Crit200', 'HostSubhalo_Mstar_Rgal', 'SubhaloMass',
                     'Subhalo_Mstar_Rgal',
                     'SubhaloColdGasMass', 'SubhaloHotGasMass', 'SubhaloGasMass',
+                    'SubhaloNeutralHydrogenGasMass',
                     'Nperipass', 'min_Dperi_norm', 'min_Dperi_phys', 'Napopass',
                     'min_HostCentricDistance_norm', 'min_HostCentricDistance_phys',
                     'SubhaloStellarPhotometricsU',
@@ -427,7 +428,9 @@ def create_taudict_onlyz0(Config, out_key=None):
                     'SubhaloStellarPhotometricsr',
                     'SubhaloStellarPhotometricsi',
                     'SubhaloStellarPhotometricsz']
-        
+    if Config.TNGCluster_flag:
+        grp_keys.append('SubhaloDMLowResMass')    
+
     tauresult = {}
 
     # begin loop over subhalos
@@ -543,6 +546,7 @@ def create_taudict(Config, out_key=None):
                     'HostGroup_R_Crit200', 'HostSubhalo_Mstar_Rgal', 'SubhaloMass',
                     'Subhalo_Mstar_Rgal',
                     'SubhaloColdGasMass', 'SubhaloHotGasMass', 'SubhaloGasMass',
+                    'SubhaloNeutralHydrogenGasMass',
                     'Nperipass', 'min_Dperi_norm', 'min_Dperi_phys', 'Napopass',
                     'min_HostCentricDistance_norm', 'min_HostCentricDistance_phys',
                     'SubhaloStellarPhotometricsU',
@@ -553,6 +557,8 @@ def create_taudict(Config, out_key=None):
                     'SubhaloStellarPhotometricsr',
                     'SubhaloStellarPhotometricsi',
                     'SubhaloStellarPhotometricsz']
+    if Config.TNGCluster_flag:
+        grp_keys.append('SubhaloDMLowResMass')    
         
     # begin loop over subhalos
     for group_index, group_key in enumerate(result_keys):
