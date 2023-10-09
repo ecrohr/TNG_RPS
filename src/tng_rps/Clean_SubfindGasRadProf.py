@@ -69,7 +69,7 @@ def run_clean_zooniverseGRP(Config):
                 if out_key != Config.all_key:
                     continue
             print(out_key)
-            create_taudict(Config, out_key=out_key)
+            #create_taudict(Config, out_key=out_key)
             split_tau_gasz0(Config, out_key=out_key)
 
     return
@@ -742,7 +742,7 @@ def split_tau_gasz0(Config, split_key='SubhaloGasMass_z0', out_key=None):
     fname_tot = fname[:-5] + '_tot.hdf5'
     # for symbolic links, they require full path names not relative
     outdirec_symlink = '/u/reric/Output/%s_subfindGRP/'%Config.sim
-    if os.path.exists(outdirec_symlink + fname_tot):
+    if os.path.isfile(outdirec_symlink + fname_tot):
         os.system('rm %s'%(outdirec_symlink + fname_tot))
     os.symlink(outdirec_symlink + fname, outdirec_symlink + fname_tot)
 
