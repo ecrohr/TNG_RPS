@@ -19,10 +19,11 @@ from functools import partial
 from tenet.util import sphMap
 from scipy.ndimage import gaussian_filter
 
-scalar_keys = ['SubhaloColdGasMass', 'SubhaloGasMass', 'SubhaloHotGasMass']
+scalar_keys = ['SubhaloColdGasMass', 'SubhaloGasMass', 'SubhaloHotGasMass', 'SubhaloNeutralHydrogenGasMass']
 threed_keys = ['radii', 'vol_shells',
                'SubhaloColdGasMassShells', 'SubhaloColdGasDensityShells',
                'SubhaloHotGasMassShells', 'SubhaloHotGasDensityShells',
+               'SubhaloNeutralHydrogenGasMassShells', 'SubhaloNeutralHydrogenGasDensityShells',
                'SubhaloGasMassShells', 'SubhaloDensityShells']
 
 # hardcode the snapshots of interest
@@ -246,7 +247,7 @@ def return_subfindGRP(snapnum, subfindID, Config):
         
     subhalofields = ['SubhaloHalfmassRadType', 'SubhaloPos', 'SubhaloGrNr']
     gasfields     = ['Coordinates', 'Masses', 'InternalEnergy',
-                     'ElectronAbundance', 'StarFormationRate']
+                     'ElectronAbundance', 'StarFormationRate', 'NeutralHydrogenAbundance']
             
     subhalo      = ru.loadSingleFields(basePath, snapnum, subhaloID=subfindID, fields=subhalofields)
     subhalopos   = subhalo['SubhaloPos'] * a / h
@@ -271,6 +272,9 @@ def return_subfindGRP(snapnum, subfindID, Config):
     gas_internalenergies   = gasparts['InternalEnergy']
     gas_electronabundances = gasparts['ElectronAbundance']
     gas_starformationrates = gasparts['StarFormationRate']
+    gas_neutralhydrogenabundance = gasparts['NeutralHydrogenAbundance']
+    gas_neutralhydrogenabundance[gas_starformationrates > 0] = 1.
+    gas_neutralhydrogenmasses = gas_masses * gas_neutralhydrogenabundance
     
     if Config.centrals_flag:
         radii_bins     = radii_bins_norm * R200c # pkpc
@@ -304,6 +308,7 @@ def return_subfindGRP(snapnum, subfindID, Config):
     # calculate and save the total cold and hot gas masses
     subhalo_coldgasmass = np.sum(coldgas_masses)
     subhalo_hotgasmass  = np.sum(hotgas_masses)
+    subhalo_neutralhydrogengasmass = np.sum(gas_neutralhydrogenmasses)
     
     # sort the gas masses by their radius
     coldgas_masses = coldgas_masses[np.argsort(coldgas_radii)]
@@ -312,34 +317,32 @@ def return_subfindGRP(snapnum, subfindID, Config):
     hotgas_masses = hotgas_masses[np.argsort(hotgas_radii)]
     hotgas_radii  = hotgas_radii[np.argsort(hotgas_radii)]
   
+    neutralhydrogengas_masses = gas_neutralhydrogenmasses[np.argsort(gas_radii)]
+
     gas_masses = gas_masses[np.argsort(gas_radii)]
     gas_radii = gas_radii[np.argsort(gas_radii)]
     
     # calculate the radial profile via histogram                      
     coldgas_mass_shells = np.histogram(coldgas_radii, bins=radii_bins, weights=coldgas_masses)[0]
     hotgas_mass_shells = np.histogram(hotgas_radii, bins=radii_bins, weights=hotgas_masses)[0]
+    neutralhydrogengas_mass_shells = np.histogram(gas_radii, bins=radii_bins, weights=neutralhydrogengas_masses)[0]
     gas_mass_shells = np.histogram(gas_radii, bins=radii_bins, weights=gas_masses)[0]
-
-    """
-    # if the gas mass within the shell is 0, replace it with the low limit value
-    coldgas_mass_shells[coldgas_mass_shells == 0] = gas_lolim
-    hotgas_mass_shells[hotgas_mass_shells == 0] = gas_lolim
-    gas_mass_shells[gas_mass_shells == 0] = 2.0 * gas_lolim
-    """
 
     coldgas_densities_shells = coldgas_mass_shells / vol_shells
     hotgas_densities_shells = hotgas_mass_shells / vol_shells
     gas_densities_shells = gas_mass_shells / vol_shells
+    neutralhydrogen_densities_shells = neutralhydrogengas_mass_shells / vol_shells
 
     dsets = [radii_bincents, vol_shells,
              coldgas_mass_shells, coldgas_densities_shells,
              hotgas_mass_shells, hotgas_densities_shells,
+             neutralhydrogengas_mass_shells, neutralhydrogen_densities_shells,
              gas_mass_shells, gas_densities_shells]
              
     for threed_index, threed_key in enumerate(threed_keys):
         result[group_key][threed_key] = dsets[threed_index]
         
-    scalars = [subhalo_coldgasmass, subhalo_gasmass, subhalo_hotgasmass]
+    scalars = [subhalo_coldgasmass, subhalo_gasmass, subhalo_hotgasmass, subhalo_neutralhydrogengasmass]
     
     for scalar_index, scalar_key in enumerate(scalar_keys):
         result[group_key][scalar_key] = scalars[scalar_index]
