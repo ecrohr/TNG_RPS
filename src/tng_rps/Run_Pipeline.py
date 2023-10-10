@@ -504,10 +504,11 @@ def initialize_TNGCluster_subfindindices(Config):
         lowratio_subfindIDs.append(satelliteIDs[lowratio_indices])
 
     lowratio_subfindIDs = np.concatenate(lowratio_subfindIDs)
-    subfindIDs = np.where(subhalos['SubhaloFlag'][lowratio_subfindIDs] == 1)[0]
+    subhalo_flag_indices = subhalos['SubhaloFlag'][lowratio_subfindIDs] == 1
+    subfindIDs = lowratio_subfindIDs[subhalo_flag_indices]
     snaps = np.ones(subfindIDs.size, dtype=subfindIDs.dtype) * max_snap
     
-    return snaps, lowratio_subfindIDs
+    return snaps, subfindIDs
 
     
 def initialize_zooniverseindices(Config):
