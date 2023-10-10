@@ -106,14 +106,13 @@ def run_postprocessing(Config):
         # quenching times require the appropriate catalogs
         if not Config.TNGCluster_flag:
             add_quenchtimes(Config)
+        else:
+            # LBE Ram Pressure only for TNGCluster:
+            add_LBEramPressure(Config)
 
     # only for TNG-Cluster centrals
     elif Config.TNGCluster_flag:
         add_Lxmaps(Config)
-
-    # add mass of low res particles for TNG-Cluster galaxies at z=0
-    if Config.TNGCluster_flag:
-        add_lowresmass(Config)
 
     # if the tracers have already been calculated
     if Config.tracers_flag:
@@ -628,6 +627,80 @@ def add_Nperipass(Config, mindist_phys=1000.0, mindist_norm=2.0):
     return 
 
 
+def add_LBEramPressure(Config):
+    """
+    For TNGCluster satellites, compute the the LBE ram pressure acting on them.
+    """
+    
+    f = h5py.File(Config.outdirec + Config.outfname, 'a')
+    keys = np.array(list(f.keys()))
+
+    LBE_direc = '/vera/ptmp/gc/mayromlou/public/LBE/TNG-Cluster1000/snap99/'
+
+    dset_key = 'LBEramPressure'
+
+    # initialize important arrays
+    LBE_RP = np.zeros(keys.size, dtype=float) - 1.0
+    HostZoomBoxNumbers = np.zeros(keys.size, dtype=int) - 1
+    SubhaloZoomBoxIndices = HostZoomBoxNumbers.copy()
+
+    # find the primary zoom targets and their HaloIDs
+    halos = il.groupcat.loadHalos(Config.basePath, 99)
+    PrimaryZoomTargets = halos['GroupPrimaryZoomTarget'] == 1
+    HaloIDs = np.where(PrimaryZoomTargets)[0]
+
+    # for now, only care about z=0
+    time_index = 0
+
+    # loop over each group, computing the subhalo index into the original zoom box, 
+    # and the original zoom box number
+    for subhalo_i, key in enumerate(keys):
+        group = f[key]
+        subfindID = int(group['SubfindID'][time_index])
+        groupfirstsub = int(group['SubGroupFirstSub'][time_index])
+        subhalogrnr = int(group['SubhaloGrNr'][time_index])
+
+        SubhaloZoomBoxIndices[subhalo_i] = subfindID - groupfirstsub
+        HostZoomBoxNumbers[subhalo_i] = np.where(subhalogrnr == HaloIDs)[0][0]
+
+    assert SubhaloZoomBoxIndices.min() > 0, "Not all SubhaloZoomBoxIndices properly assigned."
+    assert HostZoomBoxNumbers.min() == 0, "Not all HostZoomBoxNumbers properly assigned."
+
+    # now loop over the boxes and store the LBE_RP value
+    subhalo_count_tot = 0
+
+    for box_number, haloID in enumerate(HaloIDs):
+        LBE_fname = 'LBE_TNG-Cluster1000_snap099_%d.hdf5'%box_number
+
+        LBE_file = h5py.File(LBE_direc + LBE_fname, 'r')
+        Subhalo = LBE_file['Subhalo']
+
+        zoom_indices = HostZoomBoxNumbers == box_number
+        subhalo_indices = SubhaloZoomBoxIndices[zoom_indices]
+
+        Nsubhalos = zoom_indices[zoom_indices].size
+
+        LBE_RP[subhalo_count_tot:subhalo_count_tot+Nsubhalos] = Subhalo['LBEramPressure'][subhalo_indices]
+
+        subhalo_count_tot += Nsubhalos
+
+        LBE_file.close()
+
+    assert LBE_RP.min() >= 0, "Not all LBE_RP values assigned properly."
+
+    # loop back over the original groups and save the data
+    for key_i, key in enumerate(keys):
+        group = f[key]
+        dset = np.zeros(group['SnapNum'].size, dtype=LBE_RP.dtype) - 1
+        dset[time_index] = LBE_RP[key_i]
+        dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+        dataset[:] = dset
+
+    f.close()
+
+    return 
+
+
 def add_Lxmaps(Config):
     """
     For TNGCluster centrals, add the soft x-ray maps in 3 projections.
@@ -764,17 +837,6 @@ def add_Lxmaps(Config):
     f.close()
 
     return 
-
-
-def add_lowresmass(Config):
-    """
-    for TNG-Cluster galaxies, add the mass of low res particles at z=0.
-    this can later be used to check contamination fractions and such.
-    """
-    f = h5py.File(Config.outdirec + Config.outfname, 'a')
-    keys = np.array(list(f.keys()))
-
-
 
 
 def add_quenchtimes(Config):
