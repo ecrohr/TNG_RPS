@@ -89,7 +89,7 @@ def return_subfindindices(snap, subfindID, Config):
                    'SubhaloStellarPhotometricsi',
                    'SubhaloStellarPhotometricsz',
                    'Subhalo_Rgal',
-                   'SubhaloGrNr', 'SubGroupFirstSub',
+                   'SubhaloGrNr', 'SubhaloGroupFirstSub',
                    'SubhaloParent',
                    'SubhaloSFR', 'SubhaloSFRinRad',
                    'SubhaloMass', 'SubhaloDMMass',
