@@ -69,7 +69,7 @@ def run_clean_zooniverseGRP(Config):
                 if out_key != Config.all_key:
                     continue
             print(out_key)
-            #create_taudict(Config, out_key=out_key)
+            create_taudict(Config, out_key=out_key)
             split_tau_gasz0(Config, out_key=out_key)
 
     return
@@ -417,7 +417,6 @@ def create_taudict_onlyz0(Config, out_key=None):
                     'HostGroup_R_Crit200', 'HostSubhalo_Mstar_Rgal', 'SubhaloMass',
                     'Subhalo_Mstar_Rgal',
                     'SubhaloColdGasMass', 'SubhaloHotGasMass', 'SubhaloGasMass',
-                    'SubhaloNeutralHydrogenGasMass',
                     'Nperipass', 'min_Dperi_norm', 'min_Dperi_phys', 'Napopass',
                     'min_HostCentricDistance_norm', 'min_HostCentricDistance_phys',
                     'SubhaloStellarPhotometricsU',
@@ -546,7 +545,6 @@ def create_taudict(Config, out_key=None):
                     'HostGroup_R_Crit200', 'HostSubhalo_Mstar_Rgal', 'SubhaloMass',
                     'Subhalo_Mstar_Rgal',
                     'SubhaloColdGasMass', 'SubhaloHotGasMass', 'SubhaloGasMass',
-                    'SubhaloNeutralHydrogenGasMass',
                     'Nperipass', 'min_Dperi_norm', 'min_Dperi_phys', 'Napopass',
                     'min_HostCentricDistance_norm', 'min_HostCentricDistance_phys',
                     'SubhaloStellarPhotometricsU',

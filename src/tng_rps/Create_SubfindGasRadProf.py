@@ -356,7 +356,7 @@ def add_memberflags(Config):
     for group_key in f:
         group = f[group_key]
         SubfindID = group['SubfindID'][:]
-        SubGroupFirstSub = group['SubGroupFirstSub'][:]
+        SubhaloGroupFirstSub = group['SubhaloGroupFirstSub'][:]
         SubhaloGrNr = group['SubhaloGrNr'][:]
         HostSubhaloGrNr = group['HostSubhaloGrNr'][:]
         HostSubfindID = group['HostSubfindID'][:]
@@ -366,7 +366,7 @@ def add_memberflags(Config):
         # flag when the subhalo was a central galaxy
         # i.e., it's the primrary subhalo in the group
         centralflags = flags.copy()
-        central_indices = np.where((SubfindID == SubGroupFirstSub) &
+        central_indices = np.where((SubfindID == SubhaloGroupFirstSub) &
                                    (SubfindID != -1))[0]
         centralflags[central_indices] = 1
 
@@ -374,7 +374,7 @@ def add_memberflags(Config):
         # i.e., it's a satellite of a FoF that's NOT it's last identified host
         preprocflags = flags.copy()
         preproc_indices = np.where((SubhaloGrNr != HostSubhaloGrNr) &
-                                   (SubfindID != SubGroupFirstSub) &
+                                   (SubfindID != SubhaloGroupFirstSub) &
                                    (SubfindID != -1))[0]
         preprocflags[preproc_indices] = 1
 
@@ -657,7 +657,7 @@ def add_LBEramPressure(Config):
     for subhalo_i, key in enumerate(keys):
         group = f[key]
         subfindID = int(group['SubfindID'][time_index])
-        groupfirstsub = int(group['SubGroupFirstSub'][time_index])
+        groupfirstsub = int(group['SubhaloGroupFirstSub'][time_index])
         subhalogrnr = int(group['SubhaloGrNr'][time_index])
 
         SubhaloZoomBoxIndices[subhalo_i] = subfindID - groupfirstsub
@@ -915,10 +915,6 @@ def add_gastau(Config):
 
     keys = ['tau_medpeak', 'tau_infall']
     gastypes = ['ColdGas', 'HotGas', 'Gas', '']
-
-    # for TNGCluster we don't have the Hot and Cold Gas Masses at each snapshot
-    if Config.TNGCluster_flag:
-        gastypes = ['Gas', '']
 
     f_keys = list(f.keys())
 
