@@ -465,10 +465,11 @@ def initialize_TNGCluster_subfindindices(Config):
     # load all halos and find the primary zoom target IDs
     halo_fields = ['GroupFirstSub', 'GroupPrimaryZoomTarget']
     halos = il.groupcat.loadHalos(basePath, max_snap, fields=halo_fields)
-    haloIDs = np.where(halos['GroupPrimaryZoomTarget'])[0]
+    haloIDs = np.where(halos['GroupPrimaryZoomTarget'] == 1)[0]
     GroupFirstSub = halos['GroupFirstSub'][haloIDs]
     
     print('There are %d primary zoom targets in %s.'%(haloIDs.size, Config.sim))
+    assert haloIDs.size == 352, "Error:"
     
     # load all subhalos and find which ones:
     # 1) are z=0 satellites of primary zooms
