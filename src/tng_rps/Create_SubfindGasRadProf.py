@@ -716,20 +716,16 @@ def add_Lxmaps(Config):
     basePath = Config.basePath
     z0_index = 0
     snapNum = Config.SnapNums[z0_index]
-    a = Config.Times[z0_index]
-    boxsize = Config.BoxSizes[z0_index]
-    h = Config.h
     gas_ptn = Config.gas_ptn
+
+    flag_4k = False
 
     Lx_key = 'xray_lum_0.5-2.0kev'
 
     gas_fields = ['Masses', 'Coordinates', 'Density']
 
-    gas_hsml_fact = 1.5
     pixel_size = 5. # kpc
     smoothing_scale = 300. / pixel_size # keep constant at 300 kpc
-
-    Npixels_4k = 4096
 
     # load the soft x-ray luminosities
     Lx_direc = '/vera/ptmp/gc/dnelson/sims.TNG/L680n8192TNG/data.files/cache/'
@@ -807,17 +803,9 @@ def add_Lxmaps(Config):
                 onlyFuzz_gas_cells[key] = length_fuzz
             else:
                 onlyFuzz_gas_cells[key] = total_gas_cells[key][length_FoF:]
-                
-
-        # convert units
-        Masses = total_gas_cells['Masses'] * 1.0e10 / h
-        Coordinates = total_gas_cells['Coordinates'] * a / h
-        Densities = total_gas_cells['Density'] * 1.0e10 / h / (a / h)**3
-        Sizes = (Masses / (Densities * 4./3. * np.pi))**(1./3.) * gas_hsml_fact
-        Lxsoft = total_gas_cells[Lx_key]
 
         R200c = group['HostGroup_R_Crit200'][z0_index]
-        halo_pos = group['HostSubhaloPos'][z0_index]
+        boxSizeImg = [3.*R200c, 3.*R200c]
 
         axes_list = [[0,1],
                      [0,2],
@@ -834,49 +822,29 @@ def add_Lxmaps(Config):
 
             label = labels_list[axes_i]
 
-            pos = Coordinates[:,axes]
-            hsml = Sizes
-            mass = Lxsoft
-            quant = None
-            boxSizeImg = [3.*R200c, 3.*R200c] # kpc
-            boxSizeSim = [boxsize, boxsize, boxsize]
-            boxCen = halo_pos[axes]    
-            nPixels = [int(boxSizeImg[0] / pixel_size), int(boxSizeImg[1] / pixel_size)]
-            ndims = 3
-
             Lx_map_key = Lx_key + '_' + label
+
+            if flag_4k:
+                nPixels = 4096
+                pixel_size = boxSizeImg[0] / nPixels
+                smoothing_scale = 300. / pixel_size
+                Lx_map_key += '_4k'
+
             Lx_map_smooth_key = Lx_map_key + '_smooth'
 
-            Lx_map = return_Lx_map(Config, total_gas_cells, halo, axes, in4k=False)
-            #Lx_map = sphMap.sphMap(pos, hsml, mass, quant, [0,1], boxSizeImg, boxSizeSim, boxCen, nPixels, ndims, colDens=True)
+            Lx_map = return_Lx_map(Config, total_gas_cells, halo, axes, in4k=flag_4k)
             Lx_map_smooth = gaussian_filter(Lx_map, smoothing_scale, mode='constant')
-
-            dsets = [Lx_map, Lx_map_smooth]
-            dset_keys = [Lx_map_key, Lx_map_smooth_key]
-            for dset_index, dset_key in enumerate(dset_keys):
-                dset = dsets[dset_index]
-                dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
-                dataset[:] = dset
                         
-            Lx_map_4k_key = Lx_map_key + '_4k'
-            Lx_map_4k_smooth_key = Lx_map_4k_key + '_smooth'
-            Lx_map_4k_key_onlyBCG = Lx_map_4k_key + '_onlyBCG'
-            Lx_map_4k_key_noBCG_nofuzz =  Lx_map_4k_key + '_noBCG_nofuzz'
-            Lx_map_4k_key_onlyFuzz = Lx_map_4k_key + '_onlyFuzz'
+            Lx_map_key_onlyBCG = Lx_map_key + '_onlyBCG'
+            Lx_map_key_noBCG_nofuzz =  Lx_map_key + '_noBCG_nofuzz'
+            Lx_map_key_onlyFuzz = Lx_map_key + '_onlyFuzz'
 
-            pixel_size_4k_phys = boxSizeImg[0] / Npixels_4k
-            smoothing_scale_4k = 300. / pixel_size_4k_phys
+            Lx_map_onlyBCG = return_Lx_map(Config, onlyBCG_gas_cells, halo, axes, in4k=flag_4k)
+            Lx_map_noBCG_nofuzz = return_Lx_map(Config, noBCG_nofuzz_gas_cells, halo, axes, in4k=flag_4k)
+            Lx_map_onlyFuzz = return_Lx_map(Config, onlyFuzz_gas_cells, halo, axes, in4k=flag_4k)
 
-            Lx_map_4k = return_Lx_map(Config, total_gas_cells, halo, axes, in4k=True)
-            #Lx_map_4k = sphMap.sphMap(pos, hsml, mass, quant, [0,1], boxSizeImg, boxSizeSim, boxCen, [Npixels_4k, Npixels_4k], ndims, colDens=True)
-            Lx_map_4k_smooth = gaussian_filter(Lx_map_4k, smoothing_scale_4k, mode='constant')
-
-            Lx_map_4k_onlyBCG = return_Lx_map(Config, onlyBCG_gas_cells, halo, axes)
-            Lx_map_4k_noBCG_nofuzz = return_Lx_map(Config, noBCG_nofuzz_gas_cells, halo, axes)
-            Lx_map_4k_onlyFuzz = return_Lx_map(Config, onlyFuzz_gas_cells, halo, axes)
-
-            dsets = [Lx_map_4k, Lx_map_4k_smooth, Lx_map_4k_onlyBCG, Lx_map_4k_noBCG_nofuzz, Lx_map_4k_onlyFuzz]
-            dset_keys = [Lx_map_4k_key, Lx_map_4k_smooth_key, Lx_map_4k_key_onlyBCG, Lx_map_4k_key_noBCG_nofuzz, Lx_map_4k_key_onlyFuzz]
+            dsets = [Lx_map, Lx_map_smooth, Lx_map_onlyBCG, Lx_map_noBCG_nofuzz, Lx_map_onlyFuzz]
+            dset_keys = [Lx_map_key, Lx_map_smooth_key, Lx_map_key_onlyBCG, Lx_map_key_noBCG_nofuzz, Lx_map_key_onlyFuzz]
             for dset_index, dset_key in enumerate(dset_keys):
                 dset = dsets[dset_index]
                 dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
