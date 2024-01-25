@@ -1265,7 +1265,7 @@ def loadMainTreeBranch(sim, snap, subfindID, fields=None, treeName='SubLink_gal'
     indices = tree['SnapNum'] >= min_snap
     for field in fields:
         tree[field] = tree[field][indices]
-    tree['count'] = len(indices)
+    tree['count'] = len(indices[indices])
     
     return tree
 
