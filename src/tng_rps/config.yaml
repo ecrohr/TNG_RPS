@@ -3,13 +3,13 @@ sim: 'L680n8192TNG' # options are 'TNG*-*;, for 50, 100, 300 and -1, -2, -3 -4 o
 TNGCluster_flag: True
 mp_flag: True
 zooniverse_flag: False
-centrals_flag: True
+centrals_flag: False
 tracers_flag: False
 allsubhalos_flag: False
 Nmpcores: 72
     
 max_snap: 99
-min_snap: 0
+min_snap: 99
 
 first_snap: 0
 last_snap: 99
