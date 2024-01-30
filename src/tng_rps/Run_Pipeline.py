@@ -500,12 +500,12 @@ def initialize_TNGCluster_subfindindices(Config):
         satelliteIDs = satellite_subhaloIDs[satellite_indices]
         Mstar_host = subhalos['SubhaloMassInRadType'][central_subhaloIDs[halo_i],star_ptn]
         Mstar_sats = subhalos['SubhaloMassInRadType'][satelliteIDs,star_ptn]
-        lowratio_indices = Mstar_sats / Mstar_host < massratio_frac
+        lowratio_indices = (Mstar_sats / Mstar_host) < massratio_frac
 
         lowratio_subfindIDs.append(satelliteIDs[lowratio_indices])
 
     lowratio_subfindIDs = np.concatenate(lowratio_subfindIDs)
-    subhalo_flag_indices = subhalos['SubhaloFlag'][lowratio_subfindIDs] == 1
+    subhalo_flag_indices = subhalos['SubhaloFlag'][lowratio_subfindIDs] == True
     subfindIDs = lowratio_subfindIDs[subhalo_flag_indices]
     snaps = np.ones(subfindIDs.size, dtype=subfindIDs.dtype) * max_snap
     
