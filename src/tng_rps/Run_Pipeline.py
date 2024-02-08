@@ -112,6 +112,8 @@ class Configuration(dict):
         full_taufname = self.outdirec + self.taufname
         if (self.zooniverse_flag):
             SnapNums_SubfindIDs, SubfindIDs = initialize_zooniverseindices(self)
+        elif (self.jellyfishzoom_flag):
+            SnapNums_SubfindIDs, SubfindIDs = initialize_jellyfishzoomindices(self)
         elif os.path.isfile(full_taufname):
             # yes, so just load the SubfindID (at z=0) for these
             print('File %s exists. Using SubfindIDs and SnapNums from there.'%(full_taufname))
@@ -188,6 +190,8 @@ class Configuration(dict):
             sample = 'central_subfind'
         elif self.allsubhalos_flag:
             sample = 'all_subfind'
+        elif self.jellyfishzoom_flag:
+            sample = 'jellyfishzoom'
         else:
             sample = 'subfind'
             
@@ -388,7 +392,6 @@ def return_gas_lolim(Config):
             
     return res
 
- 
 
 def initialize_allsubhalos(Config):
     """
@@ -530,6 +533,20 @@ def initialize_zooniverseindices(Config):
         inf.close()
     
     return snapnums, subfindIDs
+
+
+def initialize_jellyfishzoomindices(Config):
+    """
+    For the jellyfish zoom project, we are only interested in TNG50-1 halo 1
+    and the jellyfish that belong to that halo. Curently implemented to 
+    return the subfindID of the central of halo 1 at z=0.
+    """
+
+    halo = il.groupcat.loadSingle(Config.basePath, Config.max_snap, haloID=1)
+    subfindID = np.array([halo['GroupFirstSub']], dtype=int)
+    snap = np.array([99], dtype=int)
+
+    return snap, subfindID
 
 
 def str2bool(v):

@@ -23,7 +23,9 @@ scalar_keys = ['SubhaloColdGasMass', 'SubhaloGasMass', 'SubhaloHotGasMass']
 threed_keys = ['radii', 'vol_shells',
                'SubhaloColdGasMassShells', 'SubhaloColdGasDensityShells',
                'SubhaloHotGasMassShells', 'SubhaloHotGasDensityShells',
-               'SubhaloGasMassShells', 'SubhaloDensityShells']
+               'SubhaloGasMassShells', 'SubhaloGasDensityShells',
+               'SubhaloGFMMetallicityShells', 'SubhaloInternalEnergyShells',
+               'SubhaloTemperatureShells']
 
 # hardcode the snapshots of interest
 zooniverse_snapshots_TNG50 = [99, 98, 97, 96, 95, 94, 93, 92, 91, 90,
@@ -249,13 +251,14 @@ def return_subfindGRP(snapnum, subfindID, Config):
         
     subhalofields = ['SubhaloHalfmassRadType', 'SubhaloPos', 'SubhaloGrNr']
     gasfields     = ['Coordinates', 'Masses', 'InternalEnergy',
-                     'ElectronAbundance', 'StarFormationRate']
+                     'ElectronAbundance', 'StarFormationRate',
+                     'Velocities', 'GFM_Metallicity']
             
     subhalo      = ru.loadSingleFields(basePath, snapnum, subhaloID=subfindID, fields=subhalofields)
     subhalopos   = subhalo['SubhaloPos'] * a / h
     subhalo_rgal = 2. * subhalo['SubhaloHalfmassRadType'][star_ptn] * a / h
                      
-    if centrals_flag:
+    if centrals_flag or Config.jellyfishzoom_flag:
         R200c = ru.loadSingleFields(basePath, snapnum, haloID=subhalo['SubhaloGrNr'], fields=['Group_R_Crit200']) * a / h
                             
     # load gas particles for relevant halo
@@ -275,7 +278,7 @@ def return_subfindGRP(snapnum, subfindID, Config):
     gas_electronabundances = gasparts['ElectronAbundance']
     gas_starformationrates = gasparts['StarFormationRate']
     
-    if Config.centrals_flag:
+    if Config.centrals_flag or Config.jellyfishzoom_flag:
         radii_bins     = radii_bins_norm * R200c # pkpc
         radii_bincents = radii_bincents_norm * R200c # pkpc
         vol_shells = (4./3.) * np.pi * ((radii_bins[1:])**3 - radii_bins[:-1]**3)
@@ -308,19 +311,29 @@ def return_subfindGRP(snapnum, subfindID, Config):
     subhalo_coldgasmass = np.sum(coldgas_masses)
     subhalo_hotgasmass  = np.sum(hotgas_masses)    
     # sort the gas masses by their radius
-    coldgas_masses = coldgas_masses[np.argsort(coldgas_radii)]
-    coldgas_radii  = coldgas_radii[np.argsort(coldgas_radii)]
+    order = np.argsort(coldgas_radii)
+    coldgas_masses = coldgas_masses[order]
+    coldgas_radii  = coldgas_radii[order]
     
-    hotgas_masses = hotgas_masses[np.argsort(hotgas_radii)]
-    hotgas_radii  = hotgas_radii[np.argsort(hotgas_radii)]
+    hotgas_masses = hotgas_masses[order]
+    hotgas_radii  = hotgas_radii[order]
 
-    gas_masses = gas_masses[np.argsort(gas_radii)]
-    gas_radii = gas_radii[np.argsort(gas_radii)]
-    
+    gas_masses = gas_masses[order]
+    gas_radii = gas_radii[order]
+
+    gas_velocities = gasparts['Velocities'][order] * np.sqrt(a)
+    gas_gfmmetallicities = gasparts['GFM_Metallicity'][order] / 0.0127
+    gas_internalenergies = gas_internalenergies[order]
+    gas_temperatures = gas_temperatures[order]
+
     # calculate the radial profile via histogram                      
     coldgas_mass_shells = np.histogram(coldgas_radii, bins=radii_bins, weights=coldgas_masses)[0]
     hotgas_mass_shells = np.histogram(hotgas_radii, bins=radii_bins, weights=hotgas_masses)[0]
     gas_mass_shells = np.histogram(gas_radii, bins=radii_bins, weights=gas_masses)[0]
+
+    gas_gfmmetallcities_shells = np.histogram(gas_gfmmetallicities, bins=radii_bins, weights=gas_masses)[0] / gas_mass_shells
+    gas_internalenergies_shells = np.histogram(gas_internalenergies, bins=radii_bins, weights=gas_masses)[0] / gas_mass_shells
+    gas_temperatures_shells = np.histogram(gas_temperatures, bins=radii_bins, weights=gas_masses)[0] / gas_mass_shells
 
     coldgas_densities_shells = coldgas_mass_shells / vol_shells
     hotgas_densities_shells = hotgas_mass_shells / vol_shells
@@ -329,7 +342,8 @@ def return_subfindGRP(snapnum, subfindID, Config):
     dsets = [radii_bincents, vol_shells,
              coldgas_mass_shells, coldgas_densities_shells,
              hotgas_mass_shells, hotgas_densities_shells,
-             gas_mass_shells, gas_densities_shells]
+             gas_mass_shells, gas_densities_shells,
+             gas_gfmmetallcities_shells, gas_internalenergies_shells, gas_temperatures_shells]
     
     scalars = [subhalo_coldgasmass, subhalo_gasmass, subhalo_hotgasmass]
              
