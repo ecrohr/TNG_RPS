@@ -582,7 +582,7 @@ def calc_pressure_dict(gas_cells):
     if 'Temperature' not in gas_cells:
         gas_cells = calc_temp_dict(gas_cells)
 
-    pressure = gas_cells['ElectronAbundance'] * xh * gas_cells['Density'] / mp * gas_cells['Temperature'] * kb * density_conversion
+    pressure = gas_cells['ElectronAbundance'].astype(np.double) * xh * gas_cells['Density'].astype(np.double) / mp * gas_cells['Temperature'].astype(np.double) * kb * density_conversion
     if 'StarFormationRate' in gas_cells:
         pressure[gas_cells['StarFormationRate'] > 0] = 0
 
