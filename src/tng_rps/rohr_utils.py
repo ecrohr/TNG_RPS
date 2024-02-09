@@ -557,6 +557,40 @@ def is_slice_in_list(s,l):
 ##### other functions #########
 ########################################
 
+def calc_pressure_dict(gas_cells):
+    """
+    returns the (thermal) pressure [erg cm^-3] of a gas cell from an AREPO output.
+    gas_cells should be a dictionary including keys ElectronAbundance,
+    Density, InternalEnergy, and optionally StarFormationRate. Assumes that
+    Density is already in physical units Msun / kpc^3. If StarFormationRate is
+    provided, then manually overwrites Pressure to be 0, under the 
+    assumption that there are no free electrons (ElectronAbundance = 0)
+    in star-forming gas cells. Returns the dictionary with added
+    entry Pressure.
+    """
+
+    if 'ElectronAbundance' not in gas_cells or 'Density' not in gas_cells or 'InternalEnergy' not in gas_cells:
+        print('Please load ElectronAbundance, Density, Internal Energy, and optionally StarFormationRate. Returning')
+        return gas_cells
+    
+    # define constants
+    xh = 0.76 # hydrogen mass fraction
+    mp = 1.67e-24 # proton mass [g]
+    kb = 1.3806e-16 # Boltzmann constant [erg K^-1]
+    density_conversion = 6.77e-32 # Msun / kpc^3 -> g / cm^3
+
+    if 'Temperature' not in gas_cells:
+        gas_cells = calc_temp_dict(gas_cells)
+
+    pressure = gas_cells['ElectronAbundance'] * xh * gas_cells['Density'] / mp * gas_cells['Temperature'] * kb * density_conversion
+    if 'StarFormationRate' in gas_cells:
+        pressure[gas_cells['StarFormationRate'] > 0] = 0
+
+    gas_cells['Pressure'] = pressure
+    return gas_cells
+
+   
+
 def calc_temp_dict(gas_cells):
     """
     return the temperature [K] of a gas cell from TNG

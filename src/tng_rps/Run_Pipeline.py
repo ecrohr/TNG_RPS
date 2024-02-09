@@ -79,6 +79,7 @@ class Configuration(dict):
 
         self.Header = il.groupcat.loadHeader(self.basePath, self.max_snap)
         self.h = self.Header['HubbleParam']
+        self.Header_snap = ru.loadHeader(self.basePath, self.max_snap)
         
         SnapNums = np.arange(self.max_snap, self.min_snap-1, -1)
         Times = np.zeros(SnapNums.size, dtype=float)

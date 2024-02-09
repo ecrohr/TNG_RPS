@@ -25,7 +25,7 @@ threed_keys = ['radii', 'vol_shells',
                'SubhaloHotGasMassShells', 'SubhaloHotGasDensityShells',
                'SubhaloGasMassShells', 'SubhaloGasDensityShells',
                'SubhaloGFMMetallicityShells', 'SubhaloInternalEnergyShells',
-               'SubhaloTemperatureShells',
+               'SubhaloTemperatureShells', 'SubhaloPressureShells',
                'SubhaloDarkMatterMassShells', 'SubhaloDarkMatterDensityShells']
 
 # hardcode the snapshots of interest
@@ -212,14 +212,15 @@ def return_subfindGRP(snapnum, subfindID, Config):
     dm_mass = Config.Header_snap['MassTable'][dm_ptn] * 1.0e10 / h
 
     ### define radial bins and bincenters ###
-    if centrals_flag:
-        rmin_norm = 0.0 # r / Rvir
+    if centrals_flag or Config.jellyfishzoom_flag:
+        rmin_norm = 1.0e-3 # r / Rvir
         rmax_norm = 3.0 # r / Rvir
-        radii_binwidth = 0.1 # r / Rvir, linear
+        radii_binwidth = 0.1 # r / Rvir, log
+        radii_bins_norm, radii_bincents_norm = ru.returnlogbins([rmin_norm, rmax_norm], radii_binwidth)
 
-        radii_bins_norm = np.arange(rmin_norm, rmax_norm + radii_binwidth*1.0e-3, radii_binwidth)
-        radii_bincents_norm = (radii_bins_norm[1:] + radii_bins_norm[:-1]) / 2.
-
+        # prepend 0 to the radial bins to capture the center sphere
+        radii_bins_norm = np.insert(radii_bins_norm, 0, 0.)
+        radii_bincents_norm = np.insert(radii_bincents_norm, 0, radii_bins_norm[1]/2.)
     else:
         radii_binwidth = 0.1 # r / rgal, log spacing
         rmin_norm = 10.**(-1.) # [r/rgal]
@@ -253,7 +254,7 @@ def return_subfindGRP(snapnum, subfindID, Config):
     subhalofields = ['SubhaloHalfmassRadType', 'SubhaloPos', 'SubhaloGrNr']
     gasfields     = ['Coordinates', 'Masses', 'InternalEnergy',
                      'ElectronAbundance', 'StarFormationRate',
-                     'Velocities', 'GFM_Metallicity']
+                     'Velocities', 'GFM_Metallicity', 'Density']
             
     subhalo      = ru.loadSingleFields(basePath, snapnum, subhaloID=subfindID, fields=subhalofields)
     subhalopos   = subhalo['SubhaloPos'] * a / h
@@ -279,6 +280,9 @@ def return_subfindGRP(snapnum, subfindID, Config):
     gas_internalenergies   = gasparts['InternalEnergy']
     gas_electronabundances = gasparts['ElectronAbundance']
     gas_starformationrates = gasparts['StarFormationRate']
+    
+    gasparts['Density'] *= 1.0e10 / h / (a / h)**3
+    gasparts = ru.calc_pressure_dict(gasparts)
     
     if Config.centrals_flag or Config.jellyfishzoom_flag:
         radii_bins     = radii_bins_norm * R200c # pkpc
@@ -330,15 +334,17 @@ def return_subfindGRP(snapnum, subfindID, Config):
     gas_gfmmetallicities = gasparts['GFM_Metallicity'][gas_order] / 0.0127
     gas_internalenergies = gas_internalenergies[gas_order]
     gas_temperatures = gas_temperatures[gas_order]
+    gas_pressures = gasparts['Pressure'][gas_order]
 
     # calculate the radial profile via histogram                      
     coldgas_mass_shells = np.histogram(coldgas_radii, bins=radii_bins, weights=coldgas_masses)[0]
     hotgas_mass_shells = np.histogram(hotgas_radii, bins=radii_bins, weights=hotgas_masses)[0]
     gas_mass_shells = np.histogram(gas_radii, bins=radii_bins, weights=gas_masses)[0]
 
-    gas_gfmmetallcities_shells = np.histogram(gas_gfmmetallicities, bins=radii_bins, weights=gas_masses)[0] / gas_mass_shells
-    gas_internalenergies_shells = np.histogram(gas_internalenergies, bins=radii_bins, weights=gas_masses)[0] / gas_mass_shells
-    gas_temperatures_shells = np.histogram(gas_temperatures, bins=radii_bins, weights=gas_masses)[0] / gas_mass_shells
+    gas_gfmmetallcities_shells = np.histogram(gas_radii, bins=radii_bins, weights=gas_masses * gas_gfmmetallicities)[0] / gas_mass_shells
+    gas_internalenergies_shells = np.histogram(gas_radii, bins=radii_bins, weights=gas_masses * gas_internalenergies)[0] / gas_mass_shells
+    gas_temperatures_shells = np.histogram(gas_radii, bins=radii_bins, weights=gas_masses * gas_temperatures)[0] / gas_mass_shells
+    gas_pressures_shells = np.histogram(gas_radii, bins=radii_bins, weights=gas_masses * gas_pressures)[0] / gas_mass_shells
 
     coldgas_densities_shells = coldgas_mass_shells / vol_shells
     hotgas_densities_shells = hotgas_mass_shells / vol_shells
@@ -357,7 +363,8 @@ def return_subfindGRP(snapnum, subfindID, Config):
              coldgas_mass_shells, coldgas_densities_shells,
              hotgas_mass_shells, hotgas_densities_shells,
              gas_mass_shells, gas_densities_shells,
-             gas_gfmmetallcities_shells, gas_internalenergies_shells, gas_temperatures_shells,
+             gas_gfmmetallcities_shells, gas_internalenergies_shells,
+             gas_temperatures_shells, gas_pressures_shells,
              dm_mass_shells, dm_density_shells]
     
     scalars = [subhalo_coldgasmass, subhalo_gasmass, subhalo_hotgasmass]
