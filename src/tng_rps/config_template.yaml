@@ -27,6 +27,7 @@ non_key: 'nonjellyf'
 SubfindIndices: False
 SubfindGasRadProf: False
 run_SGRP: False
+SGRP_subfind_flag: True # use subfind if True or FoF if False cells/particles when running SubfindGasRadProf (run_SGRP)
 run_SGRP_PP: False
 SubfindSnapshot: False
 run_SS: False

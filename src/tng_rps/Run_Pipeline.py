@@ -191,8 +191,10 @@ class Configuration(dict):
             sample = 'central_subfind'
         elif self.allsubhalos_flag:
             sample = 'all_subfind'
-        elif self.jellyfishzoom_flag:
-            sample = 'jellyfishzoom'
+        elif self.jellyfishzoom_flag and self.SGRP_subfind_flag:
+            sample = 'jellyfishzoom_subfind'
+        elif self.jellyfishzoom_flag and not self.SGRP_subfind_flag:
+            sample = 'jellyfishzoom_fof'
         else:
             sample = 'subfind'
             
