@@ -1242,7 +1242,7 @@ def loadMainTreeBranch(sim, snap, subfindID, fields=None, treeName='SubLink_gal'
 
         # check if there's an issue with the MDB -- if the MDB reaches z=0
         # if so, then only use the MPB
-        if (subMDB['count'] + snap) > (max_snap + 1):
+        if (subMDB['count'] + snap) > (99 + 1):
 
             # find where the MDB stops
             stop  = -(max_snap - min_snap + 1)
@@ -1262,7 +1262,7 @@ def loadMainTreeBranch(sim, snap, subfindID, fields=None, treeName='SubLink_gal'
                 tree[key] = np.concatenate([subMDB[key][:-1], subMPB[key]])
 
 
-    indices = tree['SnapNum'] >= min_snap
+    indices = (tree['SnapNum'] >= min_snap) & (tree['SnapNum'] <= max_snap)
     for field in fields:
         tree[field] = tree[field][indices]
     tree['count'] = len(indices[indices])
@@ -1291,6 +1291,11 @@ def find_common_snaps(snaps, SnapNum_1, SnapNum_2):
             indices_snaps.append(snap_index)
     # note that sub, host indicies are lists of arrays, while
     # snap indices is a list of ints 
+    
+    # if there are no snaps in common then return three empty arays:
+    if len(indices_snaps) == 0:
+        return np.array([]), np.array([]), np.array([])
+
     indices_1 = np.concatenate(indices_1)
     indices_2 = np.concatenate(indices_2)
     indices_snaps = np.array(indices_snaps)

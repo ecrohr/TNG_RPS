@@ -142,7 +142,11 @@ class Configuration(dict):
             if (self.TNGCluster_flag):
                 SnapNums_SubfindIDs, SubfindIDs = initialize_TNGCluster_subfindindices(self)
 
-            # all centrals with M200c > 10.**(11.15)?
+            # only groups (+ clusters), all centrals with M200c > 10.**(13)?
+            elif ((self.onlygroups_flag) & (self.centrals_flag)):
+                SnapNums_SubfindIDs, SubfindIDs = initialize_central_groups_subfindindices(self)
+
+            # all centrals with M200c > 10.**(11.5)?
             elif (self.centrals_flag):
                 SnapNums_SubfindIDs, SubfindIDs = initialize_central_subfindindices(self)
                               
@@ -184,6 +188,8 @@ class Configuration(dict):
         
         if self.zooniverse_flag:
             sample = 'zooniverse'
+        elif self.onlygroups_flag and self.centrals_flag:
+            sample = 'central_groups_subfind' 
         elif self.centrals_flag:
             sample = 'central_subfind'
         elif self.allsubhalos_flag:
@@ -195,9 +201,13 @@ class Configuration(dict):
         
         GRPfname = '%s_%s_branches'%(sample, sim)
         taufname = '%s_%s_tau'%(sample, sim)
-        if (self.min_snap == self.max_snap) and (self.min_snap == 99):
-            GRPfname += '_z0'
-            taufname += '_z0'
+        if (self.min_snap == self.max_snap):
+            if (self.min_snap == 99):
+                GRPfname += '_z0'
+                taufname += '_z0'
+            else:
+                GRPfname += '_snapNum%03d'%self.min_snap
+                taufname += '_snapNum%03d'%self.min_snap
 
         if not subsample:
             GRPfname += '.hdf5'
@@ -303,9 +313,12 @@ def return_outdirec_outfname(Config):
         outfname = 'subfind_%s_branches.hdf5'%(Config.sim)
 
     # if only caring about z=0 data, then name accordingly
-    if Config.max_snap == Config.min_snap == 99:
-        outfname = outfname[:-5] + '_z0.hdf5'
-        
+    if (Config.max_snap == Config.min_snap):
+        if (Config.min_snap == 99):
+            outfname = outfname[:-5] + '_z0.hdf5'
+        else:
+            outfname = outfname[:-5] + '_snapNum%03d'%(Config.min_snap)
+
     if (os.path.isdir(outdirec)):
         print('Directory %s exists.'%outdirec)
         if os.path.isfile(outdirec + outfname):
@@ -342,7 +355,7 @@ def return_Mstar_lolim(Config):
     elif 'TNG300' in sim:
         res = 10.**(9)
     elif 'L680n8192TNG' in sim:
-        if Config.min_snap == Config.max_snap and Config.min_snap == 99:
+        if Config.min_snap == Config.max_snap == 99:
             return 10.**(9)
         else:
             return 10.**(10)
@@ -429,21 +442,48 @@ def initialize_subfindindices(Config):
 
     return SnapNums, SubfindIDs
 
+def initialize_central_groups_subfindindices(Config):
+    """
+    The same as initialize_central_subfindindices(), but
+    only considering MPBs with M200c(z=0) > 10^13 Msun.
+    """
+
+    halo_fields = ['Group_M_Crit200','GroupFirstSub']
+    halos = il.groupcat.loadHalos(Config.basePath, 99, fields=halo_fields)
+    M200c = halos['Group_M_Crit200'] * 1.0e10 / Config.h
+    indices = M200c >= 10.0**(13.)
+
+    GroupFirstSub = halos['GroupFirstSub']
+    SubfindIDs = GroupFirstSub[indices]
+    SnapNums = np.ones(SubfindIDs.size, dtype=int) * 99
+
+    return SnapNums, SubfindIDs
+
 
 def initialize_central_subfindindices(Config):
     """
     Define SubfindIDs and SnapNums to be tracked.
-    Returns the most massive z=0 central subhalos.
-    """
+    Returns the most massive central subhalos, default
+    to z=0. If only considering one snapshot, that is, 
+    Config.min_snap == Config.max_snap, then considers
+    centrals above the M200c limit at this snapshot.
+    """ 
+
+    if Config.min_snap == Config.max_snap:
+        snapNum = Config.min_snap
+    else:
+        snapNum = 99
     
     halo_fields = ['Group_M_Crit200','GroupFirstSub']
-    halos = il.groupcat.loadHalos(Config.basePath, 99, fields=halo_fields)
+    halos = il.groupcat.loadHalos(Config.basePath, snapNum, fields=halo_fields)
     M200c = halos['Group_M_Crit200'] * 1.0e10 / Config.h
     indices = M200c >= 10.0**(11.5)
 
     GroupFirstSub = halos['GroupFirstSub']
     SubfindIDs = GroupFirstSub[indices]
-    SnapNums = np.ones(SubfindIDs.size, dtype=int) * 99
+    SnapNums = np.ones(SubfindIDs.size, dtype=int) * snapNum
+
+    print('snapNum = %d'%snapNum)
 
     return SnapNums, SubfindIDs
     

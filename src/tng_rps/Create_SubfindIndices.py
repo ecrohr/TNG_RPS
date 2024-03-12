@@ -129,7 +129,7 @@ def return_subfindindices(snap, subfindID, Config):
     result[return_key]['SnapNum'] = SnapNums
 
 
-    print('Working on %s snap %03d subfindID %08d'%(sim, snap, subfindID))
+    print('return_subfindidindices(): Working on %s snap %03d subfindID %08d'%(sim, snap, subfindID))
     
     # now load the whole main progenitor branches of the subhalo and the
     # main subhalo of its z=0 FoF Host -- then tabulate various properties
@@ -141,7 +141,7 @@ def return_subfindindices(snap, subfindID, Config):
     host_fields = ['SnapNum', 'SubfindID', 'SubhaloMassInRadType',
                    'SubhaloHalfmassRadType', 'SubhaloPos', 'SubhaloGrNr',
                    'SubhaloVel', 'Group_M_Crit200', 'Group_R_Crit200']
-    
+        
     # load the full subhalo branch
     sub_tree = ru.loadMainTreeBranch(sim, snap, subfindID, fields=sub_fields,
                                     min_snap=min_snap, max_snap=max_snap, treeName=treeName)
@@ -153,29 +153,24 @@ def return_subfindindices(snap, subfindID, Config):
     # load the host_tree MPB using the GroupFirstSub from the last identified snap of the subhalo        
     host_tree = il.sublink.loadTree(basePath, sub_tree['SnapNum'][0], sub_tree['GroupFirstSub'][0],
                                     treeName=treeName, fields=host_fields, onlyMPB=True)
-
     # find the snapshots where both the subhalo and host have been identified
     snap_indices, sub_indices, host_indices = ru.find_common_snaps(SnapNums,
-                                                                   sub_tree['SnapNum'],
-                                                                   host_tree['SnapNum'])
-
+                                                                sub_tree['SnapNum'],
+                                                                host_tree['SnapNum'])
     # calculate the host-centric distance
     a                    = Times[snap_indices]
     boxsizes             = BoxSizes[snap_indices]
     SubPos               = (sub_tree['SubhaloPos'][sub_indices].T * a / h).T
     HostPos              = (host_tree['SubhaloPos'][host_indices].T * a / h).T
     hostcentricdistances = np.zeros(sub_indices.size, dtype=float)
-
     # find a way to vectorize this... Nx3, Nx3, Nx1 array indexing is hard
     for i, sub_index in enumerate(sub_indices):
         boxsize = boxsizes[i]
         subpos = SubPos[i]
         hostpos = HostPos[i]
         hostcentricdistances[i] = ru.mag(subpos, hostpos, boxsize)
-
     hostcentricdistances_norm = (hostcentricdistances /
-                                 (host_tree['Group_R_Crit200'][host_indices] * a / h))
-
+                                (host_tree['Group_R_Crit200'][host_indices] * a / h))
     dsets = [sub_tree['SubfindID'][sub_indices],
              sub_tree['SubhaloMassInRadType'][sub_indices,star_ptn] * 1.0e10 / h,
              sub_tree['SubhaloStellarPhotometrics'][sub_indices,0],
