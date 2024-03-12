@@ -96,8 +96,9 @@ def run_postprocessing(Config):
     run all post processing functions
     """
     
-    # standard datasets
-    add_gastau(Config)
+    # standard for all branches 
+    if Config.min_snap != Config.max_snap:
+        add_gastau(Config)
     
     # for satellites only
     if not Config.centrals_flag:
@@ -197,7 +198,7 @@ def return_subfindGRP(snapnum, subfindID, Config):
     for the given snapnum and subfindID, calculate the gas properties
     """
     
-    print('Working on %s snap %s subfindID %d'%(Config.sim, snapnum, subfindID))
+    print('return_subfindGRP(): Working on %s snap %03d subfindID %08d'%(Config.sim, snapnum, subfindID))
     
     sim = Config.sim
     basePath = Config.basePath
