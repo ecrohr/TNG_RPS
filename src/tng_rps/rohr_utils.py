@@ -1238,7 +1238,7 @@ def loadbasePath(sim):
 
 def loadHeader(basePath, snapNum):
     """ Load the snapshot catalog header. """
-    direc = basePath + 'snapdir_%03d/'%snapNum
+    direc = basePath + '/snapdir_%03d/'%snapNum
     fname = 'snap_%03d.0.hdf5'%snapNum
     
     with h5py.File(direc + fname, 'r') as f:
