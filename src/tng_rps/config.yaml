@@ -1,0 +1,68 @@
+sim: 'TNG50-1' # options are 'TNG*-*;, for 50, 100, 300 and -1, -2, -3 -4 or L680n8192TNG
+
+TNGCluster_flag: False
+mp_flag: False
+zooniverse_flag: False
+centrals_flag: False
+tracers_flag: False
+allsubhalos_flag: False
+jellyfishzoom_flag: True
+Nmpcores: 8
+    
+max_snap: 99
+min_snap: 67
+
+first_snap: 0
+last_snap: 99
+
+tlim: 31622.776601683792 # = 10.**(4.5) K; cutoff between cold and hot gas
+jellyscore_min: 0.8
+jellyscore_min_raw: 16 # legacy from original scoring convention
+treeName: 'SubLink_gal'
+zooniverse_key: 'inspected'
+ins_key: 'inspected'
+jel_key: 'jellyfish'
+non_key: 'nonjellyf'
+
+SubfindIndices: True
+SubfindGasRadProf: True
+run_SGRP: True
+SGRP_subfind_flag: False # use subfind if True or FoF if False cells/particles when running SubfindGasRadProf (run_SGRP); default True
+run_SGRP_PP: False
+SubfindSnapshot: False
+run_SS: False
+run_SS_PP: False
+TracerTracks: False
+track_tracers: False
+find_tracers: False
+CleanSubfindGasRadProf: False
+run_cleanSGRP: False
+run_createtau: False
+
+zooniverse_snapfirst: 67 # require a zooniverse inspection (or jellyfish classification) at or after this snap
+Nsnaps_PP: 3 # number of consecutive snaps to be considered pre-processed
+M200c0_lolim_PP: 1.e+12 # minimum halo mass of a pre-processing host
+massratio_frac: 100.0 # the maximum mass ratio M_star^sat / M_star^host < massratio_frac for TNG-Cluster satellites
+                      # a value >=1 means to include all satellites regardless of stellar mass ratio
+
+# subfind flags
+in_tree_key: 'in_tree'
+central_key: 'central'
+in_z0_host_key: 'in_z0_host'
+host_m200c_key: 'host_m200c'
+
+classified_flag: 'classified'
+central_z0_flag: 'central_z0'
+backsplash_z0_flag: 'backsplash_z0'
+backsplash_prev_flag: 'backsplash_prev'
+preprocessed_flag: 'preprocessed'
+
+nonz0_key: 'nonz0'
+beforesnapfirst_key: 'beforesnapfirst'
+clean_key: 'clean'
+all_key: 'all'
+
+tot_key: 'tot'
+gasz0_key: 'gasz0'
+nogasz0_key: 'nogasz0'
+
