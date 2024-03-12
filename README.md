@@ -1,19 +1,13 @@
 [![DOI](https://zenodo.org/badge/472725375.svg)](https://zenodo.org/badge/latestdoi/472725375)
 
 # rohr-tng-rps
-This repository contains all the relevant python scripts related to Rohr et al. in prep. analyzing the cold gas loss and ram pressure stripping in TNG50 and TNG100 jellyfish galaxies. This includes utility functions, particle data analysis, catalog creation, and plot making. For the particle data analysis, please only run the scripts on VERA or another MPCDF cluster with direct access to the TNG data. Note that one may need to update directory structure to run properly.
 
-In general, the pipeline works as follows. 
+This repository contains all the relevant analysis scripts used to analyze the outputs from the IllustrisTNG and TNG-Cluster simulations, as they have been used in the following list of papers. This includes utility functions, individual resolution element analysis, post-processing catalog creation, and plot making. In theory, the scripts can be run "as is", although I recommend only running them on HPC clusters, namely MPCDF clusters such as Vera or Raven, with direct accects to the simulations outputs. One likely needs to update various directories and path names to effectively repeat or extend the analysis. If you have questions, please feel free to reach out [here](https://ecrohr.github.io/contact/). Additionally, feel free to open a pull request if you would like to directly contribute to the repository. If you plan to use some part of this repository for your own publication, please consider reaching out to form a collaboration, or at the very least, please cite this codebase. 
 
-First in Create_SubfindIndicies.py, we define the unqiue subhalo population that we are interested in, where each subhalo has a uses a unique identifier as a snapshot number and subfindID. This could mean choosing a base sample of z=0 satellites (snapshot 99) or using the results of the Cosmological Jellyfish project from Zooniverse. Then we create the general post-processing catalog, where each subhalo has a unique identifier in the format '%03d_%08d'%(snapNum, subfindID), and there are many relevant fields from the merger trees saved at each snapshot. Note that if a given subhalo is not in the merger tree at this snapshot, then the in_tree flag is 0 and all other fields are -1. 
-
-Second Create_SubfindGasRadProf.py, we take the unique subhalos along their primary branch and calculate their cold gas radial profiles at each snapshot. This is done separately because it requries loading the gas cell data, while other data fields are immediately available via the merger trees. In this file, there are another of additional post-processing routines, such as for adding the quenching times, the orbital information, and the tracer quantities if applicable.
-
-Third in Clean_SubfindGasRadProf.py, we apply our final sample selection to the more generally defined population of subhalos, namely checking if the galaxies have been pre-processed, are z=0 backsplash galaxies, etc. We also split the general zooniverse sample into jellyfish and nonjellyf galaxies. Lastly, we use the tau clock measuring system to define times of interest for each galaxy and save certain quantities at each of these times. 
-
-In Plot_TNGRPS.ipynb, we use the catalogs created from these three scripts to create all the plots + other diagnostics shown in Rohr et al. (in prep.). 
-
-Then there are additional files -- Create_GasMap, Create_SubfindSnapshot_Flags, and Create_TracerTracks -- which are used to create additonal datasets used for some subhalos. 
+This repository has been used for (at least part of) the following papers:
+- Rohr et al. ([2023](https://ui.adsabs.harvard.edu/abs/2023MNRAS.524.3502R/abstract)).
+- Rohr et al. ([2024](https://ui.adsabs.harvard.edu/abs/2023arXiv231106337R/abstract)).
+- Goeller et al. ([2023](https://ui.adsabs.harvard.edu/abs/2023MNRAS.525.3551G/abstract)). 
 
 
 <!---
