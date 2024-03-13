@@ -211,12 +211,15 @@ def return_subfindGRP(snapnum, subfindID, Config):
     
     ### define radial bins and bincenters ###
     if centrals_flag:
-        rmin_norm = 0.0 # r / Rvir
+        rmin_norm = 10.**(-2) # r / Rvir
         rmax_norm = 3.0 # r / Rvir
         radii_binwidth = 0.1 # r / Rvir, linear
 
-        radii_bins_norm = np.arange(rmin_norm, rmax_norm + radii_binwidth*1.0e-3, radii_binwidth)
-        radii_bincents_norm = (radii_bins_norm[1:] + radii_bins_norm[:-1]) / 2.
+        radii_bins_norm, radii_bincents_norm = ru.returnlogbins([rmin_norm, rmax_norm], radii_binwidth)
+        radii_bins_norm = np.insert(radii_bins_norm, 0, 0.)
+        radii_bincents_norm = np.insert(radii_bincents_norm, 0, radii_bins_norm[1]/2.)
+        #radii_bins_norm = np.arange(rmin_norm, rmax_norm + radii_binwidth*1.0e-3, radii_binwidth)
+        #radii_bincents_norm = (radii_bins_norm[1:] + radii_bins_norm[:-1]) / 2.
 
     else:
         radii_binwidth = 0.1 # r / rgal, log spacing
