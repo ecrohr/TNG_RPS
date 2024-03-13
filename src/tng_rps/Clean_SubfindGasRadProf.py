@@ -405,7 +405,6 @@ def create_taudict_onlyz0(Config, out_key=None):
         print('There are no subhalos of interest in this file %s.'%GRPfname)
         return
 
-
     # pick the datasets we want to output at given times for all subhalos
     if Config.centrals_flag:
         grp_keys = ['SnapNum', 'CosmicTime', 'HostGroup_M_Crit200',
@@ -431,12 +430,9 @@ def create_taudict_onlyz0(Config, out_key=None):
         grp_keys.append('SubhaloDMLowResMass')    
 
     tauresult = {}
-
     # begin loop over subhalos
     for group_index, group_key in enumerate(result_keys):
-
         group = result[group_key]
-    
         # if just starting, then initialize the dictionary 
         if group_index == 0:
             tauresult['SubfindID'] = np.zeros(len(result_keys), dtype=int)
@@ -445,7 +441,6 @@ def create_taudict_onlyz0(Config, out_key=None):
                 tauresult_key = grp_key + '_z0'
                 tauresult[tauresult_key] = np.zeros(len(result_keys),
                                                     dtype=group[grp_key].dtype) - 1
-
                     
         tauresult['SubfindID'][group_index] = group['SubfindID'][0]
         tauresult['HostSubhaloGrNr'][group_index] = group['HostSubhaloGrNr'][0]
@@ -455,7 +450,6 @@ def create_taudict_onlyz0(Config, out_key=None):
         for grp_key in grp_keys:
             tauresult_key = grp_key + '_z0'
             tauresult[tauresult_key][group_index] = group[grp_key][0]
-    
     # finish loop over the branches
       
     # save the tau dictionary
@@ -603,16 +597,6 @@ def create_taudict(Config, out_key=None):
             for tau_val in tau_vals:
                 if tau.max() >= tau_val:
                     tau_index = subfind_indices[np.where((tau - tau_val) >= 0)[0].max()]
-                    """
-                    if tau_val == tau_vals[0]:
-                        tau_index = subfind_indices[np.where((tau_val - tau) >= 0)[0].min()]
-                    # in case there are multiple snapshots of tau_vals[-1], use the first one
-                    elif (tau_val == tau_vals[-1]):
-                        tau_index = subfind_indices[np.where((tau - tau_val) >= 0)[0].max()]
-                    # and in general, use the first instance of this occuring
-                    else:
-                        tau_index = subfind_indices[np.where((tau - tau_val) >= 0)[0].max()]
-                    """
                     for grp_key in grp_keys:
                         tauresult_key = return_tauresult_key(grp_key, tau_key, tau_val)
                         tauresult[tauresult_key][group_index] = group[grp_key][tau_index]
