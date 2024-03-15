@@ -6,10 +6,10 @@ zooniverse_flag: False
 centrals_flag: True
 tracers_flag: False
 allsubhalos_flag: False
-onlygroups_flag: False
-Nmpcores: 8
+onlygroups_flag: True
+Nmpcores: 72
     
-max_snap: 33
+max_snap: 99
 min_snap: 33
 
 first_snap: 0
