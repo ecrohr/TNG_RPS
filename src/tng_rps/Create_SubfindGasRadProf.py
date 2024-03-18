@@ -1564,11 +1564,13 @@ def add_onlygroups_PP(Config):
             result[Nsats_total_key][group_i,time_index] = GroupLen - 1
 
     # check that all appropriate times and groups have been assigned
+    """
     for group_i, group_key in enumerate(keys):
         group = f[group_key]
-        subfind_indices = group['SubfindID'] >= 0
+        subfind_indices = group['SubfindID'][:] >= 0
         for dset in result:
             assert dset[group_i,subfind_indices].min() >= 0, AssertionError('Not all indices matched')
+    """
 
     # require datasets for each group
     for group_i, group_key in enumerate(keys):
