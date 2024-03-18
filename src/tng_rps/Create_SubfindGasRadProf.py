@@ -1472,33 +1472,38 @@ def add_onlygroups_PP(Config):
     f = h5py.File(Config.outdirec + Config.outfname, 'a')
     keys = np.array(list(f.keys()))
 
+    basePath = Config.basePath
+
     CGMColdGasMass_key = 'SubhaloCGMColdGasMass'
     fCGMColdGas_key = 'SubhaloCGMColdGasFraction'
-
-    for group_key in keys:
-        group = f[group_key]
-        group[CGMColdGasMass_key] = np.zeros(group['radii'][:].shape[0], dtype=group['radii'][:].dtype) - 1
-        group[fCGMColdGas_key] = group[CGMColdGasMass_key].copy()
-        for time_index in range(group['radii'].shape[0]):
-            radii = group['radii'][time_index]
-            r200c = group['HostGroup_R_Crit200'][time_index]
-            subhalo_mcgas_shells = group['SubhaloColdGasMassShells'][time_index]
-            mask = ((radii > r200c * 0.1) & (radii < r200c))
-            subhalo_cgmcgmass = np.sum(subhalo_mcgas_shells[mask])
-            group[CGMColdGasMass_key][time_index] = subhalo_cgmcgmass
-            group[fCGMColdGas_key][time_index] = subhalo_cgmcgmass / group['HostGroup_M_Crit200'][time_index]
 
     Nsats_total_key = 'Nsatellites_total'
     Nsats_fiducial_key = 'NSatellites_Mstar>1.0e7_fgas>0.01_dsathost<R200c'
     Nsats_onlymassive_key = 'NSatellites_Mstar>1.0e9_fgas>0.01_dsathost<R200c'
     Nsats_onlySF_key = 'NSatellites_Mstar>1.0e7_SF_dsathost<R200c'
-    Nsats_keys = [Nsats_total_key,
-                Nsats_fiducial_key,
-                Nsats_onlymassive_key,
-                Nsats_onlySF_key]
     
-    basePath = Config.basePath
+    dsets_keys = [CGMColdGasMass_key, fCGMColdGas_key,
+                  Nsats_total_key, Nsats_fiducial_key,
+                  Nsats_onlymassive_key, Nsats_onlySF_key]
+    
+    result = {}
+    for dset_key in dsets_keys:
+        result[dset_key] = np.zeros((len(keys), len(f[keys[0]]['SnapNum'])), dtype=float) - 1
 
+    for group_i, group_key in enumerate(keys):
+        group = f[group_key]
+        for time_index in range(group['radii'].shape[0]):
+            if group['SubfindID'][time_index] < 0:
+                continue
+
+            radii = group['radii'][time_index]
+            r200c = group['HostGroup_R_Crit200'][time_index]
+            subhalo_mcgas_shells = group['SubhaloColdGasMassShells'][time_index]
+            mask = ((radii > r200c * 0.1) & (radii < r200c))
+            subhalo_cgmcgmass = np.sum(subhalo_mcgas_shells[mask])
+            result[CGMColdGasMass_key][group_i,time_index] = subhalo_cgmcgmass
+            result[fCGMColdGas_key][group_i,time_index] = subhalo_cgmcgmass / group['HostGroup_M_Crit200'][time_index]
+    
     for snapNum_i, snapNum in enumerate(group['SnapNum'][:]):
 
         star_ptn = il.util.partTypeNum('star')
@@ -1518,15 +1523,14 @@ def add_onlygroups_PP(Config):
         halos = il.groupcat.loadHalos(basePath, snapNum)
         subhalos = il.groupcat.loadSubhalos(basePath, snapNum)
 
-        for group_index, group_key in enumerate(keys):
+        for group_i, group_key in enumerate(keys):
             group = f[group_key]
 
-            # initialize the results if this is the first snapNum
-            if snapNum_i == 0:
-                for Nsat_key in Nsats_keys:
-                    group[Nsat_key] = np.zeros(group['SnapNum'][:].size, dtype=int) - 1
-
             time_index = group['SnapNum'][:] == snapNum
+
+            if group['SubfindID'][time_index] < 0:
+                continue
+
             haloID = group['HostSubhaloGrNr'][time_index][0]
             r200c = group['HostGroup_R_Crit200'][time_index]
 
@@ -1545,19 +1549,34 @@ def add_onlygroups_PP(Config):
             mask = ((Satellites_Mstar > Mstar_lolim) & 
                     (Satellites_Mgas / Satellites_Mstar > fgas_lolim) &
                     (Satellites_dsathost < 1.0))
-            group[Nsats_fiducial_key][time_index] = mask[mask].size
+            result[Nsats_fiducial_key][group_i,time_index] = mask[mask].size
 
             mask = ((Satellites_Mstar > Mstar_massive_lolim) & 
                     (Satellites_Mgas / Satellites_Mstar > fgas_lolim) &
                     (Satellites_dsathost < 1.0))
-            group[Nsats_onlymassive_key][time_index] = mask[mask].size
+            result[Nsats_onlymassive_key][group_i,time_index] = mask[mask].size
 
             mask = ((Satellites_Mstar > Mstar_lolim) & 
                     (Satellites_sSFR > sSFR_lolim) &
                     (Satellites_dsathost < 1.0))
-            group[Nsats_onlySF_key][time_index] = mask[mask].size   
+            result[Nsats_onlySF_key][group_i,time_index] = mask[mask].size
 
-            group[Nsats_total_key][time_index] = GroupLen - 1
+            result[Nsats_total_key][group_i,time_index] = GroupLen - 1
+
+    # check that all appropriate times and groups have been assigned
+    for group_i, group_key in enumerate(keys):
+        group = f[group_key]
+        subfind_indices = group['SubfindID'] >= 0
+        for dset in result:
+            assert dset[group_i,subfind_indices].min() >= 0, AssertionError('Not all indices matched')
+
+    # require datasets for each group
+    for group_i, group_key in enumerate(keys):
+            group = f[group_key]
+            for dset_key in dsets_keys:
+                dset = result[dset_key][group_i]
+                dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+                dataset[:] = dset   
 
     f.close()
 
