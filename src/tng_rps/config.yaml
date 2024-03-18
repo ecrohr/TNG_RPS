@@ -1,4 +1,4 @@
-sim: 'TNG50-1' # options are 'TNG*-*;, for 50, 100, 300 and -1, -2, -3 -4 or L680n8192TNG
+sim: 'L680n8192TNG' # options are 'TNG*-*;, for 50, 100, 300 and -1, -2, -3 -4 or L680n8192TNG
 
 TNGCluster_flag: False
 mp_flag: True
@@ -7,10 +7,10 @@ centrals_flag: True
 tracers_flag: False
 allsubhalos_flag: False
 onlygroups_flag: True
-Nmpcores: 72
+Nmpcores: 8
     
 max_snap: 99
-min_snap: 33
+min_snap: 0
 
 first_snap: 0
 last_snap: 99
@@ -24,9 +24,9 @@ ins_key: 'inspected'
 jel_key: 'jellyfish'
 non_key: 'nonjellyf'
 
-SubfindIndices: True
+SubfindIndices: False
 SubfindGasRadProf: True
-run_SGRP: True
+run_SGRP: False
 run_SGRP_PP: True
 SubfindSnapshot: False
 run_SS: False
