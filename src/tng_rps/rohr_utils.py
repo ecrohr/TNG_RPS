@@ -1183,7 +1183,7 @@ def ret_basePath(sim):
         
     TNGCluster_sims = ['L680n']
     if any(TNGCluster_sim in sim for TNGCluster_sim in TNGCluster_sims):
-        return ('../TNG-Cluster/%s/output'%sim)
+        return ('../TNG-Cluster/%s/output/'%sim)
         
     raise ValueError('Input simulation %s has no defined basePath.'%sim)
     
