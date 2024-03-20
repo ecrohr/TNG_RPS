@@ -1633,11 +1633,11 @@ def add_MainBHProperties(Config):
             BH_CumEgyInjection_RM[snap_i] = bhs['BH_CumEgyInjection_RM'][main_bh] * convert
 
         subhalo_indices = group['SubfindID'][:] >= 0
-        _mask = np.where(BH_CumEgyInjection_RM_key[subhalo_indices] > 0)[0]      
+        _mask = np.where(BH_CumEgyInjection_RM[subhalo_indices] > 0)[0]      
         if _mask.size == 0:
-            BH_RM_FirstSnap = -1.
+            BH_RM_FirstSnap = np.array([-1], dtype=int)
         else:
-            BH_RM_FirstSnap = group['SnapNum'][subhalo_indices][np.max(_mask)]
+            BH_RM_FirstSnap = np.array([group['SnapNum'][subhalo_indices][np.max(_mask)]], dtype=int)
         
         dsets = [bh_mass, bh_particleIDs, BH_CumEgyInjection_RM, BH_RM_FirstSnap]
         for dset_i, dset_key in enumerate(dset_keys):
