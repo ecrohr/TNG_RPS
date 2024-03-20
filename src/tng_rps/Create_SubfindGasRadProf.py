@@ -1633,7 +1633,7 @@ def add_MainBHProperties(Config):
             BH_CumEgyInjection_RM[snap_i] = bhs['BH_CumEgyInjection_RM'][main_bh] * convert
 
         subhalo_indices = group['SubfindID'][:] >= 0
-        _mask = np.where(group[BH_CumEgyInjection_RM_key][subhalo_indices] > 0)[0]      
+        _mask = np.where(BH_CumEgyInjection_RM_key[subhalo_indices] > 0)[0]      
         if _mask.size == 0:
             BH_RM_FirstSnap = -1.
         else:
