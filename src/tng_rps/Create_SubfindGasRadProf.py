@@ -101,7 +101,8 @@ def run_postprocessing(Config):
         add_gastau(Config)
 
     if Config.onlygroups_flag:
-        add_onlygroups_PP(Config)
+        #add_onlygroups_PP(Config)
+        add_MainBHProperties(Config)
     
     # for satellites only
     if not Config.centrals_flag:
@@ -1579,6 +1580,70 @@ def add_onlygroups_PP(Config):
                 dset = result[dset_key][group_i]
                 dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
                 dataset[:] = dset   
+
+    f.close()
+
+
+def add_MainBHProperties(Config):
+    """
+    find the most massive black hole at each snapshot for each subhalo and save
+    its mass, particleID, and cumulative energy injected in radio mode.
+    """
+    f = h5py.File(Config.outdirec + Config.outfname, 'a')
+    keys = np.array(list(f.keys()))
+
+    basePath = Config.basePath
+    bh_ptn = Config.bh_ptn
+    h = Config.h
+
+    bh_mass_key = 'MainBHMass'
+    bh_particleID_key = 'MainBHParticleID'
+    BH_CumEgyInjection_RM_key = 'MainBH_CumEgyInjection_RM'
+    BH_RM_FirstSnap_key = 'MainBH_RM_FirstSnap'
+    dset_keys = [bh_mass_key, bh_particleID_key, BH_CumEgyInjection_RM_key, BH_RM_FirstSnap_key]
+    MsunInGram = 1.988e33 # Msun -> g
+    GyrInSec = 3.154e16 # Gyr -> s
+    KpcInCm = 3.086e21 # Kpc -> cm
+
+    for group_key in keys:
+        group = f[group_key]
+        print('add_MainBHProperties(): working on %s z=0 Group %08d'%(Config.sim, group['HostSubhaloGrNr'][0]))
+
+        # initialize outputs
+        bh_mass = np.zeros(group['SnapNum'].size, dtype=float) - 1
+        bh_particleIDs = np.zeros(group['SnapNum'].size, dtype=float) - 1
+        BH_CumEgyInjection_RM = bh_mass.copy()    
+
+        for snap_i, snapNum in enumerate(group['SnapNum'][:]):                
+            a = group['Time'][snap_i]
+            convert = 1.0e10 * MsunInGram * a**2 / h / 0.978**2 / GyrInSec**2 * KpcInCm**2   
+            snapNum = group['SnapNum'][snap_i]
+            subfindID = group['SubfindID'][snap_i]
+            if subfindID < 0:
+                continue
+
+            bhs = il.snapshot.loadSubhalo(basePath, snapNum, subfindID, bh_ptn)
+            if bhs['count'] == 0:
+                continue
+
+            main_bh = np.argmax(bhs['Masses'])
+
+            bh_mass[snap_i] = bhs['Masses'][main_bh] * 1.0e10 / h
+            bh_particleIDs[snap_i] = bhs['ParticleIDs'][main_bh]
+            BH_CumEgyInjection_RM[snap_i] = bhs['BH_CumEgyInjection_RM'][main_bh] * convert
+
+        subhalo_indices = group['SubfindID'] >= 0
+        _mask = np.where(group[BH_CumEgyInjection_RM_key][subhalo_indices] > 0)[0]      
+        if _mask.size == 0:
+            BH_RM_FirstSnap = -1.
+        else:
+            BH_RM_FirstSnap = group['SnapNum'][subhalo_indices][np.max(_mask)]
+        
+        dsets = [bh_mass, bh_particleIDs, BH_CumEgyInjection_RM, BH_RM_FirstSnap]
+        for dset_i, dset_key in enumerate(dset_keys):
+            dset = dsets[dset_i]
+            dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+            dataset[:] = dset  
 
     f.close()
 
