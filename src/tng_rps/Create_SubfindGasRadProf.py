@@ -101,8 +101,10 @@ def run_postprocessing(Config):
         add_gastau(Config)
 
     if Config.onlygroups_flag:
-        #add_onlygroups_PP(Config)
+        add_onlygroups_PP(Config)
         add_MainBHProperties(Config)
+        if not Config.TNGCluster_flag:
+            add_quenchtimes(Config)
     
     # for satellites only
     if not Config.centrals_flag:
