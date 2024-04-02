@@ -40,6 +40,10 @@ def run_subfindGRP(Config):
 
     add_memberflags(Config)
     add_times(Config)
+
+    if Config.centrals_flag:
+        threed_keys.append('CGMTemperaturesHistogram')
+        threed_keys.append('CGMTemperaturesHistogramBincents')
     
     outdirec = Config.outdirec
     outfname = Config.outfname
@@ -221,22 +225,20 @@ def return_subfindGRP(snapnum, subfindID, Config):
         rmax_norm = 3.0 # r / Rvir
         radii_binwidth = 0.1 # r / Rvir, linear
 
-        radii_bins_norm, radii_bincents_norm = ru.returnlogbins([rmin_norm, rmax_norm], radii_binwidth)
-        radii_bins_norm = np.insert(radii_bins_norm, 0, 0.)
-        radii_bincents_norm = np.insert(radii_bincents_norm, 0, radii_bins_norm[1]/2.)
-        #radii_bins_norm = np.arange(rmin_norm, rmax_norm + radii_binwidth*1.0e-3, radii_binwidth)
-        #radii_bincents_norm = (radii_bins_norm[1:] + radii_bins_norm[:-1]) / 2.
+        # for centrals, also compute the histogram of the CGM temperatures
+        log_temp_min = 3.0
+        log_temp_max = 9.0
+        log_temp_binwidth = 0.025
+        temp_bins, temp_bincents = ru.returnbins([log_temp_min, log_temp_max], log_temp_binwidth)
 
     else:
         radii_binwidth = 0.1 # r / rgal, log spacing
         rmin_norm = 10.**(-1.) # [r/rgal]
         rmax_norm = 10.**(2.)  # [r/rgal]
-        radii_bins_norm, radii_bincents_norm = ru.returnlogbins([rmin_norm, rmax_norm], radii_binwidth)
 
-        # prepend 0 to the radial bins to capture the center sphere
-        radii_bins_norm = np.insert(radii_bins_norm, 0, 0.)
-        radii_bincents_norm = np.insert(radii_bincents_norm, 0, radii_bins_norm[1]/2.)
-
+    radii_bins_norm, radii_bincents_norm = ru.returnlogbins([rmin_norm, rmax_norm], radii_binwidth)
+    radii_bins_norm = np.insert(radii_bins_norm, 0, 0.)
+    radii_bincents_norm = np.insert(radii_bincents_norm, 0, radii_bins_norm[1]/2.)
     nbins = radii_bincents_norm.size
       
     # initialize result
@@ -285,19 +287,6 @@ def return_subfindGRP(snapnum, subfindID, Config):
     gas_electronabundances = gasparts['ElectronAbundance']
     gas_starformationrates = gasparts['StarFormationRate']
     
-    if Config.centrals_flag:
-        radii_bins     = radii_bins_norm * R200c # pkpc
-        radii_bincents = radii_bincents_norm * R200c # pkpc
-        vol_shells = (4./3.) * np.pi * ((radii_bins[1:])**3 - radii_bins[:-1]**3)
-                  
-    else:
-        radii_bins     = radii_bins_norm * subhalo_rgal # pkpc
-        radii_bincents = radii_bincents_norm * subhalo_rgal # pkpc
-    
-        # set the volume of the shells; len(volume) = len(bincents) = len(bins) - 1
-        vol_shells = (4./3.) * np.pi * ((radii_bins[2:])**3 - (radii_bins[1:-1])**3)
-        vol_shells = np.insert(vol_shells, 0, (4./3.) * np.pi * (radii_bins[1])**3)
-
     # save the total amount of gas
     subhalo_gasmass = np.sum(gas_masses)
     
@@ -317,17 +306,21 @@ def return_subfindGRP(snapnum, subfindID, Config):
     # calculate and save the total cold and hot gas masses
     subhalo_coldgasmass = np.sum(coldgas_masses)
     subhalo_hotgasmass  = np.sum(hotgas_masses)    
-    # sort the gas masses by their radius
-    coldgas_masses = coldgas_masses[np.argsort(coldgas_radii)]
-    coldgas_radii  = coldgas_radii[np.argsort(coldgas_radii)]
     
-    hotgas_masses = hotgas_masses[np.argsort(hotgas_radii)]
-    hotgas_radii  = hotgas_radii[np.argsort(hotgas_radii)]
+    # calculate the radial profile via histogram    
+    if Config.centrals_flag:
+        radii_bins     = radii_bins_norm * R200c # pkpc
+        radii_bincents = radii_bincents_norm * R200c # pkpc    
 
-    gas_masses = gas_masses[np.argsort(gas_radii)]
-    gas_radii = gas_radii[np.argsort(gas_radii)]
+        # compute the CGM temperature histogram
+        CGM_mask = ((gas_radii > 0.1 * R200c) & (gas_radii < R200c))
+        CGMTemperaturesHistogram = np.histogram(np.log10(gas_temperatures[CGM_mask]), weights=gas_masses[CGM_mask], bins=temp_bins)[0]              
+    else:
+        radii_bins     = radii_bins_norm * subhalo_rgal # pkpc
+        radii_bincents = radii_bincents_norm * subhalo_rgal # pkpc
     
-    # calculate the radial profile via histogram                      
+    vol_shells = (4./3.) * np.pi * ((radii_bins[1:])**3 - (radii_bins[:-1])**3)
+
     coldgas_mass_shells = np.histogram(coldgas_radii, bins=radii_bins, weights=coldgas_masses)[0]
     hotgas_mass_shells = np.histogram(hotgas_radii, bins=radii_bins, weights=hotgas_masses)[0]
     gas_mass_shells = np.histogram(gas_radii, bins=radii_bins, weights=gas_masses)[0]
@@ -340,6 +333,10 @@ def return_subfindGRP(snapnum, subfindID, Config):
              coldgas_mass_shells, coldgas_densities_shells,
              hotgas_mass_shells, hotgas_densities_shells,
              gas_mass_shells, gas_densities_shells]
+    
+    if centrals_flag:
+        dsets.append(CGMTemperaturesHistogram)
+        dsets.append(temp_bincents)
     
     scalars = [subhalo_coldgasmass, subhalo_gasmass, subhalo_hotgasmass]
              
