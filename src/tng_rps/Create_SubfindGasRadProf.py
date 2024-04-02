@@ -1606,10 +1606,11 @@ def add_MainBHProperties(Config):
     MsunInGram = 1.988e33 # Msun -> g
     GyrInSec = 3.154e16 # Gyr -> s
     KpcInCm = 3.086e21 # Kpc -> cm
+    bh_fields = ['Masses', 'ParticleIDs', 'BH_CumEgyInjection_RM']
 
     for group_key in keys:
         group = f[group_key]
-        print('add_MainBHProperties(): working on %s z=0 Group %08d'%(Config.sim, group['HostSubhaloGrNr'][0]))
+        print('add_MainBHProperties(): working on %s z=0 group_key %s'%(Config.sim, group_key))
 
         # initialize outputs
         bh_mass = np.zeros(group['SnapNum'].size, dtype=float) - 1
@@ -1624,7 +1625,7 @@ def add_MainBHProperties(Config):
             if subfindID < 0:
                 continue
 
-            bhs = il.snapshot.loadSubhalo(basePath, snapNum, subfindID, bh_ptn)
+            bhs = il.snapshot.loadSubhalo(basePath, snapNum, subfindID, bh_ptn, fields=bh_fields)
             if bhs['count'] == 0:
                 continue
 
