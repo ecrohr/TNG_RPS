@@ -131,5 +131,5 @@ dmypy.json
 .pyre/
 
 # specific config files
-TNG_RPS/tng_rps/config.yaml
+src/tng_rps/config.yaml
 
