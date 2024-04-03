@@ -24,6 +24,7 @@ threed_keys = ['radii', 'vol_shells',
                'SubhaloColdGasMassShells', 'SubhaloColdGasDensityShells',
                'SubhaloHotGasMassShells', 'SubhaloHotGasDensityShells',
                'SubhaloGasMassShells', 'SubhaloDensityShells']
+temphist_keys = ['CGMTemperaturesHistogram', 'CGMTemperaturesHistogramBincents']
 
 # hardcode the snapshots of interest
 zooniverse_snapshots_TNG50 = [99, 98, 97, 96, 95, 94, 93, 92, 91, 90,
@@ -40,10 +41,6 @@ def run_subfindGRP(Config):
 
     add_memberflags(Config)
     add_times(Config)
-
-    if Config.centrals_flag:
-        threed_keys.append('CGMTemperaturesHistogram')
-        threed_keys.append('CGMTemperaturesHistogramBincents')
     
     outdirec = Config.outdirec
     outfname = Config.outfname
@@ -190,15 +187,22 @@ def create_subfindGRP(dic, Config):
     result          = {}
     result[gal_key] = gal
     for key in threed_keys:
-        result[gal_key][key] = np.zeros(shape, dtype=float)
+        result[gal_key][key] = np.zeros(shape, dtype=float) - 1
     for key in scalar_keys:
-        result[gal_key][key] = np.zeros(shape[0])
+        result[gal_key][key] = np.zeros(shape[0], dtype=float) - 1
+    if Config.centrals_flag:
+        temp_shape = (len(SnapNum), len(radii_dict['%d'%SnapNum[0]][temphist_keys[0]]))
+        for key in temphist_keys:
+            result[gal_key][key] = np.zeros(temp_shape, dtype=float) - 1
 
     for row, snap_key in enumerate(radii_dict.keys()):
         for key in threed_keys:
             result[gal_key][key][row,:] = radii_dict[snap_key][key]
         for key in scalar_keys:
             result[gal_key][key][row]   = radii_dict[snap_key][key]
+        if Config.centrals_flag:
+            for key in temphist_keys:
+                result[gal_key][key][row,:] = radii_dict[snap_key][key]
 
     return result
 
@@ -315,6 +319,7 @@ def return_subfindGRP(snapnum, subfindID, Config):
         # compute the CGM temperature histogram
         CGM_mask = ((gas_radii > 0.1 * R200c) & (gas_radii < R200c))
         CGMTemperaturesHistogram = np.histogram(np.log10(gas_temperatures[CGM_mask]), weights=gas_masses[CGM_mask], bins=temp_bins)[0]              
+        temp_dsets = [CGMTemperaturesHistogram, temp_bincents]
     else:
         radii_bins     = radii_bins_norm * subhalo_rgal # pkpc
         radii_bincents = radii_bincents_norm * subhalo_rgal # pkpc
@@ -333,11 +338,7 @@ def return_subfindGRP(snapnum, subfindID, Config):
              coldgas_mass_shells, coldgas_densities_shells,
              hotgas_mass_shells, hotgas_densities_shells,
              gas_mass_shells, gas_densities_shells]
-    
-    if centrals_flag:
-        dsets.append(CGMTemperaturesHistogram)
-        dsets.append(temp_bincents)
-    
+        
     scalars = [subhalo_coldgasmass, subhalo_gasmass, subhalo_hotgasmass]
              
     for threed_index, threed_key in enumerate(threed_keys):
@@ -345,6 +346,11 @@ def return_subfindGRP(snapnum, subfindID, Config):
             
     for scalar_index, scalar_key in enumerate(scalar_keys):
         result[group_key][scalar_key] = scalars[scalar_index]
+    
+    if Config.centrals_flag:
+        for temp_i, temp_key in enumerate(temphist_keys):
+            result[group_key][temp_key] = temp_dsets[temp_i]
+
 
     return result
 
@@ -1480,11 +1486,13 @@ def add_onlygroups_PP(Config):
     Nsats_total_key = 'Nsatellites_total'
     Nsats_fiducial_key = 'NSatellites_Mstar>1.0e7_fgas>0.01_dsathost<R200c'
     Nsats_onlymassive_key = 'NSatellites_Mstar>1.0e9_fgas>0.01_dsathost<R200c'
+    Nsats_onlysupermassive_key = 'NSatellites_Mstar>1.0e10_fgas>0.01_dsathost<R200c'
     Nsats_onlySF_key = 'NSatellites_Mstar>1.0e7_SF_dsathost<R200c'
     
     dsets_keys = [CGMColdGasMass_key, fCGMColdGas_key,
                   Nsats_total_key, Nsats_fiducial_key,
-                  Nsats_onlymassive_key, Nsats_onlySF_key]
+                  Nsats_onlymassive_key, Nsats_onlysupermassive_key,
+                  Nsats_onlySF_key]
     
     result = {}
     for dset_key in dsets_keys:
@@ -1517,6 +1525,7 @@ def add_onlygroups_PP(Config):
 
         Mstar_lolim = 1.0e7
         Mstar_massive_lolim = 1.0e9
+        Mstar_supermassive_lolim = 1.0e10
         fgas_lolim = 0.01
         sSFR_lolim = -11 + 0.5 * redshift 
 
@@ -1555,6 +1564,11 @@ def add_onlygroups_PP(Config):
                     (Satellites_Mgas / Satellites_Mstar > fgas_lolim) &
                     (Satellites_dsathost < 1.0))
             result[Nsats_onlymassive_key][group_i,time_index] = mask[mask].size
+
+            mask = ((Satellites_Mstar > Mstar_supermassive_lolim) & 
+                    (Satellites_Mgas / Satellites_Mstar > fgas_lolim) &
+                    (Satellites_dsathost < 1.0))
+            result[Nsats_onlysupermassive_key][group_i,time_index] = mask[mask].size
 
             mask = ((Satellites_Mstar > Mstar_lolim) & 
                     (Satellites_sSFR > sSFR_lolim) &
