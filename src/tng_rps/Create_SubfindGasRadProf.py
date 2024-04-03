@@ -24,7 +24,12 @@ threed_keys = ['radii', 'vol_shells',
                'SubhaloColdGasMassShells', 'SubhaloColdGasDensityShells',
                'SubhaloHotGasMassShells', 'SubhaloHotGasDensityShells',
                'SubhaloGasMassShells', 'SubhaloDensityShells']
-temphist_keys = ['CGMTemperaturesHistogram', 'CGMTemperaturesHistogramBincents']
+
+centrals_vector_keys = ['CGMTemperaturesHistogram', 'CGMTemperaturesHistogramBincents']
+centrals_scalar_keys = ['SubhaloColdGasMassOutflowRateR200c', 'SubhaloColdGasMassInflowRateR200c',
+                        'SubhaloHotGasMassOutflowRateR200c', 'SubhaloHotGasMassInflowRateR200c',
+                        'SubhaloColdGasMassOutflowRate0.1R200c', 'SubhaloColdGasMassInflowRate0.1R200c',
+                        'SubhaloHotGasMassOutflowRate0.1R200c', 'SubhaloHotGasMassInflowRate0.1R200c',]
 
 # hardcode the snapshots of interest
 zooniverse_snapshots_TNG50 = [99, 98, 97, 96, 95, 94, 93, 92, 91, 90,
@@ -57,11 +62,10 @@ def run_subfindGRP(Config):
                 dic[group_key][dset_key] = group[dset_key][:]
             dics.append(dic)
 
-        Pool = mp.Pool(Config.Nmpcores)
-        
         print(len(dics))
 
         if Config.mp_flag:
+            Pool = mp.Pool(Config.Nmpcores)
             result_list = Pool.map(partial(create_subfindGRP, Config=Config), dics)
         else:
             result_list = []
@@ -191,9 +195,11 @@ def create_subfindGRP(dic, Config):
     for key in scalar_keys:
         result[gal_key][key] = np.zeros(shape[0], dtype=float) - 1
     if Config.centrals_flag:
-        temp_shape = (len(SnapNum), len(radii_dict['%d'%SnapNum[0]][temphist_keys[0]]))
-        for key in temphist_keys:
+        temp_shape = (len(SnapNum), len(radii_dict['%d'%SnapNum[0]][centrals_vector_keys[0]]))
+        for key in centrals_vector_keys:
             result[gal_key][key] = np.zeros(temp_shape, dtype=float) - 1
+        for key in centrals_scalar_keys:
+            result[gal_key][key] = np.zeros(temp_shape[0], dtype=float) - 1
 
     for row, snap_key in enumerate(radii_dict.keys()):
         for key in threed_keys:
@@ -201,8 +207,10 @@ def create_subfindGRP(dic, Config):
         for key in scalar_keys:
             result[gal_key][key][row]   = radii_dict[snap_key][key]
         if Config.centrals_flag:
-            for key in temphist_keys:
+            for key in centrals_vector_keys:
                 result[gal_key][key][row,:] = radii_dict[snap_key][key]
+            for key in centrals_scalar_keys:
+                result[gal_key][key][row] = radii_dict[snap_key][key]
 
     return result
 
@@ -253,6 +261,11 @@ def return_subfindGRP(snapnum, subfindID, Config):
         result[group_key][threed_key] = np.zeros(nbins, dtype=float) - 1.
     for scalar_key in scalar_keys:
         result[group_key][scalar_key] = -1.
+    if centrals_flag:
+        for vector_key in centrals_vector_keys:
+            result[group_key][vector_key] = np.zeros(temp_bincents.size, dtype=float) - 1.
+        for scalar_key in centrals_scalar_keys:
+            result[group_key][scalar_key] = -1.
   
     # check if the subhalo is identified at this snap
     if subfindID == -1:
@@ -263,9 +276,9 @@ def return_subfindGRP(snapnum, subfindID, Config):
     a       = header['Time'] # scale factor
     boxsize = header['BoxSize'] * a / h
         
-    subhalofields = ['SubhaloHalfmassRadType', 'SubhaloPos', 'SubhaloGrNr']
+    subhalofields = ['SubhaloHalfmassRadType', 'SubhaloPos', 'SubhaloGrNr', 'SubhaloVel']
     gasfields     = ['Coordinates', 'Masses', 'InternalEnergy',
-                     'ElectronAbundance', 'StarFormationRate']
+                     'ElectronAbundance', 'StarFormationRate', 'Velocities']
             
     subhalo      = ru.loadSingleFields(basePath, snapnum, subhaloID=subfindID, fields=subhalofields)
     subhalopos   = subhalo['SubhaloPos'] * a / h
@@ -283,6 +296,11 @@ def return_subfindGRP(snapnum, subfindID, Config):
             result[group_key][threed_key][:] = 0
         for scalar_key in scalar_keys:
             result[group_key][scalar_key] = 0
+        if centrals_flag:
+            for vector_key in centrals_vector_keys:
+                result[group_key][vector_key][:] = 0
+            for scalar_key in centrals_scalar_keys:
+                result[group_key][scalar_key] = 0
         return result
     
     gas_coordinates        = gasparts['Coordinates'] * a / h
@@ -301,11 +319,12 @@ def return_subfindGRP(snapnum, subfindID, Config):
     gas_temperatures = ru.calc_temp(gas_internalenergies, gas_electronabundances, gas_starformationrates)
     
     # separate the gas into cold component
-    coldgas_masses = gas_masses[gas_temperatures < tlim] 
-    coldgas_radii  = gas_radii[gas_temperatures < tlim]
+    cold_mask = gas_temperatures < tlim
+    coldgas_masses = gas_masses[cold_mask] 
+    coldgas_radii  = gas_radii[cold_mask]
     
-    hotgas_masses = gas_masses[gas_temperatures >= tlim]
-    hotgas_radii = gas_radii[gas_temperatures >= tlim]
+    hotgas_masses = gas_masses[~cold_mask]
+    hotgas_radii = gas_radii[~cold_mask]
     
     # calculate and save the total cold and hot gas masses
     subhalo_coldgasmass = np.sum(coldgas_masses)
@@ -319,7 +338,42 @@ def return_subfindGRP(snapnum, subfindID, Config):
         # compute the CGM temperature histogram
         CGM_mask = ((gas_radii > 0.1 * R200c) & (gas_radii < R200c))
         CGMTemperaturesHistogram = np.histogram(np.log10(gas_temperatures[CGM_mask]), weights=gas_masses[CGM_mask], bins=temp_bins)[0]              
-        temp_dsets = [CGMTemperaturesHistogram, temp_bincents]
+        centrals_vector_dsets = [CGMTemperaturesHistogram, temp_bincents]
+
+        # compute the mass fluxes 
+        gas_velocities = gasparts['Velocities'] * np.sqrt(a) - subhalo['SubhaloVel']
+        gas_positions_rads = ru.shift(gas_coordinates, subhalopos, boxsize)
+        gas_velocities_rads = (gas_positions_rads[:,0] * gas_velocities[:,0] + gas_positions_rads[:,1] * gas_velocities[:,1] + gas_positions_rads[:,2] * gas_velocities[:,2]) / gas_radii
+        outflow_mask = gas_velocities_rads > 0
+
+        inner_buffer = 0.015 # [R200c]
+        outer_buffer = 0.05 # [R200c]
+        inner_mask = ((gas_radii > (0.1 - inner_buffer) * R200c) & (gas_radii < (0.1 + inner_buffer) * R200c))
+        outer_mask = ((gas_radii > (1.0 - outer_buffer) * R200c) & (gas_radii < (1.0 + outer_buffer) * R200c))
+        
+        SubhaloColdGasMassOutflowRateR200c = np.sum(gas_masses[outer_mask & cold_mask & outflow_mask] *
+                                                    gas_velocities_rads[outer_mask & cold_mask & outflow_mask]) / (2.0 * outer_buffer * R200c)
+        SubhaloColdGasMassInflowRateR200c = np.sum(gas_masses[outer_mask & cold_mask & ~outflow_mask] *
+                                                    gas_velocities_rads[outer_mask & cold_mask & ~outflow_mask]) / (2.0 * outer_buffer * R200c)
+        SubhaloColdGasMassOutflowRate01R200c = np.sum(gas_masses[inner_mask & cold_mask & outflow_mask] *
+                                                    gas_velocities_rads[inner_mask & cold_mask & outflow_mask]) / (2.0 * inner_buffer * R200c)
+        SubhaloColdGasMassInflowRate01R200c = np.sum(gas_masses[inner_mask & cold_mask & ~outflow_mask] *
+                                                    gas_velocities_rads[inner_mask & cold_mask & ~outflow_mask]) / (2.0 * inner_buffer * R200c)
+        
+        SubhaloHotGasMassOutflowRateR200c = np.sum(gas_masses[outer_mask & ~cold_mask & outflow_mask] *
+                                                    gas_velocities_rads[outer_mask & ~cold_mask & outflow_mask]) / (2.0 * outer_buffer * R200c)
+        SubhaloHotGasMassInflowRateR200c = np.sum(gas_masses[outer_mask & ~cold_mask & ~outflow_mask] *
+                                                    gas_velocities_rads[outer_mask & ~cold_mask & ~outflow_mask]) / (2.0 * outer_buffer * R200c)
+        SubhaloHotGasMassOutflowRate01R200c = np.sum(gas_masses[inner_mask & ~cold_mask & outflow_mask] *
+                                                    gas_velocities_rads[inner_mask & ~cold_mask & outflow_mask]) / (2.0 * inner_buffer * R200c)
+        SubhaloHotGasMassInflowRate01R200c = np.sum(gas_masses[inner_mask & ~cold_mask & ~outflow_mask] *
+                                                    gas_velocities_rads[inner_mask & ~cold_mask & ~outflow_mask]) / (2.0 * inner_buffer * R200c)
+        
+        centrals_scalar_dsets = [SubhaloColdGasMassOutflowRateR200c, SubhaloColdGasMassInflowRateR200c,
+                                 SubhaloHotGasMassOutflowRateR200c, SubhaloHotGasMassInflowRateR200c,
+                                 SubhaloColdGasMassOutflowRate01R200c, SubhaloColdGasMassInflowRate01R200c,
+                                 SubhaloHotGasMassOutflowRate01R200c, SubhaloHotGasMassInflowRate01R200c,]
+
     else:
         radii_bins     = radii_bins_norm * subhalo_rgal # pkpc
         radii_bincents = radii_bincents_norm * subhalo_rgal # pkpc
@@ -348,8 +402,10 @@ def return_subfindGRP(snapnum, subfindID, Config):
         result[group_key][scalar_key] = scalars[scalar_index]
     
     if centrals_flag:
-        for temp_index, temp_key in enumerate(temphist_keys):
-            result[group_key][temp_key] = temp_dsets[temp_index]
+        for vector_index, vector_key in enumerate(centrals_vector_keys):
+            result[group_key][vector_key] = centrals_vector_dsets[vector_index]
+        for scalar_index, scalar_key in enumerate(centrals_scalar_keys):
+            result[group_key][scalar_key] = centrals_scalar_dsets[scalar_index]
 
     return result
 
