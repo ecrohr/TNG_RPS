@@ -183,7 +183,7 @@ def create_subfindGRP(dic, Config):
 
     # initialize and fill result dicitonary
     # note that threed_keys are vectors, and scalar_keys are scalars
-    shape           = (len(SnapNum), len(radii_dict['%d'%SnapNum[0]]['radii']))
+    shape           = (len(SnapNum), len(radii_dict['%d'%SnapNum[0]][threed_keys[0]]))
     result          = {}
     result[gal_key] = gal
     for key in threed_keys:
@@ -312,7 +312,7 @@ def return_subfindGRP(snapnum, subfindID, Config):
     subhalo_hotgasmass  = np.sum(hotgas_masses)    
     
     # calculate the radial profile via histogram    
-    if Config.centrals_flag:
+    if centrals_flag:
         radii_bins     = radii_bins_norm * R200c # pkpc
         radii_bincents = radii_bincents_norm * R200c # pkpc    
 
@@ -347,10 +347,9 @@ def return_subfindGRP(snapnum, subfindID, Config):
     for scalar_index, scalar_key in enumerate(scalar_keys):
         result[group_key][scalar_key] = scalars[scalar_index]
     
-    if Config.centrals_flag:
-        for temp_i, temp_key in enumerate(temphist_keys):
-            result[group_key][temp_key] = temp_dsets[temp_i]
-
+    if centrals_flag:
+        for temp_index, temp_key in enumerate(temphist_keys):
+            result[group_key][temp_key] = temp_dsets[temp_index]
 
     return result
 
