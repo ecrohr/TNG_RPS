@@ -81,6 +81,8 @@ def run_subfindGRP(Config):
             result[key] = d[key]
 
         new_keys = threed_keys + scalar_keys
+        if Config.centrals_flag:
+            new_keys = threed_keys + scalar_keys + centrals_scalar_keys + centrals_vector_keys
 
         for group_key in result.keys():
             group = f.require_group(group_key)
@@ -341,6 +343,8 @@ def return_subfindGRP(snapnum, subfindID, Config):
         centrals_vector_dsets = [CGMTemperaturesHistogram, temp_bincents]
 
         # compute the mass fluxes 
+        convert_massflux = 1.022e-9 # converts km / kpc / s to 1 / yr
+
         gas_velocities = gasparts['Velocities'] * np.sqrt(a) - subhalo['SubhaloVel']
         gas_positions_rads = ru.shift(gas_coordinates, subhalopos, boxsize)
         gas_velocities_rads = (gas_positions_rads[:,0] * gas_velocities[:,0] + gas_positions_rads[:,1] * gas_velocities[:,1] + gas_positions_rads[:,2] * gas_velocities[:,2]) / gas_radii
@@ -352,22 +356,22 @@ def return_subfindGRP(snapnum, subfindID, Config):
         outer_mask = ((gas_radii > (1.0 - outer_buffer) * R200c) & (gas_radii < (1.0 + outer_buffer) * R200c))
         
         SubhaloColdGasMassOutflowRateR200c = np.sum(gas_masses[outer_mask & cold_mask & outflow_mask] *
-                                                    gas_velocities_rads[outer_mask & cold_mask & outflow_mask]) / (2.0 * outer_buffer * R200c)
+                                                    gas_velocities_rads[outer_mask & cold_mask & outflow_mask]) / (2.0 * outer_buffer * R200c) * convert_massflux
         SubhaloColdGasMassInflowRateR200c = np.sum(gas_masses[outer_mask & cold_mask & ~outflow_mask] *
-                                                    gas_velocities_rads[outer_mask & cold_mask & ~outflow_mask]) / (2.0 * outer_buffer * R200c)
+                                                    gas_velocities_rads[outer_mask & cold_mask & ~outflow_mask]) / (2.0 * outer_buffer * R200c) * convert_massflux
         SubhaloColdGasMassOutflowRate01R200c = np.sum(gas_masses[inner_mask & cold_mask & outflow_mask] *
-                                                    gas_velocities_rads[inner_mask & cold_mask & outflow_mask]) / (2.0 * inner_buffer * R200c)
+                                                    gas_velocities_rads[inner_mask & cold_mask & outflow_mask]) / (2.0 * inner_buffer * R200c) * convert_massflux
         SubhaloColdGasMassInflowRate01R200c = np.sum(gas_masses[inner_mask & cold_mask & ~outflow_mask] *
-                                                    gas_velocities_rads[inner_mask & cold_mask & ~outflow_mask]) / (2.0 * inner_buffer * R200c)
+                                                    gas_velocities_rads[inner_mask & cold_mask & ~outflow_mask]) / (2.0 * inner_buffer * R200c) * convert_massflux
         
         SubhaloHotGasMassOutflowRateR200c = np.sum(gas_masses[outer_mask & ~cold_mask & outflow_mask] *
-                                                    gas_velocities_rads[outer_mask & ~cold_mask & outflow_mask]) / (2.0 * outer_buffer * R200c)
+                                                    gas_velocities_rads[outer_mask & ~cold_mask & outflow_mask]) / (2.0 * outer_buffer * R200c) * convert_massflux
         SubhaloHotGasMassInflowRateR200c = np.sum(gas_masses[outer_mask & ~cold_mask & ~outflow_mask] *
-                                                    gas_velocities_rads[outer_mask & ~cold_mask & ~outflow_mask]) / (2.0 * outer_buffer * R200c)
+                                                    gas_velocities_rads[outer_mask & ~cold_mask & ~outflow_mask]) / (2.0 * outer_buffer * R200c) * convert_massflux
         SubhaloHotGasMassOutflowRate01R200c = np.sum(gas_masses[inner_mask & ~cold_mask & outflow_mask] *
-                                                    gas_velocities_rads[inner_mask & ~cold_mask & outflow_mask]) / (2.0 * inner_buffer * R200c)
+                                                    gas_velocities_rads[inner_mask & ~cold_mask & outflow_mask]) / (2.0 * inner_buffer * R200c) * convert_massflux
         SubhaloHotGasMassInflowRate01R200c = np.sum(gas_masses[inner_mask & ~cold_mask & ~outflow_mask] *
-                                                    gas_velocities_rads[inner_mask & ~cold_mask & ~outflow_mask]) / (2.0 * inner_buffer * R200c)
+                                                    gas_velocities_rads[inner_mask & ~cold_mask & ~outflow_mask]) / (2.0 * inner_buffer * R200c) * convert_massflux
         
         centrals_scalar_dsets = [SubhaloColdGasMassOutflowRateR200c, SubhaloColdGasMassInflowRateR200c,
                                  SubhaloHotGasMassOutflowRateR200c, SubhaloHotGasMassInflowRateR200c,
