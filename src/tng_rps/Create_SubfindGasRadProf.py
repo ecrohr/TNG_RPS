@@ -970,6 +970,49 @@ def return_Lx_map(Config, dic, halo, axes, in4k=True):
     return Lx_map_4k
 
 
+def return_SphMap(Config, gas_cells, haloID, snapNum, mass_key='Masses', quant=None, axes=[0,1],
+                  boxsizeimg=3., nPixels=1024):
+    """
+    Create mass column density map of gas_cells centered at GroupPos of halo haloID and snapshot snapNum.
+    Can also be used to create, for example, surface brightness maps by replacing mass_key with a luminosity.
+    If mass_key != 'Masses', then no unit versions are made.
+    Optionally can return the mass-weighted quantity by provding quant. Assumes that the image should be
+    boxsizeimg * R200c in x and y directions. if nPixels == None, then assumes a pixel_size of 5kpc. 
+    """
+    basePath = Config.basePath
+    header = ru.loadHeader(basePath, snapNum)
+    a = header['Time']
+    h = header['HubbleParam']
+    boxsize = header['BoxSize'] * a / h
+    gas_hsml_fact = 1.5
+
+    Masses = gas_cells['Masses'] * 1.0e10 / h
+    Coordinates = gas_cells['Coordinates'] * a / h
+    Densities = gas_cells['Density'] * 1.0e10 / h / (a / h)**3
+    Sizes = (Masses / (Densities * 4./3. * np.pi))**(1./3.) * gas_hsml_fact
+
+    halo = il.groupcat.loadHalo(basePath, snapNum, haloID)
+    R200c = halo['Group_R_Crit200'] * a / h
+    halo_pos = halo['GroupPos'] * a / h
+
+    pos = Coordinates[:,axes]
+    hsml = Sizes
+    if mass_key == 'Masses':
+        mass = Masses
+    else: 
+        mass = gas_cells[mass_key]
+    boxSizeImg = [boxsizeimg*R200c, boxsizeimg*R200c] # kpc
+    boxSizeSim = [boxsize, boxsize, boxsize]
+    boxCen = halo_pos[axes]    
+    ndims = 3
+
+    if not nPixels:
+        pixel_size = 5.
+        nPixels = int(boxSizeImg[0] / pixel_size)
+    
+    result = sphMap.sphMap(pos, hsml, mass, quant, [0,1], boxSizeImg, boxSizeSim, boxCen, [nPixels, nPixels], ndims, colDens=True)
+
+    return result
 
 def add_quenchtimes(Config):
     """
