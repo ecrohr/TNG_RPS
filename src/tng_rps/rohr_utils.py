@@ -1181,7 +1181,7 @@ def ret_basePath(sim):
     if any(IllustrisTNG_sim in sim for IllustrisTNG_sim in IllustrisTNG_sims):
         return ('../IllustrisTNG/%s/output/'%sim)
         
-    TNGCluster_sims = ['L680n' 'TNG-Cluster']
+    TNGCluster_sims = ['L680n', 'TNG-Cluster']
     if any(TNGCluster_sim in sim for TNGCluster_sim in TNGCluster_sims):
         return ('../TNG-Cluster/%s/output/'%sim)
         
