@@ -133,3 +133,5 @@ dmypy.json
 # specific config files
 src/tng_rps/config.yaml
 
+# diagnotic plots
+src/tng_rps/CoolGasMaps
