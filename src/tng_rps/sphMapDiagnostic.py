@@ -10,7 +10,7 @@ from tenet.util import sphMap
 import h5py
 import os 
 
-def savePlot(basePath, snapNum, haloID, loadOriginalZoom=False, mgas_flag=False):
+def savePlot(basePath, snapNum, haloID, loadOriginalZoom=False, mgas_flag=False, sphMap_flag=True):
     """
     Make and return the cool gas column denisty map using sphMap.sphMap(). No returns.
     """
@@ -44,7 +44,7 @@ def savePlot(basePath, snapNum, haloID, loadOriginalZoom=False, mgas_flag=False)
 
     if mgas_flag:
         mgas_mask = Masses < 1.0e8
-        mask = temp_mask * mgas_mask
+        mask = temp_mask & mgas_mask
 
     for key in gas_cells:
         if key == 'count':
@@ -63,7 +63,7 @@ def savePlot(basePath, snapNum, haloID, loadOriginalZoom=False, mgas_flag=False)
     boxCen = halo_pos[axes]    
     ndims = 3
 
-    nPixels_list = [256, 512, 1024, 2048, 4096]
+    nPixels_list = [128, 256, 512, 1024, 2048]
     outdirec = 'CoolGasMaps/'
     if loadOriginalZoom:
         save_str = 'OriginalZoom'
@@ -73,12 +73,21 @@ def savePlot(basePath, snapNum, haloID, loadOriginalZoom=False, mgas_flag=False)
         save_str += '-mgas<1e8'
 
     for nPixels in nPixels_list:
-        coolgasmap = sphMap.sphMap(pos, hsml, mass, quant, axes, boxSizeImg, boxSizeSim, boxCen, [nPixels, nPixels], ndims, colDens=True)
+        if sphMap_flag:
+            coolgasmap = sphMap.sphMap(pos, hsml, mass, quant, axes, boxSizeImg, boxSizeSim, boxCen, [nPixels, nPixels], ndims, colDens=True)
+            proj_str = 'sphMap'
+        else:
+            area = (boxSizeImg[0] / nPixels)**2
+            extent = [-boxSizeImg[0]/2., boxSizeImg[0]/2., -boxSizeImg[1]/2., boxSizeImg[1]/2.]
+            range = [[-boxSizeImg[0]/2., boxSizeImg[0]/2.], [-boxSizeImg[0]/2., boxSizeImg[0]/2.]]
+            _pos = shift(pos, boxCen, boxsize)
+            coolgasmap = np.histogram2d(_pos[:,0], _pos[:,1], bins=nPixels, weights=mass / area, range=range)[0].T
+            proj_str = 'histogram2d'
         fig, _ = makePlot(coolgasmap, boxSizeImg, R200c, haloID, nPixels)
 
         if not os.path.isdir(outdirec):
             os.makedirs(outdirec)
-        outfname = '%s_snapNum%03d_haloID%s_CoolGasColDens_%s_nPixels%d.pdf'%(sim, snapNum, haloID, save_str, nPixels)
+        outfname = '%s_snapNum%03d_haloID%s_CoolGasColDens_%s_%s_nPixels%d.pdf'%(sim, snapNum, haloID, save_str, proj_str, nPixels)
         fig.savefig(outdirec + outfname, bbox_inches='tight')
 
         fig.clf()
@@ -162,6 +171,29 @@ def calcTempDict(gas_cells):
     gas_cells['Temperature'] = t
     
     return gas_cells
+
+
+def shift(u, v, box_length):
+    """
+    returns the position vector u-v in a periodic Cartesian box
+    
+    Parameters
+    ----------
+    u : N x 3 position array
+    v : N x 3 OR 1 x 3 position array
+    box_length : float in same units as [u], [v]
+    
+    Returns 
+    -------
+    result: N x M position vector (array)
+    
+    """
+
+    result = u - v
+    result[result > box_length / 2.0] -= box_length
+    result[result < -box_length / 2.0] += box_length
+    return result
+
 
 if __name__ == '__main__':
     sim = 'TNG-Cluster'
