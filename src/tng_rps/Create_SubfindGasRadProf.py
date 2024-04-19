@@ -1586,15 +1586,19 @@ def add_onlygroups_PP(Config):
     fCGMColdGas_key = 'SubhaloCGMColdGasFraction'
 
     Nsats_total_key = 'Nsatellites_total'
-    Nsats_fiducial_key = 'NSatellites_Mstar>1.0e7_fgas>0.01_dsathost<R200c'
-    Nsats_onlymassive_key = 'NSatellites_Mstar>1.0e9_fgas>0.01_dsathost<R200c'
-    Nsats_onlysupermassive_key = 'NSatellites_Mstar>1.0e10_fgas>0.01_dsathost<R200c'
-    Nsats_onlySF_key = 'NSatellites_Mstar>1.0e7_SF_dsathost<R200c'
+    Nsats_mstar1e7_dr200c_key = 'Nsatellties_Mstar>1.0e7_dsathost<R200c'
+    Nsats_mstar1e7_fgas_dr200c_key = 'NSatellites_Mstar>1.0e7_fgas>0.01_dsathost<R200c'
+    Nsats_mstar1e9_dr200c_key = 'Nsatellties_Mstar>1.0e9_dsathost<R200c'
+    Nsats_mstar1e9_fgas_dr200c_key = 'NSatellites_Mstar>1.0e9_fgas>0.01_dsathost<R200c'
+    Nsats_mstar1e10_dr200c_key = 'NSatellites_Mstar>1.0e10_fgas>0.01_dsathost<R200c'
+    Nsats_mstar1e10_fgas_dr200c_key = 'NSatellites_Mstar>1.0e10_fgas>0.01_dsathost<R200c'
+    Nsats_mstar_1e7_SF_dr200c_key = 'NSatellites_Mstar>1.0e7_SF_dsathost<R200c'
     
     dsets_keys = [CGMColdGasMass_key, fCGMColdGas_key,
-                  Nsats_total_key, Nsats_fiducial_key,
-                  Nsats_onlymassive_key, Nsats_onlysupermassive_key,
-                  Nsats_onlySF_key]
+                  Nsats_total_key, Nsats_mstar1e7_dr200c_key, Nsats_mstar1e7_fgas_dr200c_key,
+                  Nsats_mstar1e9_dr200c_key, Nsats_mstar1e9_fgas_dr200c_key, 
+                  Nsats_mstar1e10_dr200c_key, Nsats_mstar1e10_fgas_dr200c_key,
+                  Nsats_mstar_1e7_SF_dr200c_key]
     
     result = {}
     for dset_key in dsets_keys:
@@ -1658,24 +1662,36 @@ def add_onlygroups_PP(Config):
             Satellites_dsathost = ru.mag(Satellites_Pos, GroupPos, boxsize) / r200c
 
             mask = ((Satellites_Mstar > Mstar_lolim) & 
+                    (Satellites_dsathost < 1.0))
+            result[Nsats_mstar1e7_dr200c_key][group_i,time_index] = mask[mask].size
+            
+            mask = ((Satellites_Mstar > Mstar_lolim) & 
                     (Satellites_Mgas / Satellites_Mstar > fgas_lolim) &
                     (Satellites_dsathost < 1.0))
-            result[Nsats_fiducial_key][group_i,time_index] = mask[mask].size
+            result[Nsats_mstar1e7_fgas_dr200c_key][group_i,time_index] = mask[mask].size
 
+            mask = ((Satellites_Mstar > Mstar_massive_lolim) & 
+                    (Satellites_dsathost < 1.0))
+            result[Nsats_mstar1e9_dr200c_key][group_i,time_index] = mask[mask].size
+            
             mask = ((Satellites_Mstar > Mstar_massive_lolim) & 
                     (Satellites_Mgas / Satellites_Mstar > fgas_lolim) &
                     (Satellites_dsathost < 1.0))
-            result[Nsats_onlymassive_key][group_i,time_index] = mask[mask].size
+            result[Nsats_mstar1e9_fgas_dr200c_key][group_i,time_index] = mask[mask].size
 
+            mask = ((Satellites_Mstar > Mstar_supermassive_lolim) & 
+                    (Satellites_dsathost < 1.0))
+            result[Nsats_mstar1e10_dr200c_key][group_i,time_index] = mask[mask].size
+            
             mask = ((Satellites_Mstar > Mstar_supermassive_lolim) & 
                     (Satellites_Mgas / Satellites_Mstar > fgas_lolim) &
                     (Satellites_dsathost < 1.0))
-            result[Nsats_onlysupermassive_key][group_i,time_index] = mask[mask].size
+            result[Nsats_mstar1e10_fgas_dr200c_key][group_i,time_index] = mask[mask].size
 
             mask = ((Satellites_Mstar > Mstar_lolim) & 
                     (Satellites_sSFR > sSFR_lolim) &
                     (Satellites_dsathost < 1.0))
-            result[Nsats_onlySF_key][group_i,time_index] = mask[mask].size
+            result[Nsats_mstar_1e7_SF_dr200c_key][group_i,time_index] = mask[mask].size
 
             result[Nsats_total_key][group_i,time_index] = GroupLen - 1
 
