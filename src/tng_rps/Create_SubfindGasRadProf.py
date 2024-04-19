@@ -1586,6 +1586,7 @@ def add_onlygroups_PP(Config):
     fCGMColdGas_key = 'SubhaloCGMColdGasFraction'
 
     Nsats_total_key = 'Nsatellites_total'
+    Nsats_dr200_key = 'Nsatellites_dsathost<R200c'
     Nsats_mstar1e7_dr200c_key = 'Nsatellties_Mstar>1.0e7_dsathost<R200c'
     Nsats_mstar1e7_fgas_dr200c_key = 'NSatellites_Mstar>1.0e7_fgas>0.01_dsathost<R200c'
     Nsats_mstar1e9_dr200c_key = 'Nsatellties_Mstar>1.0e9_dsathost<R200c'
@@ -1595,7 +1596,8 @@ def add_onlygroups_PP(Config):
     Nsats_mstar_1e7_SF_dr200c_key = 'NSatellites_Mstar>1.0e7_SF_dsathost<R200c'
     
     dsets_keys = [CGMColdGasMass_key, fCGMColdGas_key,
-                  Nsats_total_key, Nsats_mstar1e7_dr200c_key, Nsats_mstar1e7_fgas_dr200c_key,
+                  Nsats_total_key, Nsats_dr200_key, 
+                  Nsats_mstar1e7_dr200c_key, Nsats_mstar1e7_fgas_dr200c_key,
                   Nsats_mstar1e9_dr200c_key, Nsats_mstar1e9_fgas_dr200c_key, 
                   Nsats_mstar1e10_dr200c_key, Nsats_mstar1e10_fgas_dr200c_key,
                   Nsats_mstar_1e7_SF_dr200c_key]
@@ -1661,6 +1663,9 @@ def add_onlygroups_PP(Config):
             Satellites_sSFR = np.log10(Satellites_SFR / Satellites_Mstar)
             Satellites_dsathost = ru.mag(Satellites_Pos, GroupPos, boxsize) / r200c
 
+            mask = (Satellites_dsathost < 1.0)
+            result[Nsats_dr200_key][group_i,time_index] = mask[mask].size
+            
             mask = ((Satellites_Mstar > Mstar_lolim) & 
                     (Satellites_dsathost < 1.0))
             result[Nsats_mstar1e7_dr200c_key][group_i,time_index] = mask[mask].size
