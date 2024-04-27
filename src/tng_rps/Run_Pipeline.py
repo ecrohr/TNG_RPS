@@ -473,11 +473,18 @@ def initialize_central_subfindindices(Config):
         snapNum = Config.min_snap
     else:
         snapNum = 99
+
+    if 'TNG300' in Config.sim:
+        M200c_lowlim = 10.**(12)
+    elif 'TNG100' in Config.sim:
+        M200c_lowlim = 10.**(11.5)
+    elif 'TNG50' in Config.sim:
+        M200c_lowlim = 1.0e11
     
     halo_fields = ['Group_M_Crit200','GroupFirstSub']
     halos = il.groupcat.loadHalos(Config.basePath, snapNum, fields=halo_fields)
     M200c = halos['Group_M_Crit200'] * 1.0e10 / Config.h
-    indices = M200c >= 10.0**(11.5)
+    indices = M200c >= M200c_lowlim
 
     GroupFirstSub = halos['GroupFirstSub']
     SubfindIDs = GroupFirstSub[indices]
