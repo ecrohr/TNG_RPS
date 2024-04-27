@@ -109,7 +109,7 @@ def run_postprocessing(Config):
 
     if Config.onlygroups_flag:
         add_onlygroups_PP(Config)
-        #add_MainBHProperties(Config)
+        add_MainBHProperties(Config)
         if not Config.TNGCluster_flag:
             add_quenchtimes(Config)
     
