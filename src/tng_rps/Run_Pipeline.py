@@ -522,7 +522,7 @@ def initialize_TNGCluster_subfindindices(Config):
     # 1) are z=0 satellites of primary zooms
     # 2) have Mstar(z=0) > Mstar_lolim
     # 3) have M_star^sat / M_star^host (z=0) < massratio_frac
-     # 4) have SubhaloFlag == True
+    # 4) have SubhaloFlag == True
     subhalo_fields = ['SubhaloGrNr', 'SubhaloMassInRadType', 'SubhaloFlag']
     subhalos = il.groupcat.loadSubhalos(basePath, max_snap, fields=subhalo_fields)
     subhalo_indices_massive = subhalos['SubhaloMassInRadType'][:,star_ptn] * 1.0e10 / h > Mstar_lolim
