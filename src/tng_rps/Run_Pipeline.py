@@ -73,6 +73,8 @@ class Configuration(dict):
         self.basePath = ru.loadbasePath(self.sim)
 
         self.outdirec = '../Output/%s_subfindGRP/'%self.sim
+        if not os.path.isdir(self.outdirec):
+            os.system('mkdir %s'%self.outdirec)
         GRPfname, taufname = self.return_fnames()
         self.outfname = self.GRPfname = GRPfname
         self.taufname = taufname
