@@ -26,10 +26,10 @@ threed_keys = ['radii', 'vol_shells',
                'SubhaloGasMassShells', 'SubhaloDensityShells']
 
 centrals_vector_keys = ['CGMTemperaturesHistogram', 'CGMTemperaturesHistogramBincents']
-centrals_scalar_keys = ['SubhaloColdGasMassOutflowRateR200c', 'SubhaloColdGasMassInflowRateR200c',
-                        'SubhaloHotGasMassOutflowRateR200c', 'SubhaloHotGasMassInflowRateR200c',
-                        'SubhaloColdGasMassOutflowRate0.1R200c', 'SubhaloColdGasMassInflowRate0.1R200c',
-                        'SubhaloHotGasMassOutflowRate0.1R200c', 'SubhaloHotGasMassInflowRate0.1R200c',]
+centrals_scalar_keys = ['SubhaloColdGasMassOutflowRate1.0R200c', 'SubhaloColdGasMassInflowRate1.0R200c',
+                        'SubhaloHotGasMassOutflowRate1.0R200c', 'SubhaloHotGasMassInflowRate1.0R200c',
+                        'SubhaloColdGasMassOutflowRate0.15R200c', 'SubhaloColdGasMassInflowRate0.15R200c',
+                        'SubhaloHotGasMassOutflowRate0.15R200c', 'SubhaloHotGasMassInflowRate0.15R200c',]
 
 # hardcode the snapshots of interest
 zooniverse_snapshots_TNG50 = [99, 98, 97, 96, 95, 94, 93, 92, 91, 90,
@@ -343,7 +343,7 @@ def return_subfindGRP(snapnum, subfindID, Config):
         radii_bincents = radii_bincents_norm * R200c # pkpc    
 
         # compute the CGM temperature histogram
-        CGM_mask = ((gas_radii > 0.1 * R200c) & (gas_radii < R200c))
+        CGM_mask = ((gas_radii > 0.15 * R200c) & (gas_radii < R200c))
         CGMTemperaturesHistogram = np.histogram(np.log10(gas_temperatures[CGM_mask]), weights=gas_masses[CGM_mask], bins=temp_bins)[0]              
         centrals_vector_dsets = [CGMTemperaturesHistogram, temp_bincents]
 
@@ -357,7 +357,7 @@ def return_subfindGRP(snapnum, subfindID, Config):
 
         inner_buffer = 0.015 # [R200c]
         outer_buffer = 0.05 # [R200c]
-        inner_mask = ((gas_radii > (0.1 - inner_buffer) * R200c) & (gas_radii < (0.1 + inner_buffer) * R200c))
+        inner_mask = ((gas_radii > (0.15 - inner_buffer) * R200c) & (gas_radii < (0.15 + inner_buffer) * R200c))
         outer_mask = ((gas_radii > (1.0 - outer_buffer) * R200c) & (gas_radii < (1.0 + outer_buffer) * R200c))
         
         SubhaloColdGasMassOutflowRateR200c = np.sum(gas_masses[outer_mask & cold_mask & outflow_mask] *
@@ -985,7 +985,7 @@ def add_CoolGasSFRMaps(Config):
 
     basePath = Config.basePath
     gas_ptn = Config.gas_ptn
-    header = Config.add_CoolGasSFRMaps
+    header = Config.Header
     h = Config.h
 
     redshifts = [0., 0.5, 2.0, 4.0]
@@ -1042,13 +1042,13 @@ def add_CoolGasSFRMaps(Config):
                 else:
                     cool_gas_cells[key] = gas_cells[key][mask]
             
-            result[coolgasmap_key][time_index,:,:] = return_SphMap(Config, cool_gas_cells, haloID, nPixels=nPixels, boxsizeimg=boxsizeimg)
+            result[coolgasmap_key][time_index,:,:] = return_SphMap(Config, cool_gas_cells, haloID, snapNum, nPixels=nPixels, boxsizeimg=boxsizeimg)
 
             sfr_mask = StarFormationRates > 0
 
             mask = mass_mask & sfr_mask & depth_mask
 
-            result[sfrsurfacedensitymap_key][time_index,:,:] = return_SphMap(Config, gas_cells, haloID, mass_key='StarFormationRate', nPixels=nPixels, boxsizeimg=boxsizeimg)
+            result[sfrsurfacedensitymap_key][time_index,:,:] = return_SphMap(Config, gas_cells, haloID, snapNum, mass_key='StarFormationRate', nPixels=nPixels, boxsizeimg=boxsizeimg)
 
         # finish loop over redshifts
         for dset_key in result:
@@ -1084,7 +1084,7 @@ def return_SphMap(Config, gas_cells, haloID, snapNum, mass_key='Masses', quant=N
     Densities = gas_cells['Density'] * 1.0e10 / h / (a / h)**3
     Sizes = (Masses / (Densities * 4./3. * np.pi))**(1./3.) * gas_hsml_fact
 
-    halo = il.groupcat.loadHalo(basePath, snapNum, haloID)
+    halo = il.groupcat.loadSingle(basePath, snapNum, haloID=haloID)
     R200c = halo['Group_R_Crit200'] * a / h
     halo_pos = halo['GroupPos'] * a / h
 
