@@ -112,6 +112,8 @@ def run_postprocessing(Config):
         add_MainBHProperties(Config)
         if not Config.TNGCluster_flag:
             add_quenchtimes(Config)
+        else:
+            add_CoolGasSFRMaps(Config)
     
     # for satellites only
     if not Config.centrals_flag:
@@ -235,12 +237,12 @@ def return_subfindGRP(snapnum, subfindID, Config):
     
     ### define radial bins and bincenters ###
     if centrals_flag:
-        rmin_norm = 10.**(-2) # r / Rvir
-        rmax_norm = 3.0 # r / Rvir
+        rmin_norm = 1.0e-3 # r / Rvir
+        rmax_norm = 1.0e1 # r / Rvir
         radii_binwidth = 0.1 # r / Rvir, linear
 
         # for centrals, also compute the histogram of the CGM temperatures
-        log_temp_min = 3.0
+        log_temp_min = 2.5
         log_temp_max = 9.0
         log_temp_binwidth = 0.025
         temp_bins, temp_bincents = ru.returnbins([log_temp_min, log_temp_max], log_temp_binwidth)
@@ -290,7 +292,10 @@ def return_subfindGRP(snapnum, subfindID, Config):
         R200c = ru.loadSingleFields(basePath, snapnum, haloID=subhalo['SubhaloGrNr'], fields=['Group_R_Crit200']) * a / h
                             
     # load gas particles for relevant halo
-    gasparts = il.snapshot.loadSubhalo(basePath, snapnum, subfindID, gas_ptn, fields=gasfields)
+    if centrals_flag & Config.TNGCluster_flag:
+        gasparts = il.snapshot.loadOriginalZoom(basePath, snapnum, subfindID, gas_ptn, fields=gasfields)
+    else:
+        gasparts = il.snapshot.loadSubhalo(basePath, snapnum, subfindID, gas_ptn, fields=gasfields)
     
     # if the satellite has no gas, write 0 for all dsets
     if gasparts['count'] == 0:
@@ -412,6 +417,7 @@ def return_subfindGRP(snapnum, subfindID, Config):
             result[group_key][scalar_key] = centrals_scalar_dsets[scalar_index]
 
     return result
+
 
 
 ### post processing functions ###
@@ -970,6 +976,93 @@ def return_Lx_map(Config, dic, halo, axes, in4k=True):
     return Lx_map_4k
 
 
+def add_CoolGasSFRMaps(Config):
+    """
+    Create maps of the cool gas and SFR surface density at specified redshifts
+    """
+    f = h5py.File(Config.outdirec+Config.outfname, 'a')
+    f_keys = np.array(list(f.keys()))
+
+    basePath = Config.basePath
+    gas_ptn = Config.gas_ptn
+    header = Config.add_CoolGasSFRMaps
+    h = Config.h
+
+    redshifts = [0., 0.5, 2.0, 4.0]
+
+    mass_hilim = 1.0e8 # assuming TNG-Cluster
+    Tcoollim = Config.tlim
+    boxsizeimg = 3.
+
+    nPixels = 512
+
+    coolgasmap_key = 'CoolGasSurfaceDensityMap'
+    sfrsurfacedensitymap_key = 'SFRSurfaceDensityMap'
+    dset_keys = [coolgasmap_key, sfrsurfacedensitymap_key]
+
+    for group_i, group_key in enumerate(f_keys):
+        group = f[group_key]
+
+        result = {}
+        for key in dset_keys:
+            result[key] = np.zeros([group['SnapNum'].size, nPixels, nPixels], dtype=float) - 1.
+        
+        for redshift in redshifts:
+            time_index = np.argmin(np.abs(group['Redshift'][:] - redshift))
+
+            haloID = group['HostSubhaloGrNr'][time_index]
+            snapNum = group['SnapNum'][time_index]
+            a = group['Time'][time_index]
+            boxsize = header['BoxSize'] * a / h
+
+            halo = il.groupcat.loadSingle(basePath, snapNum, haloID=haloID)
+            HaloPos = halo['GroupPos'] * a / h
+            R200c = halo['Group_R_Crit200'] * a / h
+
+            gas_cells = il.snapshot.loadOriginalZoom(basePath, snapNum, haloID, gas_ptn)
+            gas_cells = ru.calc_temp_dict(gas_cells)
+
+            Masses = gas_cells['Masses'] * 1.0e10 / h
+            _Coordinates = gas_cells['Coordinates'] * a / h
+            Coordinates = ru.shift(_Coordinates, HaloPos, boxsize)
+            Temperatures = gas_cells['Temperature']
+            StarFormationRates = gas_cells['StarFormationRate']
+
+            temp_mask = Temperatures <= Tcoollim
+            mass_mask = Masses < mass_hilim
+            depth = boxsizeimg / 2. * R200c
+            depth_mask = np.abs(Coordinates[:,2]) <= depth
+
+            mask = temp_mask & mass_mask & depth_mask
+                    
+            cool_gas_cells = {}
+            for key in gas_cells:
+                if key == 'count':
+                    cool_gas_cells['count'] = mask[mask].size
+                else:
+                    cool_gas_cells[key] = gas_cells[key][mask]
+            
+            result[coolgasmap_key][time_index,:,:] = return_SphMap(Config, cool_gas_cells, haloID, nPixels=nPixels, boxsizeimg=boxsizeimg)
+
+            sfr_mask = StarFormationRates > 0
+
+            mask = mass_mask & sfr_mask & depth_mask
+
+            result[sfrsurfacedensitymap_key][time_index,:,:] = return_SphMap(Config, gas_cells, haloID, mass_key='StarFormationRate', nPixels=nPixels, boxsizeimg=boxsizeimg)
+
+        # finish loop over redshifts
+        for dset_key in result:
+            dset = result[dset_key]
+            dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+            dataset[:] = dset
+    
+    # finish loop over f_keys
+
+    f.close()
+
+    return
+
+
 def return_SphMap(Config, gas_cells, haloID, snapNum, mass_key='Masses', quant=None, axes=[0,1],
                   boxsizeimg=3., nPixels=1024):
     """
@@ -1009,8 +1102,12 @@ def return_SphMap(Config, gas_cells, haloID, snapNum, mass_key='Masses', quant=N
     if not nPixels:
         pixel_size = 5.
         nPixels = int(boxSizeImg[0] / pixel_size)
+
+    colDens = True
+    if quant:
+        colDens = False
     
-    result = sphMap.sphMap(pos, hsml, mass, quant, [0,1], boxSizeImg, boxSizeSim, boxCen, [nPixels, nPixels], ndims, colDens=True)
+    result = sphMap.sphMap(pos, hsml, mass, quant, [0,1], boxSizeImg, boxSizeSim, boxCen, [nPixels, nPixels], ndims, colDens=colDens)
 
     return result
 
@@ -1584,18 +1681,20 @@ def add_onlygroups_PP(Config):
 
     CGMColdGasMass_key = 'SubhaloCGMColdGasMass'
     fCGMColdGas_key = 'SubhaloCGMColdGasFraction'
+    CGMGasMass_key = 'SubhaloCGMGasMass'
+    fCoolCGM_key = 'SubhaloCoolCGMFraction'
 
-    Nsats_total_key = 'Nsatellites_total'
-    Nsats_dr200_key = 'Nsatellites_dsathost<R200c'
-    Nsats_mstar1e7_dr200c_key = 'Nsatellties_Mstar>1.0e7_dsathost<R200c'
+    Nsats_total_key = 'NSatellites_total'
+    Nsats_dr200_key = 'NSatellites_dsathost<R200c'
+    Nsats_mstar1e7_dr200c_key = 'NSatellties_Mstar>1.0e7_dsathost<R200c'
     Nsats_mstar1e7_fgas_dr200c_key = 'NSatellites_Mstar>1.0e7_fgas>0.01_dsathost<R200c'
-    Nsats_mstar1e9_dr200c_key = 'Nsatellties_Mstar>1.0e9_dsathost<R200c'
+    Nsats_mstar1e9_dr200c_key = 'NSatellties_Mstar>1.0e9_dsathost<R200c'
     Nsats_mstar1e9_fgas_dr200c_key = 'NSatellites_Mstar>1.0e9_fgas>0.01_dsathost<R200c'
     Nsats_mstar1e10_dr200c_key = 'NSatellites_Mstar>1.0e10_fgas>0.01_dsathost<R200c'
     Nsats_mstar1e10_fgas_dr200c_key = 'NSatellites_Mstar>1.0e10_fgas>0.01_dsathost<R200c'
     Nsats_mstar_1e7_SF_dr200c_key = 'NSatellites_Mstar>1.0e7_SF_dsathost<R200c'
     
-    dsets_keys = [CGMColdGasMass_key, fCGMColdGas_key,
+    dsets_keys = [CGMColdGasMass_key, fCGMColdGas_key, CGMGasMass_key, fCoolCGM_key,
                   Nsats_total_key, Nsats_dr200_key, 
                   Nsats_mstar1e7_dr200c_key, Nsats_mstar1e7_fgas_dr200c_key,
                   Nsats_mstar1e9_dr200c_key, Nsats_mstar1e9_fgas_dr200c_key, 
@@ -1615,10 +1714,15 @@ def add_onlygroups_PP(Config):
             radii = group['radii'][time_index]
             r200c = group['HostGroup_R_Crit200'][time_index]
             subhalo_mcgas_shells = group['SubhaloColdGasMassShells'][time_index]
-            mask = ((radii > r200c * 0.1) & (radii < r200c))
+            mask = ((radii > r200c * 0.15) & (radii < r200c))
             subhalo_cgmcgmass = np.sum(subhalo_mcgas_shells[mask])
             result[CGMColdGasMass_key][group_i,time_index] = subhalo_cgmcgmass
             result[fCGMColdGas_key][group_i,time_index] = subhalo_cgmcgmass / group['HostGroup_M_Crit200'][time_index]
+            
+            subhalo_mgas_shells = group['SubhaloGasMassShells'][time_index]
+            subhalo_cgmmass = np.sum(subhalo_mgas_shells[mask])
+            result[CGMGasMass_key][group_i,time_index] = subhalo_cgmmass
+            result[fCoolCGM_key][group_i,time_index] = subhalo_cgmcgmass / subhalo_cgmmass
     
     for snapNum_i, snapNum in enumerate(group['SnapNum'][:]):
 
