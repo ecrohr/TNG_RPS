@@ -109,11 +109,11 @@ def run_postprocessing(Config):
 
     if Config.onlygroups_flag:
         add_onlygroups_PP(Config)
-        add_MainBHProperties(Config)
+        #add_MainBHProperties(Config)
         if not Config.TNGCluster_flag:
             add_quenchtimes(Config)
-        else:
-            add_CoolGasSFRMaps(Config)
+        #else:
+            #add_CoolGasSFRMaps(Config)
     
     # for satellites only
     if not Config.centrals_flag:
@@ -293,7 +293,33 @@ def return_subfindGRP(snapnum, subfindID, Config):
                             
     # load gas particles for relevant halo
     if centrals_flag & Config.TNGCluster_flag:
-        gasparts = il.snapshot.loadOriginalZoom(basePath, snapnum, subfindID, gas_ptn, fields=gasfields)
+        #gasparts = il.snapshot.loadOriginalZoom(basePath, snapnum, subhalo['SubhaloGrNr'], gas_ptn, fields=gasfields)
+        #gasparts = il.snapshot.loadSubhalo(basePath, snapnum, subfindID, gas_ptn, fields=gasfields)
+        gasparts_FOF = il.snapshot.loadHalo(basePath, snapnum, subhalo['SubhaloGrNr'], gas_ptn, fields=gasfields)
+
+        subset = il.snapshot.getSnapOffsets(basePath, snapnum, subhalo['SubhaloGrNr'], "Group")
+
+        # remove all gas bound to subhalos by finding the last gas cell of the last subhalo
+        halo = il.groupcat.loadSingle(basePath, snapnum, haloID=subhalo['SubhaloGrNr'])
+        assert 'GroupOrigHaloID' in halo, 'Error: loadOriginalZoom() only for the TNG-Cluster simulation.'
+        orig_index = np.where(subset['HaloIDs'] == halo['GroupOrigHaloID'])[0][0]
+
+        # find the length of the BCG gas cells
+        subset_GroupFirstSub = il.snapshot.getSnapOffsets(basePath, snapnum, halo['GroupFirstSub'], "Subhalo")
+        length_BCG = subset_GroupFirstSub['lenType'][gas_ptn]
+
+        # find the last gas cell of the last subhalo
+        halo_lastsubhalo = halo['GroupFirstSub'] + halo['GroupNsubs'] - 1
+        subset_lastsubhalo = il.snapshot.getSnapOffsets(basePath, snapnum, halo_lastsubhalo, "Subhalo")
+        lastsubhalo_gascell_index = subset_lastsubhalo['offsetType'][gas_ptn] + subset_lastsubhalo['lenType'][gas_ptn]
+
+        gasparts = {}
+        for key in gasparts_FOF:
+            if key == 'count':
+                gasparts['count'] = gasparts_FOF['count'] - (lastsubhalo_gascell_index - length_BCG)
+            else:
+                gasparts[key] = np.concatenate((gasparts_FOF[key][:length_BCG], gasparts_FOF[key][lastsubhalo_gascell_index:]))
+
     else:
         gasparts = il.snapshot.loadSubhalo(basePath, snapnum, subfindID, gas_ptn, fields=gasfields)
     
@@ -855,7 +881,7 @@ def add_Lxmaps(Config):
 
         # find the subset belonging to all subhalos and other FoFs, but not the BCG or fuzz of the BCG
         # find the last gas cell belonging to the last subhalo
-        halo_lastsubhalo = halo['GroupFirstSub'] + halo['GroupNsubs']
+        halo_lastsubhalo = halo['GroupFirstSub'] + halo['GroupNsubs'] - 1
         subset_lastsubhalo = il.snapshot.getSnapOffsets(basePath, snapNum, halo_lastsubhalo, "Subhalo")
 
         last_gascell_index = subset_lastsubhalo['offsetType'][gas_ptn] + subset_lastsubhalo['lenType'][gas_ptn]
@@ -1008,12 +1034,19 @@ def add_CoolGasSFRMaps(Config):
             result[key] = np.zeros([group['SnapNum'].size, nPixels, nPixels], dtype=float) - 1.
         
         for redshift in redshifts:
+
+            print('add_CoolGasSFRMaps(): working on group_key %s at redshift %f'%(group_key, redshift))
+
             time_index = np.argmin(np.abs(group['Redshift'][:] - redshift))
 
             haloID = group['HostSubhaloGrNr'][time_index]
             snapNum = group['SnapNum'][time_index]
             a = group['Time'][time_index]
             boxsize = header['BoxSize'] * a / h
+
+            # check that the halo exists in the trees at this snapshot
+            if haloID < 0:
+                continue
 
             halo = il.groupcat.loadSingle(basePath, snapNum, haloID=haloID)
             HaloPos = halo['GroupPos'] * a / h
@@ -1888,3 +1921,4 @@ def add_MainBHProperties(Config):
 
     f.close()
 
+    return
