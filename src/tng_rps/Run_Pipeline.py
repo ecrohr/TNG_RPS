@@ -77,7 +77,6 @@ class Configuration(dict):
             os.system('mkdir %s'%self.outdirec)
         GRPfname, taufname = self.return_fnames()
         self.outfname = self.GRPfname = GRPfname
-        #self.outfname = self.GRPfname = 'central_groups_subfind_L680n8192TNG_branches_20240527.hdf5'
         self.taufname = taufname
 
         self.Header = il.groupcat.loadHeader(self.basePath, self.max_snap)
@@ -169,7 +168,7 @@ class Configuration(dict):
         
         if self.tracers_flag:
             if self.zooniverse_flag:
-                self.tracer_outdirec = '../Output/%s_tracers_zooniverse/'%(self.sim)
+                self.tracer_outdirec = '/vera/ptmp/gc/reric/Output/%s_tracers_zooniverse/'%(self.sim)
             else:
                 self.tracer_outdirec = '../Output/%s_tracers/'%(self.sim)
 
