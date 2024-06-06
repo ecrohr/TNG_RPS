@@ -109,11 +109,11 @@ def run_postprocessing(Config):
 
     if Config.onlygroups_flag:
         add_onlygroups_PP(Config)
-        #add_MainBHProperties(Config)
+        add_MainBHProperties(Config)
         if not Config.TNGCluster_flag:
             add_quenchtimes(Config)
-        #else:
-            #add_CoolGasSFRMaps(Config)
+        else:
+            add_CoolGasSFRMaps(Config)
     
     # for satellites only
     if not Config.centrals_flag:
