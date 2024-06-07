@@ -1139,6 +1139,7 @@ def return_SphMap(Config, gas_cells, haloID, snapNum, mass_key='Masses', quant=N
     colDens = True
     if quant:
         colDens = False
+        quant = gas_cells[quant]
     
     result = sphMap.sphMap(pos, hsml, mass, quant, [0,1], boxSizeImg, boxSizeSim, boxCen, [nPixels, nPixels], ndims, colDens=colDens)
 
