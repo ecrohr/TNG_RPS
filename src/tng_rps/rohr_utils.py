@@ -557,6 +557,44 @@ def is_slice_in_list(s,l):
 ##### other functions #########
 ########################################
 
+def calc_tcool_dict(gas_cells, basePath, snapNum):
+    """
+    Compute the cooling time [Gyr] for gas_cells from an arepo sim. 
+    Requires NeutralHydrogenAbundance, Density, ElectronAbundance, GFM_CoolingRate,
+    InternalEnergy, (StarFormationRate), so for the TNG + TNG-Cluster simulations, this
+    is only possible at the full snaps. In order to convert Density to physical units, 
+    it is necessary to have both HubbleParam and Time from the header file, hence why
+    basePath and snapNum are required arguments. Note that the dataset is returned as 
+    a double since converting between Msun and cgs can lead to an OverFlowError.
+    """
+
+    if 'Temperature' not in gas_cells:
+        gas_cells = calc_temp_dict(gas_cells)
+
+    keys = ['NeutralHydrogenAbundance', 'Density', 'ElectronAbundance', 'Temperature', 'GFM_CoolingRate']
+    for key in keys:
+        assert key in gas_cells, 'calc_tcool_dict(): Key %s is required in gas_cell to compute tcool'%key
+            
+    header = loadHeader(basePath, snapNum)
+    h = header['HubbleParam']
+    a = header['Time']
+
+    mp = 1.67e-24 # proton mass [g]
+    kb = 1.3806e-16 # Boltzmann constant [erg K^-1]
+    msun = 1.988e33 # solar mass in [g]
+    seconds_to_Gyr = 3.15e7 * 1.0e9
+
+    nH = gas_cells['NeutralHydrogenAbundance'].astype('double') * ((gas_cells['Density'] * 1.0e10 / h) / (a / h)**3) / mp
+    ni = 1 - nH
+    ne = gas_cells['ElectronAbundance'].astype('double') * nH
+
+    tcool = (3./2.) * (ne + ni) * kb * gas_cells['Temperature'] / (ne * ni * gas_cells['GFM_CoolingRate']) / seconds_to_Gyr * msun
+
+    gas_cells['CoolingTime'] = tcool
+
+    return gas_cells
+
+
 def calc_temp_dict(gas_cells):
     """
     return the temperature [K] of a gas cell from TNG
