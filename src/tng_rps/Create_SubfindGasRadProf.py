@@ -18,6 +18,8 @@ import multiprocessing as mp
 from functools import partial
 from tenet.util import sphMap
 from scipy.ndimage import gaussian_filter
+from scipy.interpolate import interp1d
+
 
 scalar_keys = ['SubhaloColdGasMass', 'SubhaloGasMass', 'SubhaloHotGasMass']
 threed_keys = ['radii', 'vol_shells',
@@ -108,12 +110,13 @@ def run_postprocessing(Config):
         add_gastau(Config)
 
     if Config.onlygroups_flag:
-        add_onlygroups_PP(Config)
-        add_MainBHProperties(Config)
+        #add_onlygroups_PP(Config)
+        #add_MainBHProperties(Config)
+        add_coolingtime_freefalltime(Config)
         if not Config.TNGCluster_flag:
             add_quenchtimes(Config)
-        else:
-            add_CoolGasSFRMaps(Config)
+        #else:
+        #    add_CoolGasSFRMaps(Config)
     
     # for satellites only
     if not Config.centrals_flag:
@@ -127,8 +130,8 @@ def run_postprocessing(Config):
             add_LBEramPressure(Config)
 
     # only for TNG-Cluster centrals
-    elif Config.TNGCluster_flag:
-        add_Lxmaps(Config)
+    #elif Config.TNGCluster_flag:
+        #add_Lxmaps(Config)
 
     # if the tracers have already been calculated
     if Config.tracers_flag:
@@ -1923,3 +1926,189 @@ def add_MainBHProperties(Config):
     f.close()
 
     return
+
+def add_coolingtime_freefalltime(Config):
+    """
+    Compute the cooling time, freefall time, and tcool / tff radial profiles, in addition
+    to the fraction of hot ICM (0.15 R200c, 1.0 R200c) that fulfills the criteria tcool / tff < {1, 10} and
+    save as datasets to the grp_dict. This is only possible at the full snapshots, and
+    at the moment is only setup to run for redshifts {0, 0.5, 2.0, 4.0} and meant for
+    TNG-Cluster, but should apply for all halos in the TNG simulations as well.
+    """
+
+    f = h5py.File(Config.outdirec + Config.outfname, 'a')
+    keys = np.array(list(f.keys()))
+
+    gas_ptn = Config.gas_ptn
+    star_ptn = Config.star_ptn
+    dm_ptn = Config.dm_ptn
+    bh_ptn = Config.bh_ptn
+    basePath = Config.basePath
+    Tcoollim = Config.tlim
+
+    grav_const = 6.674e-8 # gravitational constant in [cgs]
+    dens_conv = 6.77e-32 # Msun / kpc^3 to g / cm^3
+    seconds_to_Gyr = 1. / (3.15e7 * 1.0e9)
+
+    coolingtime_key = 'CoolingTimeRadProf'
+    freefalltime_key = 'FreeFallTimeRadProf'
+    tcooltff_key = 'CoolingTime-FreeFallTimeRadProf'
+    prof_keys = [coolingtime_key, freefalltime_key, tcooltff_key]
+    tcooltff1_key = 'fHotICM_Tcool-Tff<1'
+    tcooltff10_key = 'fHotICM_Tcool-Tff<10'
+    scalar_keys = [tcooltff1_key, tcooltff10_key]
+    dset_keys = [coolingtime_key, freefalltime_key, tcooltff_key,
+                 tcooltff1_key, tcooltff10_key]
+    
+    snapNums = [99, 67, 33, 21]
+
+    for key in keys:
+        group = f[key]
+
+        for snapNum in snapNums:
+
+            time_index = group['SnapNum'][:] == snapNum
+            haloID = group['HostSubhaloGrNr'][time_index]
+
+            # make sure the object exists at the given snap
+            if haloID < 0:
+                radii = group['radii'][0].copy()
+                radprof = np.zeros(radii.size, dtype=radii.dtype) - 1.
+                dsets = [radprof, radprof, radprof, -1., -1.]
+                for key_i, _key in enumerate(dset_keys):
+                    dset_key = _key + '_snapNum%03d'%snapNum
+                    dset = dsets[key_i]
+                    dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+                    dataset[:] = dset
+                continue
+
+            print('add_coolingtime_freefalltime(): Working on haloID %08d at snap %03d.'%(haloID, snapNum))
+
+            halo = il.groupcat.loadSingle(basePath, snapNum, haloID=haloID)
+            fof_gas = il.snapshot.loadOriginalZoom(basePath, snapNum, haloID, gas_ptn)
+            fof_gas = ru.calc_tcool_dict(fof_gas, basePath, snapNum)
+            fof_dm = il.snapshot.loadOriginalZoom(basePath, snapNum, haloID, dm_ptn)
+            fof_star = il.snapshot.loadOriginalZoom(basePath, snapNum, haloID, star_ptn)
+            fof_bh = il.snapshot.loadOriginalZoom(basePath, snapNum, haloID, bh_ptn)
+
+            mask = fof_gas['Temperature'] > 10.**(4.5)
+            fof_gas_hot = {}
+            for key in fof_gas:
+                if key == 'count':
+                    fof_gas_hot[key] = mask[mask].size
+                else:
+                    fof_gas_hot[key] = fof_gas[key][mask]
+
+            radii, tcool_prof = calc_dens_prof(fof_gas_hot, basePath, snapNum, halo, weights='CoolingTime')
+
+            _, _, mass_gas, _ = calc_dens_prof(fof_gas, basePath, snapNum, halo)
+            _, _, mass_dm, _ = calc_dens_prof(fof_dm, basePath, snapNum, halo)
+            _, _, mass_star, _ = calc_dens_prof(fof_star, basePath, snapNum, halo)
+            _, _, mass_bh, _ = calc_dens_prof(fof_bh, basePath, snapNum, halo)
+
+            mass_tot = mass_gas + mass_dm + mass_star + mass_bh
+            mass_cumsum = np.cumsum(mass_tot)
+            vols = (4./3.) * np.pi * radii**3
+            mean_dens_tot = mass_cumsum / vols
+
+            tff = np.sqrt(3. * np.pi / (32. * grav_const * mean_dens_tot * dens_conv)) * seconds_to_Gyr
+
+            header = ru.loadHeader(basePath, snapNum)
+            a = header['Time']
+            h = header['HubbleParam']
+            BoxSize = header['BoxSize'] * a / h
+            Coordinates = fof_gas['Coordinates'] * a / h
+            GroupPos = halo['GroupPos'] * a / h
+            R200c = halo['Group_R_Crit200'] * a / h
+            Radii = ru.mag(Coordinates, GroupPos, BoxSize)
+
+            tff_func = interp1d(radii, tff, bounds_error=False, fill_value=-1)
+            tff_interp = tff_func(Radii)
+
+            tcool_tff = fof_gas['CoolingTime'] / tff_interp
+
+            mask = (tcool_tff > 0) & (Radii > 0.15 * R200c) & (Radii < 1.0 * R200c) & (fof_gas['Temperature'] > Tcoollim)
+            tcool_tff_high = 10
+            tcool_tff_low = 1
+
+            dset_mask = tcool_tff[mask] < tcool_tff_high
+            tcooltff10 = np.array(dset_mask[dset_mask].size / dset_mask.size)
+
+            dset_mask = tcool_tff[mask] < tcool_tff_low
+            tcooltff1 = np.array(dset_mask[dset_mask].size / dset_mask.size)
+
+            dsets = [tcool_prof, tff, tcool_prof / tff,
+                     tcooltff10, tcooltff1]
+            
+            for key_i, _key in enumerate(dset_keys):
+                dset_key = _key + '_snapNum%03d'%snapNum
+                dset = dsets[key_i]
+                dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
+                dataset[:] = dset
+        # finish loop over snapNums for a given group
+    # finish loop over groups
+
+    f.close()
+
+    return 
+
+    
+def calc_dens_prof(parts, basePath, snapNum, halo, ptn=il.util.partTypeNum('dm'),
+                   weights=None):
+    """
+    compute the spherically averaged density profile for parts.
+    assumes to compute the profile in bins of r/r200c for halos
+    the same was as in return_subfindGRP().
+    Optionally can compute the mass weighted radial profile of quantity Weights, a key to parts.
+    Returns radii, dens_shells, mass_shells, vol_shells
+    """
+    if weights:
+        assert weights in parts, "weights %s not in parts."%weights 
+
+    header = ru.loadHeader(basePath, snapNum)
+    a = header['Time']
+    h = header['HubbleParam']
+    boxSize = header['BoxSize'] * a  / h
+
+    rmin_norm = 1.0e-3 # r / Rvir
+    rmax_norm = 1.0e1 # r / Rvir
+    radii_binwidth = 0.1 # r / Rvir, log
+    radii_bins_norm, radii_bincents_norm = ru.returnlogbins([rmin_norm, rmax_norm], radii_binwidth)
+    radii_bins_norm = np.insert(radii_bins_norm, 0, 0.)
+    radii_bincents_norm = np.insert(radii_bincents_norm, 0, radii_bins_norm[1]/2.)
+    nbins = radii_bincents_norm.size
+
+    radii = np.zeros(nbins, dtype=float) - 1.
+    dens_shells = radii.copy()
+    mass_shells = radii.copy()
+    vol_shells = radii.copy()
+
+    r200c = halo['Group_R_Crit200'] * a  / h
+    if r200c <= 0 or parts['count'] == 0:
+        if not weights:
+            return radii, dens_shells, mass_shells, vol_shells
+        else:
+            return radii, dens_shells
+    
+    halo_pos = halo['GroupPos'] * a / h
+    Coordinates = parts['Coordinates'] * a / h
+    Radii = ru.mag(Coordinates, halo_pos, boxSize)
+    if 'Masses' in parts:
+        Masses = parts['Masses'] * 1.0e10 / h
+    else:
+        Masses = np.ones(parts['count'], dtype=float) * header['MassTable'][ptn] * 1.0e10 / h
+
+    radii_bins = radii_bins_norm * r200c
+    radii = radii_bincents_norm * r200c
+
+    vol_shells = (4./3.) * np.pi * ((radii_bins[1:])**3 - (radii_bins[:-1])**3)
+    mass_shells = np.histogram(Radii, bins=radii_bins, weights=Masses)[0]
+    if not weights:
+        dens_shells = mass_shells / vol_shells
+        return radii_bins[1:], dens_shells, mass_shells, vol_shells
+    else:
+        weight_shells = np.histogram(Radii, bins=radii_bins, weights=Masses * parts[weights])[0]
+        mask = weight_shells > 0
+        dens_shells[mask] = weight_shells[mask] / mass_shells[mask]
+        return radii_bins[1:], dens_shells
+        
