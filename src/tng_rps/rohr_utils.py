@@ -560,18 +560,19 @@ def is_slice_in_list(s,l):
 def calc_tcool_dict(gas_cells, basePath, snapNum):
     """
     Compute the cooling time [Gyr] for gas_cells from an arepo sim. 
-    Requires NeutralHydrogenAbundance, Density, ElectronAbundance, GFM_CoolingRate,
+    Requires Density, ElectronAbundance, GFM_CoolingRate,
     InternalEnergy, (StarFormationRate), so for the TNG + TNG-Cluster simulations, this
     is only possible at the full snaps. In order to convert Density to physical units, 
     it is necessary to have both HubbleParam and Time from the header file, hence why
     basePath and snapNum are required arguments. Note that the dataset is returned as 
     a double since converting between Msun and cgs can lead to an OverFlowError.
+    Adds 'CoolingTime' [Gyr] to gas_cells and returns gas_cells.
     """
 
     if 'Temperature' not in gas_cells:
         gas_cells = calc_temp_dict(gas_cells)
 
-    keys = ['NeutralHydrogenAbundance', 'Density', 'ElectronAbundance', 'Temperature', 'GFM_CoolingRate']
+    keys = ['Density', 'ElectronAbundance', 'Temperature', 'GFM_CoolingRate']
     for key in keys:
         assert key in gas_cells, 'calc_tcool_dict(): Key %s is required in gas_cell to compute tcool'%key
             
@@ -579,17 +580,19 @@ def calc_tcool_dict(gas_cells, basePath, snapNum):
     h = header['HubbleParam']
     a = header['Time']
 
+    xH = 0.76 # hydrogen mass fraction
     mp = 1.67e-24 # proton mass [g]
+    kpc_to_cm = 3.086e21 # convert kpc to cm
     kb = 1.3806e-16 # Boltzmann constant [erg K^-1]
     msun = 1.988e33 # solar mass in [g]
-    seconds_to_Gyr = 3.15e7 * 1.0e9
+    seconds_to_Gyr = 1. / (3.15e7 * 1.0e9) # convert s to Gyr
 
-    nH = gas_cells['NeutralHydrogenAbundance'].astype('double') * ((gas_cells['Density'] * 1.0e10 / h) / (a / h)**3) / mp
-    ni = 1 - nH
+    nH = xH * ((gas_cells['Density'].astype('double') * 1.0e10 * msun / h) / (kpc_to_cm * a / h)**3) / mp
     ne = gas_cells['ElectronAbundance'].astype('double') * nH
+    ni = (1. - xH) * nH
 
-    tcool = (3./2.) * (ne + ni) * kb * gas_cells['Temperature'] / (ne * ni * gas_cells['GFM_CoolingRate']) / seconds_to_Gyr * msun
-
+    tcool = -(3./2.) * (ne + ni) * kb * gas_cells['Temperature'] / (ne * ni * gas_cells['GFM_CoolingRate']) * seconds_to_Gyr
+ 
     gas_cells['CoolingTime'] = tcool
 
     return gas_cells
@@ -683,6 +686,16 @@ def calc_temp_NOSFR(InternalEnergy, ElectronAbundance):
     t = (gamma - 1.) * (InternalEnergy / kb) * unitconversion * mu # temperature [K]
         
     return t
+
+
+def calc_mag_dict(parts, coordinates, center, box_length):
+    """
+    Add the dataset "Radii" to parts based on coordinates, centered 
+    on center in a periodic box of size box_length
+    """
+
+    parts['Radii'] = mag(coordinates, center, box_length)
+    return parts
 
 
 def mag(u, v, box_length):
