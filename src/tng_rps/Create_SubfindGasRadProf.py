@@ -1960,6 +1960,10 @@ def add_coolingtime_freefalltime(Config):
     dset_keys = [coolingtime_key, freefalltime_key, tcooltff_key,
                  tcooltff1_key, tcooltff10_key]
     
+    gas_fields = ['Density', 'ElectronAbundance', 'StarFormationRate',
+                  'InternalEnergy', 'GFM_CoolingRate', 'Masses', 'Coordinates']
+    star_bh_fields = ['Coordinates', 'Masses']
+    
     snapNums = [99, 67, 33, 21]
 
     for key in keys:
@@ -1974,7 +1978,7 @@ def add_coolingtime_freefalltime(Config):
             if haloID < 0:
                 radii = group['radii'][0].copy()
                 radprof = np.zeros(radii.size, dtype=radii.dtype) - 1.
-                dsets = [radprof, radprof, radprof, -1., -1.]
+                dsets = [radprof, radprof, radprof, np.array([-1.]), np.array([-1.])]
                 for key_i, _key in enumerate(dset_keys):
                     dset_key = _key + '_snapNum%03d'%snapNum
                     dset = dsets[key_i]
@@ -1985,11 +1989,11 @@ def add_coolingtime_freefalltime(Config):
             print('add_coolingtime_freefalltime(): Working on haloID %08d at snap %03d.'%(haloID, snapNum))
 
             halo = il.groupcat.loadSingle(basePath, snapNum, haloID=haloID)
-            fof_gas = il.snapshot.loadHalo(basePath, snapNum, haloID, gas_ptn)
+            fof_gas = il.snapshot.loadHalo(basePath, snapNum, haloID, gas_ptn, fields=gas_fields)
             fof_gas = ru.calc_tcool_dict(fof_gas, basePath, snapNum)
             fof_dm = il.snapshot.loadHalo(basePath, snapNum, haloID, dm_ptn)
-            fof_star = il.snapshot.loadHalo(basePath, snapNum, haloID, star_ptn)
-            fof_bh = il.snapshot.loadHalo(basePath, snapNum, haloID, bh_ptn)
+            fof_star = il.snapshot.loadHalo(basePath, snapNum, haloID, star_ptn, fields=star_bh_fields)
+            fof_bh = il.snapshot.loadHalo(basePath, snapNum, haloID, bh_ptn, fields=star_bh_fields)
 
             mask = fof_gas['Temperature'] > 10.**(4.5)
             fof_gas_hot = {}
