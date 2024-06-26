@@ -1968,9 +1968,9 @@ def add_coolingtime_freefalltime(Config):
         for snapNum in snapNums:
 
             time_index = group['SnapNum'][:] == snapNum
-            haloID = group['HostSubhaloGrNr'][time_index]
+            haloID = group['HostSubhaloGrNr'][time_index][0]
 
-            # make sure the object exists at the given snap
+            # make sure the object exists at the given snap -- if not then save -1 as outputs
             if haloID < 0:
                 radii = group['radii'][0].copy()
                 radprof = np.zeros(radii.size, dtype=radii.dtype) - 1.
@@ -1985,11 +1985,11 @@ def add_coolingtime_freefalltime(Config):
             print('add_coolingtime_freefalltime(): Working on haloID %08d at snap %03d.'%(haloID, snapNum))
 
             halo = il.groupcat.loadSingle(basePath, snapNum, haloID=haloID)
-            fof_gas = il.snapshot.loadOriginalZoom(basePath, snapNum, haloID, gas_ptn)
+            fof_gas = il.snapshot.loadHalo(basePath, snapNum, haloID, gas_ptn)
             fof_gas = ru.calc_tcool_dict(fof_gas, basePath, snapNum)
-            fof_dm = il.snapshot.loadOriginalZoom(basePath, snapNum, haloID, dm_ptn)
-            fof_star = il.snapshot.loadOriginalZoom(basePath, snapNum, haloID, star_ptn)
-            fof_bh = il.snapshot.loadOriginalZoom(basePath, snapNum, haloID, bh_ptn)
+            fof_dm = il.snapshot.loadHalo(basePath, snapNum, haloID, dm_ptn)
+            fof_star = il.snapshot.loadHalo(basePath, snapNum, haloID, star_ptn)
+            fof_bh = il.snapshot.loadHalo(basePath, snapNum, haloID, bh_ptn)
 
             mask = fof_gas['Temperature'] > 10.**(4.5)
             fof_gas_hot = {}
@@ -2032,10 +2032,10 @@ def add_coolingtime_freefalltime(Config):
             tcool_tff_low = 1
 
             dset_mask = tcool_tff[mask] < tcool_tff_high
-            tcooltff10 = np.array(dset_mask[dset_mask].size / dset_mask.size)
+            tcooltff10 = np.array([dset_mask[dset_mask].size / dset_mask.size])
 
             dset_mask = tcool_tff[mask] < tcool_tff_low
-            tcooltff1 = np.array(dset_mask[dset_mask].size / dset_mask.size)
+            tcooltff1 = np.array([dset_mask[dset_mask].size / dset_mask.size])
 
             dsets = [tcool_prof, tff, tcool_prof / tff,
                      tcooltff10, tcooltff1]
