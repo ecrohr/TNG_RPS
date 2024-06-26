@@ -1969,21 +1969,23 @@ def add_coolingtime_freefalltime(Config):
     for key in keys:
         group = f[key]
 
+        # initialize outputs
+        for prof_key in prof_keys:
+            dset = np.zeros(group['radii'][:].shape, dtype=group['radii'][:].dtype) - 1.
+            dataset = group.require_dataset(prof_key, shape=dset.shape, dtype=dset.dtype)
+            dataset[:] = dset
+        for scalar_key in scalar_keys:
+            dset = np.zeros(group['SubfindID'][:].shape, dtype=float) - 1.
+            dataset = group.require_dataset(scalar_key, shape=dset.shape, dtype=dset.dtype)
+            dataset[:] = dset
+
         for snapNum in snapNums:
 
-            time_index = group['SnapNum'][:] == snapNum
+            time_index = np.where(group['SnapNum'][:] == snapNum)[0]
             haloID = group['HostSubhaloGrNr'][time_index][0]
 
-            # make sure the object exists at the given snap -- if not then save -1 as outputs
+            # make sure the object exists at the given snap
             if haloID < 0:
-                radii = group['radii'][0].copy()
-                radprof = np.zeros(radii.size, dtype=radii.dtype) - 1.
-                dsets = [radprof, radprof, radprof, np.array([-1.]), np.array([-1.])]
-                for key_i, _key in enumerate(dset_keys):
-                    dset_key = _key + '_snapNum%03d'%snapNum
-                    dset = dsets[key_i]
-                    dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
-                    dataset[:] = dset
                 continue
 
             print('add_coolingtime_freefalltime(): Working on haloID %08d at snap %03d.'%(haloID, snapNum))
@@ -2036,19 +2038,16 @@ def add_coolingtime_freefalltime(Config):
             tcool_tff_low = 1
 
             dset_mask = tcool_tff[mask] < tcool_tff_high
-            tcooltff10 = np.array([dset_mask[dset_mask].size / dset_mask.size])
+            tcooltff10 = dset_mask[dset_mask].size / dset_mask.size
 
             dset_mask = tcool_tff[mask] < tcool_tff_low
-            tcooltff1 = np.array([dset_mask[dset_mask].size / dset_mask.size])
+            tcooltff1 = dset_mask[dset_mask].size / dset_mask.size
 
             dsets = [tcool_prof, tff, tcool_prof / tff,
                      tcooltff10, tcooltff1]
             
-            for key_i, _key in enumerate(dset_keys):
-                dset_key = _key + '_snapNum%03d'%snapNum
-                dset = dsets[key_i]
-                dataset = group.require_dataset(dset_key, shape=dset.shape, dtype=dset.dtype)
-                dataset[:] = dset
+            for dset_key_i, dset_key in enumerate(dset_keys):
+                group[dset_key][time_index][:] = dsets[dset_key_i]
         # finish loop over snapNums for a given group
     # finish loop over groups
 
@@ -2109,10 +2108,10 @@ def calc_dens_prof(parts, basePath, snapNum, halo, ptn=il.util.partTypeNum('dm')
     mass_shells = np.histogram(Radii, bins=radii_bins, weights=Masses)[0]
     if not weights:
         dens_shells = mass_shells / vol_shells
-        return radii_bins[1:], dens_shells, mass_shells, vol_shells
+        return radii, dens_shells, mass_shells, vol_shells
     else:
         weight_shells = np.histogram(Radii, bins=radii_bins, weights=Masses * parts[weights])[0]
         mask = weight_shells > 0
         dens_shells[mask] = weight_shells[mask] / mass_shells[mask]
-        return radii_bins[1:], dens_shells
+        return radii, dens_shells
         
