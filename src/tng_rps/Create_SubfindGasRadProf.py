@@ -1727,7 +1727,7 @@ def add_onlygroups_PP(Config):
     Nsats_mstar1e7_fgas_dr200c_key = 'NSatellites_Mstar>1.0e7_fgas>0.01_dsathost<R200c'
     Nsats_mstar1e9_dr200c_key = 'NSatellties_Mstar>1.0e9_dsathost<R200c'
     Nsats_mstar1e9_fgas_dr200c_key = 'NSatellites_Mstar>1.0e9_fgas>0.01_dsathost<R200c'
-    Nsats_mstar1e10_dr200c_key = 'NSatellites_Mstar>1.0e10_fgas>0.01_dsathost<R200c'
+    Nsats_mstar1e10_dr200c_key = 'NSatellites_Mstar>1.0e10_dsathost<R200c'
     Nsats_mstar1e10_fgas_dr200c_key = 'NSatellites_Mstar>1.0e10_fgas>0.01_dsathost<R200c'
     Nsats_mstar_1e7_SF_dr200c_key = 'NSatellites_Mstar>1.0e7_SF_dsathost<R200c'
     
@@ -1956,9 +1956,10 @@ def add_coolingtime_freefalltime(Config):
     prof_keys = [coolingtime_key, freefalltime_key, tcooltff_key]
     tcooltff1_key = 'fHotICM_Tcool-Tff<1'
     tcooltff10_key = 'fHotICM_Tcool-Tff<10'
-    scalar_keys = [tcooltff1_key, tcooltff10_key]
+    icmsfr_key = 'ICMStarFormationRate'
+    scalar_keys = [tcooltff1_key, tcooltff10_key, icmsfr_key]
     dset_keys = [coolingtime_key, freefalltime_key, tcooltff_key,
-                 tcooltff1_key, tcooltff10_key]
+                 tcooltff1_key, tcooltff10_key, icmsfr_key]
     
     gas_fields = ['Density', 'ElectronAbundance', 'StarFormationRate',
                   'InternalEnergy', 'GFM_CoolingRate', 'Masses', 'Coordinates']
@@ -1981,8 +1982,8 @@ def add_coolingtime_freefalltime(Config):
 
         for snapNum in snapNums:
 
-            time_index = np.where(group['SnapNum'][:] == snapNum)[0]
-            haloID = group['HostSubhaloGrNr'][time_index][0]
+            time_index = np.where(group['SnapNum'][:] == snapNum)[0][0]
+            haloID = group['HostSubhaloGrNr'][time_index]
 
             # make sure the object exists at the given snap
             if haloID < 0:
@@ -2019,6 +2020,10 @@ def add_coolingtime_freefalltime(Config):
 
             tff = np.sqrt(3. * np.pi / (32. * grav_const * mean_dens_tot * dens_conv)) * seconds_to_Gyr
 
+            mask = (tcool_prof > 0) & (tff > 0)
+            tcool_tff_prof = np.zeros(radii.size, dtype=radii.dtype) - 1.
+            tcool_tff_prof[mask] = tcool_prof[mask] / tff[mask]
+
             header = ru.loadHeader(basePath, snapNum)
             a = header['Time']
             h = header['HubbleParam']
@@ -2036,18 +2041,47 @@ def add_coolingtime_freefalltime(Config):
             mask = (tcool_tff > 0) & (Radii > 0.15 * R200c) & (Radii < 1.0 * R200c) & (fof_gas['Temperature'] > Tcoollim)
             tcool_tff_high = 10
             tcool_tff_low = 1
+            Masses = fof_gas['Masses'][mask] * 1.0e10 / h
 
             dset_mask = tcool_tff[mask] < tcool_tff_high
-            tcooltff10 = dset_mask[dset_mask].size / dset_mask.size
+            tcooltff10 = np.sum(Masses[dset_mask]) / np.sum(Masses)
 
             dset_mask = tcool_tff[mask] < tcool_tff_low
-            tcooltff1 = dset_mask[dset_mask].size / dset_mask.size
+            tcooltff1 = np.sum(Masses[dset_mask]) / np.sum(Masses)
 
-            dsets = [tcool_prof, tff, tcool_prof / tff,
-                     tcooltff10, tcooltff1]
+            subset = il.snapshot.getSnapOffsets(basePath, snapNum, haloID, "Group")
+
+            # remove all gas bound to subhalos by finding the last gas cell of the last subhalo
+            halo = il.groupcat.loadSingle(basePath, snapNum, haloID=haloID)
+            assert 'GroupOrigHaloID' in halo, 'Error: loadOriginalZoom() only for the TNG-Cluster simulation.'
+            orig_index = np.where(subset['HaloIDs'] == halo['GroupOrigHaloID'])[0][0]
+
+            # find the length of the BCG gas cells
+            subset_GroupFirstSub = il.snapshot.getSnapOffsets(basePath, snapNum, halo['GroupFirstSub'], "Subhalo")
+            length_BCG = subset_GroupFirstSub['lenType'][gas_ptn]
+
+            # find the last gas cell of the last subhalo
+            halo_lastsubhalo = halo['GroupFirstSub'] + halo['GroupNsubs'] - 1
+            subset_lastsubhalo = il.snapshot.getSnapOffsets(basePath, snapNum, halo_lastsubhalo, "Subhalo")
+            lastsubhalo_gascell_index = subset_lastsubhalo['offsetType'][gas_ptn] + subset_lastsubhalo['lenType'][gas_ptn]
+
+            gasparts = {}
+            for key in fof_gas:
+                if key == 'count':
+                    gasparts['count'] = fof_gas['count'] - (lastsubhalo_gascell_index - length_BCG)
+                else:
+                    gasparts[key] = np.concatenate((fof_gas[key][:length_BCG], fof_gas[key][lastsubhalo_gascell_index:]))
+
+            SFR = gasparts['StarFormationRate']
+            Radii = ru.mag(gasparts['Coordinates'] * a / h, GroupPos, BoxSize)
+            mask = (Radii > (0.15 * R200c)) & (Radii < R200c)
+            icmsfr = np.sum(SFR[mask])
+
+            dsets = [tcool_prof, tff, tcool_tff_prof,
+                     tcooltff10, tcooltff1, icmsfr]
             
             for dset_key_i, dset_key in enumerate(dset_keys):
-                group[dset_key][time_index][:] = dsets[dset_key_i]
+                group[dset_key][time_index] = dsets[dset_key_i]
         # finish loop over snapNums for a given group
     # finish loop over groups
 
