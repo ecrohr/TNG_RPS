@@ -2078,7 +2078,7 @@ def add_coolingtime_freefalltime(Config):
             icmsfr = np.sum(SFR[mask])
 
             dsets = [tcool_prof, tff, tcool_tff_prof,
-                     tcooltff10, tcooltff1, icmsfr]
+                     tcooltff1, tcooltff10, icmsfr]
             
             for dset_key_i, dset_key in enumerate(dset_keys):
                 group[dset_key][time_index] = dsets[dset_key_i]
