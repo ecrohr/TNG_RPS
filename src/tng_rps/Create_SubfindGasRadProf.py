@@ -112,11 +112,11 @@ def run_postprocessing(Config):
     if Config.onlygroups_flag:
         #add_onlygroups_PP(Config)
         #add_MainBHProperties(Config)
-        add_coolingtime_freefalltime(Config)
+        #add_coolingtime_freefalltime(Config)
         if not Config.TNGCluster_flag:
             add_quenchtimes(Config)
-        #else:
-        #    add_CoolGasSFRMaps(Config)
+        else:
+            add_CoolGasSFRMaps(Config)
     
     # for satellites only
     if not Config.centrals_flag:
@@ -1025,9 +1025,27 @@ def add_CoolGasSFRMaps(Config):
 
     nPixels = 512
 
+    gas_fields = ['Masses', 'Coordinates', 'Density', 'StarFormationRate',
+                  'InternalEnergy', 'ElectronAbundance', 'Velocities']
+
     coolgasmap_key = 'CoolGasSurfaceDensityMap'
     sfrsurfacedensitymap_key = 'SFRSurfaceDensityMap'
-    dset_keys = [coolgasmap_key, sfrsurfacedensitymap_key]
+    mgiimap_depthdist_key = 'MgiiColDensMap_depth1.5R200c'
+    mgiimap_depthvel_key = 'MgiiColDensMap_depth2000kms'
+    mgii_key = 'mgii'
+    dset_keys = [coolgasmap_key, sfrsurfacedensitymap_key, mgiimap_depthdist_key, mgiimap_depthvel_key]
+
+    convert_factor = 7.64e22 # 1.0e10 Msun / h / kpc^2 to Number of Mg / cm^2
+    los_vel_lim = 2000. # km / s -- LOS velocity cut off to compare with Fresco+23
+    mgii_snapNums = [99, 67, 33]
+    mgii_direc = '/vera/ptmp/gc/dnelson/sims.TNG/L680n8192TNG/data.files/cache/'
+    mgii_fname = 'cached_gas_Mg-II-mass_'
+    mgii_dict = {}
+    for mgii_snapNum in mgii_snapNums:
+        _mgii_fname = mgii_fname + '%02d.hdf5'%mgii_snapNum
+        with h5py.File(mgii_direc + _mgii_fname, 'r') as mgii_f:
+            mgii_dict[mgii_snapNum] = mgii_f['field'][:]
+            mgii_f.close()    
 
     for group_i, group_key in enumerate(f_keys):
         group = f[group_key]
@@ -1055,7 +1073,7 @@ def add_CoolGasSFRMaps(Config):
             HaloPos = halo['GroupPos'] * a / h
             R200c = halo['Group_R_Crit200'] * a / h
 
-            gas_cells = il.snapshot.loadOriginalZoom(basePath, snapNum, haloID, gas_ptn)
+            gas_cells = il.snapshot.loadOriginalZoom(basePath, snapNum, haloID, gas_ptn, fields=gas_fields)
             gas_cells = ru.calc_temp_dict(gas_cells)
 
             Masses = gas_cells['Masses'] * 1.0e10 / h
@@ -1069,8 +1087,7 @@ def add_CoolGasSFRMaps(Config):
             depth = boxsizeimg / 2. * R200c
             depth_mask = np.abs(Coordinates[:,2]) <= depth
 
-            mask = temp_mask & mass_mask & depth_mask
-                    
+            mask = temp_mask & mass_mask & depth_mask          
             cool_gas_cells = {}
             for key in gas_cells:
                 if key == 'count':
@@ -1082,9 +1099,58 @@ def add_CoolGasSFRMaps(Config):
 
             sfr_mask = StarFormationRates > 0
 
-            mask = mass_mask & sfr_mask & depth_mask
+            mask = sfr_mask & mass_mask & depth_mask
+            sfr_gas_cells = {}
+            for key in gas_cells:
+                if key == 'count':
+                    sfr_gas_cells['count'] = mask[mask].size
+                else:
+                    sfr_gas_cells[key] = gas_cells[key][mask]
 
-            result[sfrsurfacedensitymap_key][time_index,:,:] = return_SphMap(Config, gas_cells, haloID, snapNum, mass_key='StarFormationRate', nPixels=nPixels, boxsizeimg=boxsizeimg)
+            result[sfrsurfacedensitymap_key][time_index,:,:] = return_SphMap(Config, sfr_gas_cells, haloID, snapNum, mass_key='StarFormationRate', nPixels=nPixels, boxsizeimg=boxsizeimg)
+
+            #find the relevant indices for the zoom region:
+            if snapNum in mgii_snapNums:
+                gas_cells[mgii_key] = np.zeros(gas_cells['count'], dtype=np.double) - 1.
+                mgii_data = mgii_dict[snapNum]
+                subset = il.snapshot.getSnapOffsets(basePath, snapNum, haloID, "Group")
+
+                # identify original halo ID and corresponding index
+                halo = il.snapshot.loadSingle(basePath, snapNum, haloID=haloID)
+                assert 'GroupOrigHaloID' in halo, 'Error: loadOriginalZoom() only for the TNG-Cluster simulation.'
+                orig_index = np.where(subset['HaloIDs'] == halo['GroupOrigHaloID'])[0][0]
+
+                # (1) load all FoF particles/cells
+                length_FoF = subset['GroupsTotalLengthByType'][orig_index, gas_ptn]
+                start_FoF = subset['GroupsSnapOffsetByType'][orig_index, gas_ptn]
+                gas_cells[mgii_key][:length_FoF] = mgii_data[start_FoF:start_FoF+length_FoF]
+
+                # (2) load all non-FoF particles/cells
+                length_fuzz = subset['OuterFuzzTotalLengthByType'][orig_index, gas_ptn]
+                start_fuzz = subset['OuterFuzzSnapOffsetByType'][orig_index, gas_ptn]
+                gas_cells[mgii_key][length_FoF:] = mgii_data[start_fuzz:start_fuzz+length_fuzz]
+
+                GroupVel = halo['GroupVel'] * a
+                vel_mask = np.abs(GroupVel[2] - gas_cells['Velocities'][:,2] * np.sqrt(a)) < los_vel_lim
+                mask = mass_mask & vel_mask
+                mgii_gas_cells = {}
+                for key in gas_cells:
+                    if key == 'count':
+                        mgii_gas_cells['count'] = mask[mask].size
+                    else:
+                        mgii_gas_cells[key] = gas_cells[key][mask]
+                
+                result[mgiimap_depthvel_key][time_index,:,:] = return_SphMap(Config, mgii_gas_cells, haloID, snapNum, mass_key=mgii_key, nPixels=nPixels, boxsizeimg=boxsizeimg) * convert_factor
+
+                mask = mass_mask & depth_mask
+                mgii_gas_cells = {}
+                for key in gas_cells:
+                    if key == 'count':
+                        mgii_gas_cells['count'] = mask[mask].size
+                    else:
+                        mgii_gas_cells[key] = gas_cells[key][mask]
+                
+                result[mgiimap_depthdist_key][time_index,:,:] = return_SphMap(Config, mgii_gas_cells, haloID, snapNum, mass_key=mgii_key, nPixels=nPixels, boxsizeimg=boxsizeimg) * convert_factor
 
         # finish loop over redshifts
         for dset_key in result:
