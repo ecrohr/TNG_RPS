@@ -1030,8 +1030,8 @@ def add_CoolGasSFRMaps(Config):
 
     coolgasmap_key = 'CoolGasSurfaceDensityMap'
     sfrsurfacedensitymap_key = 'SFRSurfaceDensityMap'
-    mgiimap_depthdist_key = 'MgiiColDensMap_depth1.5R200c'
-    mgiimap_depthvel_key = 'MgiiColDensMap_depth2000kms'
+    mgiimap_depthdist_key = 'MgiiColDensMap_depth1.5R200c_NOSATELLITES'
+    mgiimap_depthvel_key = 'MgiiColDensMap_depth2000kms_NOSATELLITES'
     mgii_key = 'mgii'
     dset_keys = [coolgasmap_key, sfrsurfacedensitymap_key, mgiimap_depthdist_key, mgiimap_depthvel_key]
 
@@ -1095,7 +1095,7 @@ def add_CoolGasSFRMaps(Config):
                 else:
                     cool_gas_cells[key] = gas_cells[key][mask]
             
-            result[coolgasmap_key][time_index,:,:] = return_SphMap(Config, cool_gas_cells, haloID, snapNum, nPixels=nPixels, boxsizeimg=boxsizeimg)
+            #result[coolgasmap_key][time_index,:,:] = return_SphMap(Config, cool_gas_cells, haloID, snapNum, nPixels=nPixels, boxsizeimg=boxsizeimg)
 
             sfr_mask = StarFormationRates > 0
 
@@ -1107,7 +1107,7 @@ def add_CoolGasSFRMaps(Config):
                 else:
                     sfr_gas_cells[key] = gas_cells[key][mask]
 
-            result[sfrsurfacedensitymap_key][time_index,:,:] = return_SphMap(Config, sfr_gas_cells, haloID, snapNum, mass_key='StarFormationRate', nPixels=nPixels, boxsizeimg=boxsizeimg)
+            #result[sfrsurfacedensitymap_key][time_index,:,:] = return_SphMap(Config, sfr_gas_cells, haloID, snapNum, mass_key='StarFormationRate', nPixels=nPixels, boxsizeimg=boxsizeimg)
 
             #find the relevant indices for the zoom region:
             if snapNum in mgii_snapNums:
@@ -1125,10 +1125,24 @@ def add_CoolGasSFRMaps(Config):
                 start_FoF = subset['GroupsSnapOffsetByType'][orig_index, gas_ptn]
                 gas_cells[mgii_key][:length_FoF] = mgii_data[start_FoF:start_FoF+length_FoF]
 
+                # find the indices of all satellites and set mgii to 0
+                # find the length of the BCG gas cells
+                subset_GroupFirstSub = il.snapshot.getSnapOffsets(basePath, snapNum, halo['GroupFirstSub'], "Subhalo")
+                length_BCG = subset_GroupFirstSub['lenType'][gas_ptn]
+
+                # find the last gas cell of the last subhalo
+                halo_lastsubhalo = halo['GroupFirstSub'] + halo['GroupNsubs'] - 1
+                subset_lastsubhalo = il.snapshot.getSnapOffsets(basePath, snapNum, halo_lastsubhalo, "Subhalo")
+                lastsubhalo_gascell_index = subset_lastsubhalo['offsetType'][gas_ptn] + subset_lastsubhalo['lenType'][gas_ptn]
+                gas_cells[mgii_key][length_BCG:lastsubhalo_gascell_index] = 0.                
+
                 # (2) load all non-FoF particles/cells
                 length_fuzz = subset['OuterFuzzTotalLengthByType'][orig_index, gas_ptn]
                 start_fuzz = subset['OuterFuzzSnapOffsetByType'][orig_index, gas_ptn]
                 gas_cells[mgii_key][length_FoF:] = mgii_data[start_fuzz:start_fuzz+length_fuzz]
+
+                # set all FoFs other than the primary target to have Mgii = 0
+                gas_cells[mgii_key][halo['GroupLenType'][gas_ptn]:start_fuzz] = 0.
 
                 GroupVel = halo['GroupVel'] * a
                 vel_mask = np.abs(GroupVel[2] - gas_cells['Velocities'][:,2] * np.sqrt(a)) < los_vel_lim
