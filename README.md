@@ -5,6 +5,7 @@
 This repository contains all the relevant analysis scripts used to analyze the outputs from the IllustrisTNG and TNG-Cluster simulations, as they have been used in the following list of papers. This includes utility functions, individual resolution element analysis, post-processing catalog creation, and plot making. In theory, the scripts can be run "as is", although I recommend only running them on HPC clusters, namely MPCDF clusters such as Vera or Raven, with direct accects to the simulations outputs. One likely needs to update various directories and path names to effectively repeat or extend the analysis. If you have questions, please feel free to reach out [here](https://ecrohr.github.io/contact/). Additionally, feel free to open a pull request if you would like to directly contribute to the repository. If you plan to use some part of this repository for your own publication, please consider reaching out to form a collaboration, or at the very least, please cite this codebase. 
 
 This repository has been used for (at least part of) the following papers:
+- Rohr et al. ([2025](https://ui.adsabs.harvard.edu/abs/2025MNRAS.536.1226R/abstract)).
 - Rohr et al. ([2023](https://ui.adsabs.harvard.edu/abs/2023MNRAS.524.3502R/abstract)).
 - Rohr et al. ([2024](https://ui.adsabs.harvard.edu/abs/2023arXiv231106337R/abstract)).
 - Goeller et al. ([2023](https://ui.adsabs.harvard.edu/abs/2023MNRAS.525.3551G/abstract)). 
