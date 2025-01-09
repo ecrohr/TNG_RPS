@@ -791,7 +791,7 @@ def return_zs_costimes():
                    0.01,  0.00])
     times = np.zeros(len(zs))
 
-    H0 = 67.84 # [km s^-1 Mpc^-1]
+    H0 = 67.74 # [km s^-1 Mpc^-1]
     Omega0 = 0.31
     OmegaL = 0.69
         
