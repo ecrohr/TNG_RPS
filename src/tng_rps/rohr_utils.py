@@ -1271,46 +1271,59 @@ def loadMainTreeBranch(sim, snap, subfindID, fields=None, treeName='SubLink_gal'
     Return the entire main branch (progenitor + descendant) of a given subhalo.
     When snap == 99, then just returns the MPB.
     Has the option only to return the tree between min and max snaps. 
+    if fields = None (default), then returns all fields.
     """
     
     basePath = ret_basePath(sim)
-    
-    
+
     # start by loading the MPB
-    subMPB = il.sublink.loadTree(basePath, snap, subfindID, treeName=treeName,
-                                 fields=fields, onlyMPB=True)
-    
+    if not fields:
+        subMPB = il.sublink.loadTree(basePath, snap, subfindID, treeName=treeName,
+                                     onlyMPB=True)
+        fields = []
+        for key in subMPB.keys():
+            if key != 'count':
+                fields.append(key)
+    else:
+        subMPB = il.sublink.loadTree(basePath, snap, subfindID, treeName=treeName,
+                                     fields=fields, onlyMPB=True)
+        # make sure fields is not a single element
+        if isinstance(fields, six.string_types):
+            fields = [fields]
+
+    # does the tree exist? 
     if not subMPB:
         return 
     
+    # if snap == 99, then just return the MPB [ONLY FOR TNG SIMS]
     if snap == 99:
         tree = subMPB
+        tree['count'] = len(tree['SnapNum'])
+        return tree
 
-    else:
-        # load the MDB and combine 
-        subMDB = il.sublink.loadTree(basePath, snap, subfindID, treeName=treeName,
-                                     fields=fields, onlyMDB=True)
+    # load the MDB and combine 
+    subMDB = il.sublink.loadTree(basePath, snap, subfindID, treeName=treeName,
+                                 fields=fields, onlyMDB=True)
 
-        # check if there's an issue with the MDB -- if the MDB reaches z=0
-        # if so, then only use the MPB
-        if (subMDB['count'] + snap) > (99 + 1):
+    # check if there's an issue with the MDB -- if the MDB reaches z=0
+    # if so, then only use the MPB
+    if (subMDB['count'] + snap) > (99 + 1):
 
-            # find where the MDB stops
-            stop  = -(max_snap - min_snap + 1)
-            start = np.max(np.where((subMDB['SnapNum'][1:] - subMDB['SnapNum'][:-1]) >= 0)) + 1
+        # find where the MDB stops
+        stop  = -(max_snap - min_snap + 1)
+        start = np.max(np.where((subMDB['SnapNum'][1:] - subMDB['SnapNum'][:-1]) >= 0)) + 1
 
-            for key in fields:
-                subMDB[key] = subMDB[key][start:stop]
-            subMDB['count'] = len(subMDB[key])
+        for key in fields:
+            subMDB[key] = subMDB[key][start:stop]
+        subMDB['count'] = len(subMDB[key])
 
-
-        # for the clean MDB, combine the MPB and MDB trees
-        tree = {}
-        for key in subMPB.keys():
-            if key == 'count':
-                tree[key] = subMDB[key] + subMPB[key] - 1
-            else:
-                tree[key] = np.concatenate([subMDB[key][:-1], subMPB[key]])
+    # for the clean MDB, combine the MPB and MDB trees
+    tree = {}
+    for key in subMDB:
+        if key == 'count':
+            tree[key] = subMDB[key] + subMPB[key] - 1
+        else:
+            tree[key] = np.concatenate([subMDB[key][:-1], subMPB[key]])
 
 
     indices = (tree['SnapNum'] >= min_snap) & (tree['SnapNum'] <= max_snap)
