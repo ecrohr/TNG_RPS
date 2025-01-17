@@ -1272,6 +1272,7 @@ def loadMainTreeBranch(sim, snap, subfindID, fields=None, treeName='SubLink_gal'
     When snap == 99, then just returns the MPB.
     Has the option only to return the tree between min and max snaps. 
     if fields = None (default), then returns all fields.
+    CURRENTLY ONLY WORKS FOR TNG SIMS WITH 100 SNAPSHOTS
     """
     
     basePath = ret_basePath(sim)
