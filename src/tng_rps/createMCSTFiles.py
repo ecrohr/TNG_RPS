@@ -10,7 +10,7 @@ Ncolumns_dict = dict(sf_details=11, sn_details=15)
 keys_dict = dict(ParticleIDs=dict(h_scaling=0, a_scaling=0, mass_scaling=0, length_scaling=0, velocity_scaling=0),
                  Time=dict(h_scaling=0, a_scaling=0, mass_scaling=0, length_scaling=0, velocity_scaling=0),
                  Coordinates=dict(h_scaling=-1, a_scaling=1, mass_scaling=0, length_scaling=1, velocity_scaling=0),
-                 Velocities=dict(h_scaling=0, a_scaling=-1, mass_scaling=0, length_scaling=1, velocity_scaling=1),
+                 Velocities=dict(h_scaling=0, a_scaling=-1, mass_scaling=0, length_scaling=0, velocity_scaling=1),
                  AmbientDensity=dict(h_scaling=2, a_scaling=-3, mass_scaling=1, length_scaling=-3, velocity_scaling=0),
                  AmbientTemperature=dict(h_scaling=0, a_scaling=0, mass_scaling=0, length_scaling=0, velocity_scaling=0),
                  AmbientMetallicity=dict(h_scaling=0, a_scaling=0, mass_scaling=0, length_scaling=0, velocity_scaling=0),
@@ -24,12 +24,9 @@ def createMCSTFiles(basePath):
     """ 
     Helper function to read the sf_details and sn_details files and create a single hdf5 file for each.
     The input directory basePath should lead to a given simulation output directory per usual.
-    Note that this function assumes that the user has write access to the simulations postprocessing directory,
-    i.e., os.path.split(basePath)[0] + 'postprocessing'. This also assumes that the user has access to
-    /virgotng/mpia/MCST in order to read the output txt files. 
+    Note that this function assumes that the user has write access to the simulations directory, specifically
+    to the postprocessing directory i.e., os.path.split(basePath)[0] + 'postprocessing'. 
     """
-
-    sim = os.path.split(os.path.split(basePath)[0])[1]
 
     ftypes = ['sf_details', 'sn_details']
     for ftype in ftypes:
@@ -38,17 +35,14 @@ def createMCSTFiles(basePath):
 
         # check if the directory already exists. if not, then create it
         if not os.path.isdir(direc):
-            c_path = os.path.join('/virgotng/mpia/MCST/', sim, 'output/txt-files/')
+            c_path = os.path.join(basePath, 'txt-files')
             p_path = os.path.split(direc)[0]
             _fname = ftype + '.tar.gz'
             
             # copy the tar file from c_path to p_path
             os.system('cp %s %s'%(os.path.join(c_path, _fname), os.path.join(p_path, _fname)))
-            # Open the tar file
-            tar = tarfile.open(os.path.join(p_path, _fname), 'r')
-            # Extract all contents to a directory
+            tar = tarfile.open(os.path.join(p_path, _fname), 'r:gz')
             tar.extractall(path=p_path)
-            # close the tar file
             tar.close()
 
         # check if otuput file already exists. if so, then nothing to be done.
@@ -66,6 +60,7 @@ def createMCSTFiles(basePath):
         count = 0
         for file in files:
             r[file] = {}
+            # read in file, while ignoring bad rows
             data = read_file_with_standard_columns(file, Ncolumns)
             
             # remove duplicate rows, in case they exist
