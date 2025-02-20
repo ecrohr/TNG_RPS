@@ -11,7 +11,7 @@ keys_dict = dict(ParticleIDs=dict(h_scaling=0, a_scaling=0, mass_scaling=0, leng
                  Time=dict(h_scaling=0, a_scaling=0, mass_scaling=0, length_scaling=0, velocity_scaling=0),
                  Coordinates=dict(h_scaling=-1, a_scaling=1, mass_scaling=0, length_scaling=1, velocity_scaling=0),
                  Velocities=dict(h_scaling=0, a_scaling=-1, mass_scaling=0, length_scaling=1, velocity_scaling=1),
-                 AmbientDensity=dict(h_scaling=2, a_scaling=-3, mass_scaling=0, length_scaling=-3, velocity_scaling=0),
+                 AmbientDensity=dict(h_scaling=2, a_scaling=-3, mass_scaling=1, length_scaling=-3, velocity_scaling=0),
                  AmbientTemperature=dict(h_scaling=0, a_scaling=0, mass_scaling=0, length_scaling=0, velocity_scaling=0),
                  AmbientMetallicity=dict(h_scaling=0, a_scaling=0, mass_scaling=0, length_scaling=0, velocity_scaling=0),
                  MassDeposited=dict(h_scaling=-1, a_scaling=0, mass_scaling=1, length_scaling=0, velocity_scaling=0),
