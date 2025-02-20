@@ -38,7 +38,6 @@ def createMCSTFiles(basePath):
 
         # check if the directory already exists. if not, then create it
         if not os.path.isdir(direc):
-            print('made it here')
             c_path = os.path.join('/virgotng/mpia/MCST/', sim, 'output/txt-files/')
             p_path = os.path.split(direc)[0]
             _fname = ftype + '.tar.gz'
