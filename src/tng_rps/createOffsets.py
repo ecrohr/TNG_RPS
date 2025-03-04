@@ -96,7 +96,7 @@ def saveOffsets(basePath, snapNum, offsets):
     By default, the offsets file is saved in the postprocessing/offsets directory
     with the file naming convention offsets_%03d.hdf5%snapNum. 
     """
-    path = os.path.join(basePath, 'postprocessing', 'offsets')
+    path = os.path.join(os.path.split(basePath)[0], 'postprocessing', 'offsets')
     if not os.path.isdir(path):
         os.makedirs(path)
     out_fname = os.path.join(path, 'offsets_%03d.hdf5'%snapNum)
@@ -108,7 +108,9 @@ def saveOffsets(basePath, snapNum, offsets):
     
     with h5py.File(out_fname, 'w') as f:
         for key in offsets:
-            f.create_dataset(key, data=offsets[key])
+            group = f.create_group(key)
+            for subkey in offsets[key]:
+                group.create_dataset(subkey, data=offsets[key][subkey])
         f.close()
     return
 
