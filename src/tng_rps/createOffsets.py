@@ -96,10 +96,10 @@ def saveOffsets(basePath, snapNum, offsets):
     By default, the offsets file is saved in the postprocessing/offsets directory
     with the file naming convention offsets_%03d.hdf5%snapNum. 
     """
-    path = os.path.join(os.path.split(basePath)[0], 'postprocessing', 'offsets')
+    out_fname = il.groupcat.offsetPath(basePath, snapNum)
+    path = os.path.split(out_fname)[0]
     if not os.path.isdir(path):
         os.makedirs(path)
-    out_fname = os.path.join(path, 'offsets_%03d.hdf5'%snapNum)
 
     # check if file already exists
     if os.path.isfile(out_fname):
@@ -118,7 +118,7 @@ def saveOffsets(basePath, snapNum, offsets):
 def testOffsets(basePath='/virgotng/universe/IllustrisTNG/L35n270TNG/output', snapNum=99):
     """Test the offsets file creation against a known file. Default is TNG50-4."""
 
-    offsets = h5py.File(os.path.join(os.path.split(basePath)[0], 'postprocessing', 'offsets', 'offsets_%03d.hdf5'%snapNum), 'r')
+    offsets = h5py.File(il.groupcat.offsetPath(basePath, snapNum), 'r')
     r = computeOffsets(basePath, snapNum)
     assert(np.all(r['Group']['SnapByType'] == offsets['Group']['SnapByType']))
     assert(np.all(r['Subhalo']['SnapByType'] == offsets['Subhalo']['SnapByType']))
