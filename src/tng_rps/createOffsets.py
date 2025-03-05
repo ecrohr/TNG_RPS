@@ -54,7 +54,6 @@ def computeOffsets(basePath, snapNum):
 
 
     # find all snapshot chunks at the given snapNum
-    #path = os.path.join(basePath, 'snapdir_%03d'%snapNum)
     path = os.path.split(il.snapshot.snapPath(basePath, snapNum))[0]
     Nchunks = len(glob.glob(os.path.join(path, 'snap_%03d.*.hdf5'%snapNum)))  # could also be read from the header of the first file
 
@@ -73,7 +72,6 @@ def computeOffsets(basePath, snapNum):
     # find all group/subhalo chunks at the given snapNum
     # could be combined with the previous section for the snapshot chunks, but left separate in case there are differing numbers of chunks 
     # otherwise the structure is the same as above
-    #path = os.path.join(basePath, 'groups_%03d'%snapNum)
     path = os.path.split(il.groupcat.gcPath(basePath, snapNum))[0]
     Nchunks = len(glob.glob(os.path.join(path, 'fof_subhalo_tab_%03d.*.hdf5'%snapNum)))
 
