@@ -34,11 +34,14 @@ provided to the original simulation.
 
 """
 
+import numpy as np
+from numpy import uint64
+
 STAR_BIN_SIZE = 4
 N_BINS = 64
 
 def read_stellar_array(stellar_arr,idx):
-	"""
+    """
 	Obtain the contents of mass bin idx of a single star
 	particle's stellar array.
 
@@ -59,7 +62,7 @@ def read_stellar_array(stellar_arr,idx):
     return result
 
 def expand_array(stellar_arr):
-	"""
+    """
 	Convert the stellar array of a single star particle by promoting
 	the elements from STAR_BIN_SIZE bit numbers to uint64s. Obviously,
 	this is less memory efficient but much easier to work with.
@@ -69,7 +72,7 @@ def expand_array(stellar_arr):
 
 	Returns:
 	numpy array, dtype = uint64, shape = (N_BINS,)
-	"""
+    """
 
     result = np.zeros(N_BINS,dtype=uint64)
     for idx in range(N_BINS):
@@ -78,8 +81,8 @@ def expand_array(stellar_arr):
     return result
 
 def expand_all_arrays(stellar_arrs):
-		"""
-	Convert an array of stellar arrays of Nstar star particles by promoting
+    """
+    Convert an array of stellar arrays of Nstar star particles by promoting
 	the elements from STAR_BIN_SIZE bit numbers to uint64s. Obviously,
 	this is less memory efficient but much easier to work with.
 
@@ -88,7 +91,7 @@ def expand_all_arrays(stellar_arrs):
 
 	Returns:
 	numpy array, dtype = uint64, shape = (Nstar,N_BINS)
-	"""
+    """
 
     result = np.zeros((stellar_arrs.shape[0],N_BINS),dtype=uint64)
     for partidx in range(stellar_arrs.shape[0]):
