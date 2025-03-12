@@ -52,7 +52,6 @@ def computeOffsets(basePath, snapNum):
         InnerFuzzType = Groups_StartType - (r['Subhalo']['SnapByType'][GroupFirstSub-1] + Subhalos['SubhaloLenType'][GroupFirstSub-1])
         r['Subhalo']['SnapByType'][GroupFirstSub:] += InnerFuzzType
 
-
     # find all snapshot chunks at the given snapNum
     path = os.path.split(il.snapshot.snapPath(basePath, snapNum))[0]
     Nchunks = len(glob.glob(os.path.join(path, 'snap_%03d.*.hdf5'%snapNum)))  # could also be read from the header of the first file
@@ -62,7 +61,7 @@ def computeOffsets(basePath, snapNum):
 
     # loop over chunks and save the number of particles per type per chunk
     for chunk_i in range(Nchunks - 1):
-        with h5py.File(os.path.join(path, 'snap_%03d.%d.hdf5'%(snapNum, chunk_i)), 'r') as snap:
+        with h5py.File(il.snapshot.snapPath(basePath, snapNum, chunkNum=chunk_i), 'r') as snap:
             header = dict(snap['Header'].attrs.items())
             FileOffsets_NumPart_ThisFile[chunk_i+1] = header['NumPart_ThisFile'][:]
 
@@ -79,7 +78,7 @@ def computeOffsets(basePath, snapNum):
     FileOffsets_Nsubgroups_ThisFile = FileOffsets_Ngroups_ThisFile.copy()
 
     for chunk_i in range(Nchunks - 1):
-        with h5py.File(os.path.join(path, 'fof_subhalo_tab_%03d.%d.hdf5'%(snapNum, chunk_i)), 'r') as groups:
+        with h5py.File(il.groupcat.gcPath(basePath, snapNum, chunkNum=chunk_i), 'r') as groups:
             header = dict(groups['Header'].attrs.items())
             FileOffsets_Ngroups_ThisFile[chunk_i+1] = header['Ngroups_ThisFile']
             FileOffsets_Nsubgroups_ThisFile[chunk_i+1] = header['Nsubgroups_ThisFile']
@@ -96,7 +95,7 @@ def saveOffsets(basePath, snapNum, offsets):
     By default, the offsets file is saved in the postprocessing/offsets directory
     with the file naming convention offsets_%03d.hdf5%snapNum. 
     """
-    
+
     # check if basePath has a trailing slash    
     if basePath[-1] == '/': basePath = basePath[:-1]
     # hardcode output name rather than using il.groupcat.offsetPath to avoid issues with write permissions
