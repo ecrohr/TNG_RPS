@@ -33,12 +33,12 @@ def computeOffsets(basePath, snapNum):
 
     # group lengths are relatively trivial
     Groups_GroupLenType_cumsum = np.vstack((np.zeros(Nparts, dtype=int_dtype), np.cumsum(Groups['GroupLenType'], axis=0)[:-1]))
-    r['Group']['SnapByType'] = np.vstack((np.zeros(Nparts, dtype=int_dtype), np.cumsum(Groups['GroupLenType'], axis=0)[:-1]))
+    r['Group']['SnapByType'] = Groups_GroupLenType_cumsum
 
     # subhalo lengths are more complicated due to the inner fuzz
     # start by computing the cum sum just like for the groups
     Subhalos_SubhaloLenType_cumsum = np.vstack((np.zeros(Nparts, dtype=int_dtype), np.cumsum(Subhalos['SubhaloLenType'], axis=0)[:-1]))
-    r['Subhalo']['SnapByType'] = np.vstack((np.zeros(Nparts, dtype=int_dtype), np.cumsum(Subhalos['SubhaloLenType'], axis=0)[:-1]))
+    r['Subhalo']['SnapByType'] = Subhalos_SubhaloLenType_cumsum
 
     # starting with the first subahlo in the second group, compute and add the inner fuzz to all following subhalos
     # find the first subhalo in the second group using GroupFirstSub
