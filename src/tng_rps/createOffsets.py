@@ -9,6 +9,12 @@ int_dtype = np.int64
 
 def createOffsets(basePath, snapNum):
     """ compute and save the offsets files for the given simulation. """
+
+    # check if file already exists
+    if os.path.isfile(il.groupcat.offsetPath(basePath, snapNum)):
+        print('File %s already exists. Not overwriting.'%il.groupcat.offsetPath(basePath, snapNum))
+        return
+
     r = computeOffsets(basePath, snapNum)
     saveOffsets(basePath, snapNum, r)
     return
@@ -99,11 +105,6 @@ def saveOffsets(basePath, snapNum, offsets):
 
     # hardcode output name rather than using il.groupcat.offsetPath to avoid issues with write permissions
     out_fname = os.path.join(Path(basePath).parent, 'postprocessing/offsets/offsets_%03d.hdf5' % snapNum)
-
-    # check if file already exists
-    if os.path.isfile(out_fname):
-        print('File %s already exists. Not overwriting.'%out_fname)
-        return
     
     path = os.path.split(out_fname)[0]
     if not os.path.isdir(path):
