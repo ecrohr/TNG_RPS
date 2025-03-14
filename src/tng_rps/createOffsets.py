@@ -3,6 +3,7 @@ import numpy as np
 import os
 import h5py
 import glob
+from pathlib import Path
 
 int_dtype = np.int64
 
@@ -96,18 +97,17 @@ def saveOffsets(basePath, snapNum, offsets):
     with the file naming convention offsets_%03d.hdf5%snapNum. 
     """
 
-    # check if basePath has a trailing slash    
-    if basePath[-1] == '/': basePath = basePath[:-1]
     # hardcode output name rather than using il.groupcat.offsetPath to avoid issues with write permissions
-    out_fname = os.path.join(os.path.split(basePath)[0], 'postprocessing/offsets/offsets_%03d.hdf5' % snapNum)
-    path = os.path.split(out_fname)[0]
-    if not os.path.isdir(path):
-        os.makedirs(path)
+    out_fname = os.path.join(Path(basePath).parent, 'postprocessing/offsets/offsets_%03d.hdf5' % snapNum)
 
     # check if file already exists
     if os.path.isfile(out_fname):
         print('File %s already exists. Not overwriting.'%out_fname)
         return
+    
+    path = os.path.split(out_fname)[0]
+    if not os.path.isdir(path):
+        os.makedirs(path)
     
     with h5py.File(out_fname, 'w') as f:
         for key in offsets:
