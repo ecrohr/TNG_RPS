@@ -107,7 +107,7 @@ def createMCSTFiles(basePath):
         # check that all indicies have been set
         for key in dic:
             dset = dic[key]
-            if isinstance(dset, (np.uint8, np.uint16, np.uint32, np.uint64)):
+            if isinstance(dset, int):
                 if len(dset[dset == 0]) > 1:
                     raise ValueError('key %s has mutliple 0 entires'%key)
 
