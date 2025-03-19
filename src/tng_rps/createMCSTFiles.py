@@ -76,7 +76,7 @@ def createMCSTFiles(basePath):
         for file_i, file in enumerate(r):
             # initialize the output dictionary
             if file_i == 0:
-                dic['ParticleIDs'] = np.zeros(count, dtype=np.uint64)
+                dic['ParticleIDs'] = np.zeros(count)
                 dic['Time'] = np.zeros(count, dtype=np.float64) - 1
                 dic['Coordinates'] = np.zeros((count, 3), dtype=np.float64) - 1
                 dic['Velocities'] = dic['Coordinates'].copy()
