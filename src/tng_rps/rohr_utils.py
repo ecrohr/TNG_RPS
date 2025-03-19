@@ -18,9 +18,11 @@ from matplotlib.collections import LineCollection
 import os
 import six
 from os.path import isfile
+from pathlib import Path
 import h5py
 from scipy.integrate import quad
 from scipy import stats
+from astropy.cosmology import FlatLambdaCDM, z_at_value
 
 #######################################
 # functions related to 2d histograms
@@ -29,6 +31,7 @@ def add_phaseplot(x, y, fig=None, ax=None):
     """
     given x and y, create the scatter plot with running medians, 16/84 percentiles.
     """
+
     # validate that either both fig and ax are given, or both are None
     if fig is None and ax is None:
         fig, ax = plt.subplots(figsize=(8,5))
@@ -122,7 +125,8 @@ def add_phaseplot(x, y, fig=None, ax=None):
 ### taken from StackOverflow, written by @ahwillia
 # https://stackoverflow.com/questions/38208700/matplotlib-plot-lines-with-colors-through-colormap
 def multiline(xs, ys, c, ax=None, **kwargs):
-    """Plot lines with different colorings
+    """
+    Plot lines with different colorings
 
     Parameters
     ----------
@@ -161,7 +165,6 @@ def multiline(xs, ys, c, ax=None, **kwargs):
 
 def retfig2dhist(x, y, binwidth_log, fig=None, ax=None):
     """
-    
     return the 2dhist of (x, y) with the medians and
     16th & 84th percentiles within each log(x) bin overplotted
     
@@ -177,10 +180,10 @@ def retfig2dhist(x, y, binwidth_log, fig=None, ax=None):
     Returns
     -------
     (fig, axs) of the plot containing 2dhist and lines
-    
     """
+
     if fig is None and ax is None:
-        fig, ax = plt.subplots(figsize=(8,5))
+        fig, ax = plt.subplots()
     
     # validate data for taking the log
     x = x[y > 0]
@@ -249,7 +252,6 @@ def return2dhiststats_dict(x, y, bin_width, percentiles=[5, 16, 50, 84, 95]):
 
 def return2dhiststats(x, y, bin_width):
     """
-    
     return the bin centers, medians, and 16th & 84th percentiles
     for plotting log(y) as a function of log(x)
 
@@ -266,7 +268,6 @@ def return2dhiststats(x, y, bin_width):
     Returns
     -------
     (bincents, bin_meds, bin_16s, bin_84s)
-    
     """
     
     # create bins between the min and max of x and width bin_width
@@ -294,7 +295,6 @@ def return2dhiststats(x, y, bin_width):
 
 def ret_binstats(x, y, bins=None, percentiles=[50, 16, 84]):
     """
-
     Parameters
     ----------
     x : 1xN array
@@ -313,7 +313,6 @@ def ret_binstats(x, y, bins=None, percentiles=[50, 16, 84]):
     -----
     2021-03-02: I should add another case if bins = int (number of bins)
     then calculate the binwidth and bins in this manner and continue
-
     """
     
     # check if input bins is actually a binwidth
@@ -346,7 +345,6 @@ def ret_binstats(x, y, bins=None, percentiles=[50, 16, 84]):
 
 def return1dhiststats(x, binwidth, log=True, density=False):
     """
-    
     return the bin centers, medians, and 16th & 84th percentiles
     for plotting the histogram of log(x)
     
@@ -360,7 +358,6 @@ def return1dhiststats(x, binwidth, log=True, density=False):
     Returns
     -------
     (bincents, bin_meds, bin_16s, bin_84s)
-    
     """
     
     xtest = np.concatenate(x)
@@ -429,14 +426,12 @@ def create_bins(x, minpointsperbin=7):
 
 def returnlogbins(x, binwidth_log):
     """
-    
     returns the logbins of (x) with the given binwidth
     
     Parameters
     ---------
     x : array
     binwidth_log : float in units of log(x)
-
     """
 
     bin_min = floor_to_value(np.log10(min(x)), binwidth_log) - binwidth_log/2.
@@ -453,6 +448,7 @@ def returnbins(x, binwidth):
     """
     given x and binwidth, calculate the bin edges and bin centers.
     """
+
     bin_min = floor_to_value(min(x), binwidth) - binwidth/2.
     bin_max = ceil_to_value(max(x), binwidth) + binwidth/2.
     nbins = int(round((bin_max - bin_min)/ binwidth))
@@ -465,65 +461,56 @@ def returnbins(x, binwidth):
 
 def floor_to_value(number,roundto):
     """
-    
     returns the round-down of number to the nearest roundto
     
     Paramters
     ---------
     x : float
     y : float
-
     """
+
     return (np.floor(number / roundto) * roundto)
 
 def ceil_to_value(number,roundto):
     """
-    
     returns the round-up of number to the nearest roundto
     
     Paramters
     ---------
     x : float
     y : float
-
     """
 
     return (np.ceil(number / roundto) * roundto)
 
 def percentile16(y):
     """
-    
     returns the 16th percentile (1 sigma) of y
     
     Parameters:
     y : array
-    
     """
     
     return(np.percentile(y,16))
 
 def percentile84(y):
     """
-    
     returns the 84th percentile (1 sigma) of y
     
     Parameters:
     y : array
-    
     """
 
     return(np.percentile(y,84))
 
 def round_to_value(number,roundto):
     """
-    
     returns the round of number to the nearest roundto
     
     Paramters
     ---------
     x : float
     y : float
-
     """
 
     return (round(number / roundto) * roundto)
@@ -539,16 +526,19 @@ def where_is_slice_in_list(s,l):
              l      = [1, 1, 1, 1, 0].
              result = array([True, True, False])
     """
+
     s     = list(s)
     l     = list(l)
     len_s = len(s) 
     bools = np.array([s == l[i:len_s+i] for i in range(len(l) - len_s+1)])
     return bools
 
+
 def is_slice_in_list(s,l):
     """
     Returns bool if the the slice is within the list (or array)
     """
+
     bools = where_is_slice_in_list(s, l)
     return any(bools)
 
@@ -640,7 +630,6 @@ def calc_temp(InternalEnergy, ElectronAbundance, StarFormationRate):
     Returns
     -------
     gas cell temperature in K
-    
     """
     
     # define constans
@@ -672,7 +661,6 @@ def calc_temp_NOSFR(InternalEnergy, ElectronAbundance):
     Returns
     -------
     gas cell temperature in K
-    
     """
     
     # define constans
@@ -700,7 +688,6 @@ def calc_mag_dict(parts, coordinates, center, box_length):
 
 def mag(u, v, box_length):
     """
-    
     returns the distance between two physical positions in a periodic box
     assumes Cartesian coordinates
     
@@ -718,7 +705,6 @@ def mag(u, v, box_length):
     --------
     if u, v are 3x3 arrays, then be careful -- operations are on a row basis
     so column 0 = x; column 1 = y; column 2 = z
-
     """
     
     v = v.T # replace v with its transpose
@@ -744,7 +730,6 @@ def shift(u, v, box_length):
     Returns 
     -------
     result: N x M position vector (array)
-    
     """
 
     result = u - v
@@ -772,8 +757,8 @@ def return_zs_costimes():
     -------
     (zs, times) :   arrays (float) of the redshift and cosmic time 
                     at each snapnum
-
     """
+
     zs = np.array([20.05, 14.99, 11.98, 10.98, 10.00, 9.39, 9.00,
                    8.45,  8.01,  7.60,  7.24,  7.01,  6.49, 6.01,
                    5.85,  5.53,  5.23,  5.00,  4.66,  4.43, 4.18,
@@ -819,7 +804,6 @@ def timesfromsnap(basePath, snapnum):
     -------
     (zs, times) :   arrays (float) of the redshift and cosmic time 
                     at each snapnum
-
     """
     
     # check if snapnum is one number vs list or array
@@ -859,12 +843,18 @@ def cosmictime(z, H0, OmegaM, OmegaL):
     Returns
     -------
     (t) :   cosmic time [yr] since Big Bang 
-
     """
     
     integral = quad(Friedmann, 0, 1. / (1.+z), args=(OmegaM,OmegaL))[0]
     result = integral / H0 / 1.022e-12 # converts [s Mpc km^-1] to [yr]
     return result
+
+
+def calcCosmicTime(Header):
+    """Compute the Cosmic Time given the cosmological parameters in Header"""
+    cosmo = FlatLambdaCDM(H0=Header['HubbleParam'] * 100.0, Om0=Header['Omega0'], Ob0=Header['OmegaBaryon'], Tcmb0=2.73)
+    return cosmo.age(Header['Redshift']).value
+
     
 def Friedmann(a, OmegaM, OmegaL):
     """
@@ -924,14 +914,17 @@ def RunningMedian(x, N):
 # rather than the group catalogs they were intended for.
 
 def loadSubboxSubset(basePath, snapNum, subboxNum, partType, fields=None, subset=None, mdi=None, sq=True, float32=False):
-    """ Load a subset of fields for all particles/cells of a given partType.
+    """ 
+    Load a subset of fields for all particles/cells of a given partType.
         If offset and length specified, load only that subset of the partType.
         If mdi is specified, must be a list of integers of the same length as fields,
         giving for each field the multi-dimensional index (on the second dimension) to load.
           For example, fields=['Coordinates', 'Masses'] and mdi=[1, None] returns a 1D array
           of y-Coordinates only, together with Masses.
         If sq is True, return a numpy array instead of a dict if len(fields)==1.
-        If float32 is True, load any float64 datatype arrays directly as float32 (save memory). """
+        If float32 is True, load any float64 datatype arrays directly as float32 (save memory). 
+    """
+    
     result = {}
 
     ptNum = il.util.partTypeNum(partType)
@@ -1254,18 +1247,30 @@ def loadbasePath(sim):
 
 
 def loadHeader(basePath, snapNum):
-    """ Load the snapshot catalog header. """
-    direc = basePath + 'snapdir_%03d/'%snapNum
-    fname = 'snap_%03d.0.hdf5'%snapNum
-    
-    with h5py.File(direc + fname, 'r') as f:
-        header = dict(f['Header'].attrs.items())
+    """ load Header information for given snapshot """
+    snap = h5py.File(il.snapshot.snapPath(basePath, snapNum), 'r')
+    Header = dict(snap['Header'].attrs.items())
+    snap.close()
+    return Header
 
-        f.close()
 
-    return header
+def loadParameters(basePath, snapNum):
+    """ load Parameters information for given snapshot """
+    snap = h5py.File(il.snapshot.snapPath(basePath, snapNum), 'r')
+    Parameters = dict(snap['Parameters'].attrs.items())
+    snap.close()
+    return Parameters
 
-def loadMainTreeBranch(sim, snap, subfindID, fields=None, treeName='SubLink_gal',
+
+def loadConfig(basePath, snapNum):
+    """ load Config information for given snapshot """
+    snap = h5py.File(il.snapshot.snapPath(basePath, snapNum), 'r')
+    Config = dict(snap['Config'].attrs.items())
+    snap.close()
+    return Config
+
+
+def loadMainTreeBranch(basePath, snap, subfindID, fields=None, treeName='SubLink_gal',
                        min_snap=0, max_snap=99):
     """
     Return the entire main branch (progenitor + descendant) of a given subhalo.
@@ -1275,8 +1280,6 @@ def loadMainTreeBranch(sim, snap, subfindID, fields=None, treeName='SubLink_gal'
     CURRENTLY ONLY WORKS FOR TNG SIMS WITH 100 SNAPSHOTS
     """
     
-    basePath = ret_basePath(sim)
-
     # start by loading the MPB
     if not fields:
         subMPB = il.sublink.loadTree(basePath, snap, subfindID, treeName=treeName,
@@ -1411,3 +1414,63 @@ def match3(ar1, ar2, firstSorted=False, parallel=False):
         return None,None
 
     return ar1_inds, ar2_inds
+
+def createSnapTimes(basePath):
+    """Create postprocessing file with snapshot times"""
+        
+    # check if file already exists
+    out_fname = os.path.join(Path(basePath).parent, 'postprocessing', 'snaptimes.hdf5')
+    if os.path.isfile(out_fname):
+        print('File %s already exists'%out_fname)
+        return
+
+    # find all snapshot output files
+    snap_fnames = []
+    for name in os.listdir(basePath):
+        if 'snapdir' in name:
+            snap_fnames.append(name)
+    snap_fnames.sort()
+
+    # initialize result dictionary
+    r = {}
+    r['SnapNum'] = np.zeros(len(snap_fnames), dtype=int) - 1
+    r['Redshift'] = np.zeros(len(snap_fnames), dtype=float) - 1.0
+    r['Time'] = r['Redshift'].copy()
+    r['CosmicTime'] = r['Redshift'].copy()
+
+    # loop over snapshots and fill in result dictionary
+    for i, snap_fname in enumerate(snap_fnames):
+        snapNum = int(snap_fname[-3:])
+        with h5py.File(os.path.join(basePath, snap_fname, 'snap_%03d.0.hdf5'%snapNum), 'r') as f:
+            Header = dict(f['Header'].attrs.items())
+            r['SnapNum'][i] = snapNum
+            r['Redshift'][i] = Header['Redshift']
+            r['Time'][i] = Header['Time']
+            r['CosmicTime'][i] = calcCosmicTime(Header)
+            f.close()
+
+    # check that all entries are filled
+    for key in r:
+        assert r[key].all() != -1, 'Error: %s'%key
+
+    # write hdf5 file    
+    with h5py.File(out_fname, 'w') as f:
+        for key in r:
+            f.create_dataset(key, data=r[key])
+        f.close()
+    
+    return 
+
+
+def loadSnapTimes(basePath):
+    """Load postprocessing file with snapshot times"""
+
+    fname = os.path.join(Path(basePath).parent, 'postprocessing', 'snaptimes.hdf5')
+    if not os.path.isfile(fname):
+        createSnapTimes(basePath)
+    with h5py.File(fname, 'r') as f:
+        r = {}
+        for key in f:
+            r[key] = f[key][()]
+        f.close()
+    return r
