@@ -11,11 +11,13 @@ from illustris_python_er.groupcat import code_mass, code_length, code_velocity #
 import h5py
 import numpy as np
 import os
+from pathlib import Path
 import six
 from astropy import units as u 
 from astropy import constants as const 
 from stellar_array_helpers import expand_all_arrays
 from createMCSTFiles import createMCSTFiles
+from astropy.cosmology import FlatLambdaCDM
 
 standard_mass = u.Msun
 standard_length = u.kpc
@@ -632,3 +634,73 @@ def loadMCSTFiles(basePath, snapNum):
         dic[ftype] = r
 
     return dic
+
+
+def createSnapTimes(basePath):
+    """
+    Create and save postprocessing file snaptimes.hdf5.
+    Creates a mapping between SnapNum, Redshift, Time (scale factor), 
+    and CosmicTime, where the Header is loaded at each snapshot.
+    
+    """
+        
+    # check if file already exists
+    out_fname = os.path.join(Path(basePath).parent, 'postprocessing', 'snaptimes.hdf5')
+    if os.path.isfile(out_fname):
+        print('File %s already exists'%out_fname)
+        return
+
+    # find all snapshot output files
+    snap_fnames = []
+    for name in os.listdir(basePath):
+        if 'snapdir' in name:
+            snap_fnames.append(name)
+    snap_fnames.sort()
+
+    # initialize result dictionary
+    r = {}
+    r['SnapNum'] = np.zeros(len(snap_fnames), dtype=int) - 1
+    r['Redshift'] = np.zeros(len(snap_fnames), dtype=float) - 1.0
+    r['Time'] = r['Redshift'].copy()
+    r['CosmicTime'] = r['Redshift'].copy()
+
+    # loop over snapshots and fill in result dictionary
+    for i, snap_fname in enumerate(snap_fnames):
+        snapNum = int(snap_fname[-3:])
+        Header = loadHeader(basePath, snapNum)
+        r['SnapNum'][i] = snapNum
+        r['Redshift'][i] = Header['Redshift']
+        r['Time'][i] = Header['Time']
+        r['CosmicTime'][i] = calcCosmicTime(Header)
+
+    # check that all entries are filled
+    for key in r:
+        assert r[key].all() != -1, 'Error: %s'%key
+
+    # write hdf5 file    
+    with h5py.File(out_fname, 'w') as f:
+        for key in r:
+            f.create_dataset(key, data=r[key])
+        f.close()
+    
+    return 
+
+
+def loadSnapTimes(basePath):
+    """Load postprocessing file with snapshot times"""
+
+    fname = os.path.join(Path(basePath).parent, 'postprocessing', 'snaptimes.hdf5')
+    if not os.path.isfile(fname):
+        createSnapTimes(basePath)
+    with h5py.File(fname, 'r') as f:
+        r = {}
+        for key in f:
+            r[key] = f[key][()]
+        f.close()
+    return r
+
+
+def calcCosmicTime(Header):
+    """Compute the Cosmic Time given the cosmological parameters in Header"""
+    cosmo = FlatLambdaCDM(H0=Header['HubbleParam'] * 100.0, Om0=Header['Omega0'], Ob0=Header['OmegaBaryon'], Tcmb0=2.73)
+    return cosmo.age(Header['Redshift']).value
