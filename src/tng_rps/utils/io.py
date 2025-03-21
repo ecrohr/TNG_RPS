@@ -6,8 +6,7 @@ cosmological hydrodynamical simulations with AREPO, such as the
 IllustrisTNG simulations. 
 """
 
-import illustris_python_er as il #type: ignore
-from illustris_python_er.groupcat import code_mass, code_length, code_velocity #type: ignore
+import illustris_python as il 
 import h5py
 import numpy as np
 import os
@@ -18,20 +17,7 @@ from astropy import constants as const
 from stellar_array_helpers import expand_all_arrays
 from createMCSTFiles import createMCSTFiles
 from astropy.cosmology import FlatLambdaCDM
-
-standard_mass = u.Msun
-standard_length = u.kpc
-standard_velocity = u.km / u.s 
-standard_time = u.yr
-standard_massderivative = u.Msun / u.yr 
-standard_volume = (standard_length)**3
-standard_energy = u.erg
-standard_density = standard_mass / standard_volume
-standard_temperature = u.K
-standard_metallicity = u.def_unit('Zsun', doc='Solar Metallicity', format=dict(latex=r'Z_{\odot}', latex_inline=r'Z_{\odot}'))
-standard_JeansNumber = u.def_unit('Nj',doc='Jeans Number', format=dict(latex=r'N_j', latex_inline=r'N_j'))
-standard_pressure = u.erg / u.cm**3
-standard_power = u.erg / u.s
+from .units import *
 
 def loadSubboxSubset(basePath, snapNum, subboxNum, partType, fields=None, subset=None, mdi=None, sq=True, float32=False):
     """ 
@@ -271,11 +257,28 @@ def convertSnapshotUnits(basePath, snapNum, dic):
             # yes, let's convert to standard units
             # NB: BH_Mdot and related units are falsely coded (see arepo PR 419)
             #     so manually overwrite the unit scalings for these quantities
-            if key in ['BH_Mdot', 'BH_MdotBondi', 'BH_MdotEddington']:
+            if key in ['BH_Mdot', 'BH_MdotBondi', 'BH_MdotEddington'] and (dset.unit == (code_length * code_velocity / code_mass)):
                 dic[key] = (dset.value * 10.22) * standard_massderivative
             # same for BH_Pressure (see arepo PR 420):
-            elif key == 'BH_Pressure' and dset.unit == code_velocity**2 * code_length * code_mass:
+            elif (key == 'BH_Pressure') and (dset.unit == (code_velocity**2 * code_length * code_mass)):
                 dic[key] = (dset.value * Header['Time']**(-4) * code_length**(-3) * code_mass * code_velocity**2).to(standard_pressure) 
+            # manual edits to additional datasets where the scalings and units are incorrect
+            elif key == 'StarFormationRate':
+                dic[key] = (dset.value * u.Msun / u.yr).to(standard_massderivative)
+            elif key in ['Metallicity', 'GFM_Metallicity', 'GFM_Metals', 'GFM_MetalsTagged', 'AmbientMetallicity']:
+                dic[key] = dset.value / 0.0127 * standard_metallicity
+            elif key == 'JeansNumber':
+                dic[key] = dset.value * standard_JeansNumber
+            elif key == 'CoolingTime':
+                dic[key] = (dset.value * u.Gyr).to(standard_time)
+            elif key in ['GrackleTemperature', 'Temperature', 'AmbientTemperature']:
+                dic[key] = dset.value * standard_temperature
+            elif key == 'GFM_CoolingRate':
+                dic[key] = (dset.value * u.erg * u.cm**3 / u.s)
+            elif key == 'Age':
+                dic[key] = (dset.value * u.yr).to(standard_time)
+            
+            # begin standard unit conversions
             elif dset.unit == code_mass**0 == code_length**0 == code_velocity**0:
                 dic[key] = dset.value * u.dimensionless_unscaled 
             elif dset.unit == code_mass:
@@ -308,54 +311,70 @@ def convertSnapshotUnits(basePath, snapNum, dic):
         else:
             dimensionless_keys = ['AllowRefinement', 'HIIMassFraction', 'HIMassFraction', 
                                   'HeIIIMassFraction', 'HeIIMassFraction', 'HeIMassFraction',
-                                  'Machnumber', 'StromgrenSourceID', 'count', 'TimebinHydro',
-                                  'ParentID', 'TracerID', 
-                                  'IonisingPhotonRate1e49', 'NumberOfSupernovaEvents', 'NumberOfSupernovae']
+                                  'Machnumber', 'StromgrenSourceID', 'count', 'TimebinHydro', 'TimeStep',
+                                  'ParentID', 'TracerID',  'ParticleIDs', 'FluidQuantities',
+                                  'ElectronAbundance', 'NeutralHydrogenAbundance', 'GFM_StellarFormationTime',
+                                  'IonisingPhotonRate1e49', 'NumberOfSupernovaEvents', 'NumberOfSupernovae',
+                                  'BH_Progs', 'StromgrenSourceID', 'StellarFormationTime', 'LocalFlag',
+                                  'BH_WindCount', 'BH_WindTimes']
             if key in dimensionless_keys:
                 dic[key] *= u.dimensionless_unscaled
+            elif key in ['BH_Mdot', 'BH_MdotBondi', 'BH_MdotEddington']:
+                dic[key] = (dset * 10.22) * standard_massderivative
+            elif key == 'BH_BPressure':
+                dic[key] = (dset * (Header['HubbleParam'] / Header['Time'])**4 * code_mass * code_velocity**2 / Header['Time']**3 / code_length**3 * 4. * np.pi).to(standard_pressure)
+            elif key in ['BH_Pressure', 'Pressure']:
+                dic[key] = (dset * Header['Time']**(-3) * Header['HubbleParam']**2 * code_length**(-3) * code_mass * code_velocity**2).to(standard_pressure)
+            elif key in ['BH_CumEgyInjection_QM', 'BH_CumEgyInjection_RM', 'BH_MPB_CumEgyHigh', 'BH_MPB_CumEgyLow']:
+                dic[key] = (dset * code_mass / Header['HubbleParam'] * (Header['Time'] * code_length / Header['HubbleParam'])**2 / 
+                            (code_length / code_velocity / Header['HubbleParam']**2)).to(standard_energy)
+            elif key in ['CenterOfMass', 'Coordinates', 'SubfindHsml', 'BirthPos', 'StromgrenRadius', 'StellarHsml', 'BH_Hsml']:
+                dic[key] = (dset * Header['Time'] / Header['HubbleParam'] * code_length).to(standard_length)
+            elif key in ['Density', 'SubfindDMDensity', 'SubfindDensity', 'AmbientDensity']:
+                dic[key] = (dset * code_mass / Header['HubbleParam'] / 
+                            (code_length * Header['Time'] / Header['HubbleParam'])**3).to(standard_density)
+            elif key in ['GFM_StellarPhotometrics']:
+                dic[key] = dset * u.mag
+            elif key in ['Metallicity', 'GFM_Metallicity', 'GFM_Metals', 'GFM_MetalsTagged', 'AmbientMetallicity']:
+                dic[key] = dset / 0.0127 * standard_metallicity
+            elif key == 'EnergyDissipation':
+                dic[key] = (dset * Header['Time']**-1 * code_mass / code_length * code_velocity**3).to(standard_energy / standard_time)
+            elif key == 'GFM_AGNRadiation':
+                dic[key] = dset * 4. * np.pi * u.erg / u.s / u.cm**2
+            elif key == 'GFM_CoolingRate':
+                dic[key] = (dset * u.erg * u.cm**3 / u.s)
+            elif key in ['GFM_WindDMVelDisp', 'SubfindVelDisp']:
+                dic[key] = (dset * code_velocity).to(standard_velocity)
+            elif key in ['GFM_WindHostHaloMass', 'Masses', 'GFM_InitialMass', 'BH_CumMassGrowth_QM', 'BH_CumMassGrowth_RM',
+                         'BH_HostHaloMass', 'BH_Mass', 'HighResGasMass', 'IMFMass', 'LowMass', 'MassDeposited']:
+                dic[key] = (dset / Header['HubbleParam'] * code_mass).to(standard_mass)
+            elif key in ['InternalEnergy', 'InternalEnergyOld', 'BH_U']:
+                dic[key] = (dset * code_velocity**2).to(standard_velocity**2)
+            elif key in ['MagneticField']:
+                dic[key] = (dset * Header['HubbleParam'] / Header['Time']**2 * (code_mass / code_length)**(1/2) / (code_length / code_velocity)).to(standard_pressure**(1/2))
+            elif key in ['Potential']:
+                dic[key] = (dset / Header['Time'] * code_velocity**2).to(standard_velocity**2)
+            elif key in ['StarFormationRate']:
+                dic[key] = (dset * u.Msun / u.yr).to(standard_massderivative)
+            elif key in ['Velocities', 'BirthVel']:
+                dic[key] = (dset * np.sqrt(Header['Time']) * code_velocity).to(standard_velocity)
+            elif key == 'GrackleCoolTime':
+                dic[key] = (dset / Header['HubbleParam'] * standard_length / standard_velocity).to(standard_time)
+            elif key in ['GrackleTemperature', 'Temperature', 'AmbientTemperature']:
+                dic[key] = dset * standard_temperature
+            elif key in ['RadiationEnergyDensity']:
+                dic[key] = (dset * Header['HubbleParam']**2 * code_mass * code_velocity**2 / code_length**3).to(standard_energy / standard_volume)
+            elif key in ['StellarArray']:
+                dic[key] = expand_all_arrays(dset.astype(np.uint64)) * u.dimensionless_unscaled
+                dic['StellarArrayMassBins'] = loadStellarArrayMassBins() * u.Msun
+            elif key == 'StellarLuminosity':
+                dic[key] = (dset.value * code_mass * code_velocity**3 / code_length).to(standard_power)
+            elif key in ['MagneticFieldDivergence', 'MagneticFieldDivergenceAlternative']:
+                dic[key] *= u.def_unit('%s_units'%key)
             else:
                 dic[key] *= u.def_unit('code_%s'%key)
 
         dset = dic[key]
-
-        # manual edits to certain datasets and datasets without attributes
-        if key == 'EnergyDissipation':
-            dic[key] = (dset.value * Header['Time']**-1 * code_mass / code_length * code_velocity**3).to(standard_energy / standard_time)
-        elif key == 'GrackleCoolTime':
-            dic[key] = (dset.value / Header['HubbleParam'] * standard_length / standard_velocity).to(standard_time)
-        elif key == 'CoolingTime':
-            dic[key] = (dset.value * u.Gyr).to(standard_time)
-        elif key in ['GrackleTemperature', 'Temperature', 'AmbientTemperature']:
-            dic[key] = dset.value * standard_temperature
-        elif key in ['HighResGasMass', 'IMFMass', 'LowMass']:
-            dic[key] = (dset.value / Header['HubbleParam'] * code_mass).to(standard_mass)
-        elif key in ['Metallicity', 'GFM_Metallicity', 'GFM_Metals', 'GFM_MetalsTagged', 'AmbientMetallicity']:
-            dic[key] = dset.value / 0.0127 * standard_metallicity
-        elif key == 'JeansNumber':
-            dic[key] = dset.value * standard_JeansNumber
-        elif key == 'RadiationEnergyDensity':
-            dic[key] = (dset.value * Header['HubbleParam']**2 * code_mass * code_velocity**2 / code_length**3).to(standard_energy / standard_volume)
-        elif key == 'StromgrenRadius':
-            dic[key] = (dset.value * Header['Time'] / Header['HubbleParam'] * code_length).to(standard_length)
-        elif key == 'MagneticField':
-            dic[key] = (dset.value * (code_mass / code_length)**(1/2) / (code_length / code_velocity)).to(standard_pressure**(1/2))
-        elif key == 'BH_BPressure':
-            dic[key] = (dset.value * (Header['HubbleParam'] / Header['Time'])**4 * code_mass * code_velocity**2 / Header['Time']**3 / code_length**3 * 4. * np.pi).to(standard_pressure)
-        elif key in ['MagneticFieldDivergence', 'MagneticFieldDivergenceAlternative', 'TimeStep']:
-            dic[key] = dset.value * u.def_unit('%s_units'%key)
-        elif key == 'InternalEnergyOld':
-            dic[key] = (dset.value * (code_velocity)**2.).to(standard_velocity**2)
-        elif key == 'StellarHsml':
-            dic[key] = (dset.value * Header['Time'] / Header['HubbleParam'] * code_length).to(standard_length)
-        elif key == 'BH_HostHaloMass':
-            dic[key] = (dset.value / Header['HubbleParam'] * code_mass).to(standard_mass)
-        elif key == 'StellarArray':
-            dic[key] = expand_all_arrays(dset.value.astype(np.uint64)) * u.dimensionless_unscaled
-            dic['StellarArrayMassBins'] = loadStellarArrayMassBins() * u.Msun
-        elif key == 'StellarLuminosity':
-            dic[key] = (dset.value * code_mass * code_velocity**3 / code_length).to(standard_power)
-        elif key == 'GFM_CoolingRate':
-            dic[key] = (dset.value * u.erg * u.cm**3 / u.s)
 
         # final check that all units have been converted
         if 'code' in dic[key].unit.to_string():
@@ -394,7 +413,9 @@ def convertGroupUnits(basePath, snapNum, dic):
         elif key in ['SubhaloBfldDisk', 'SubhaloBfldHalo']:
             dic[key] = (dset * Header['HubbleParam'] / (Header['Time'])**2 * (code_mass / code_length)**(1/2) / (code_length / code_velocity)).to(standard_pressure**(1/2))
         elif (key in ['SubhaloGrNr', 'SubhaloIDMostbound', 'SubhaloLen', 'SubhaloLenType', 'SubhaloParent', 'SubhaloFlag',
-                     'GroupCM', 'GroupFirstSub', 'GroupLen', 'GroupLenType', 'GroupNsubs']) or ('MetalFractions' in key):
+                     'GroupCM', 'GroupFirstSub', 'GroupLen', 'GroupLenType', 'GroupNsubs', 'GroupContaminationFracByMass', 
+                     'GroupContaminationFracByNumPart', 'GroupOrigHaloID', 'GroupPrimaryZoomTarget', 'GroupOffsetType', 
+                     'SubhaloOrigHaloID', 'SubhaloOffsetType']) or ('MetalFractions' in key):
             dic[key] = dset * u.dimensionless_unscaled
 
         if not isinstance(dic[key], u.Quantity):
