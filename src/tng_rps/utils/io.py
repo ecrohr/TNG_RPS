@@ -415,7 +415,7 @@ def convertGroupUnits(basePath, snapNum, dic):
         elif (key in ['SubhaloGrNr', 'SubhaloIDMostbound', 'SubhaloLen', 'SubhaloLenType', 'SubhaloParent', 'SubhaloFlag',
                      'GroupCM', 'GroupFirstSub', 'GroupLen', 'GroupLenType', 'GroupNsubs', 'GroupContaminationFracByMass', 
                      'GroupContaminationFracByNumPart', 'GroupOrigHaloID', 'GroupPrimaryZoomTarget', 'GroupOffsetType', 
-                     'SubhaloOrigHaloID', 'SubhaloOffsetType']) or ('MetalFractions' in key):
+                     'SubhaloOrigHaloID', 'SubhaloOffsetType', 'count']) or ('MetalFractions' in key):
             dic[key] = dset * u.dimensionless_unscaled
 
         if not isinstance(dic[key], u.Quantity):
