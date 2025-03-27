@@ -12,7 +12,6 @@ def createOffsets(basePath, snapNum):
 
     # check if file already exists
     if os.path.isfile(il.groupcat.offsetPath(basePath, snapNum)):
-        print('File %s already exists. Not overwriting.'%il.groupcat.offsetPath(basePath, snapNum))
         return
 
     r = computeOffsets(basePath, snapNum)
