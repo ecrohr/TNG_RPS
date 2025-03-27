@@ -668,7 +668,6 @@ def createSnapTimes(basePath):
     # check if file already exists
     out_fname = os.path.join(Path(basePath).parent, 'postprocessing', 'snaptimes.hdf5')
     if os.path.isfile(out_fname):
-        print('File %s already exists'%out_fname)
         return
 
     # find all snapshot output files
@@ -692,7 +691,7 @@ def createSnapTimes(basePath):
         r['SnapNum'][i] = snapNum
         r['Redshift'][i] = Header['Redshift']
         r['Time'][i] = Header['Time']
-        r['CosmicTime'][i] = calcCosmicTime(Header)
+        r['CosmicTime'][i] = calcCosmicTime(basePath)
 
     # check that all entries are filled
     for key in r:
@@ -721,7 +720,17 @@ def loadSnapTimes(basePath):
     return r
 
 
-def calcCosmicTime(Header):
-    """Compute the Cosmic Time given the cosmological parameters in Header"""
-    cosmo = FlatLambdaCDM(H0=Header['HubbleParam'] * 100.0, Om0=Header['Omega0'], Ob0=Header['OmegaBaryon'], Tcmb0=2.73)
+def calcCosmicTime(basePath):
+    """
+    Compute the Cosmic Time given the cosmological parameters in the Header, which
+    is loaded using basePath and assuming snapNum=0. If not all necessary parameters
+    (HubbleParam, Omega0, OmegaBaryon) are in Header, then an exception must be 
+    written to manually code the values, which is implemented for Illustris.
+    """
+    Header = loadHeader(basePath, 0)
+    keys = ['HubbleParam', 'Omega0', 'OmegaBaryon']
+    if all([key in Header for key in keys]):
+        cosmo = FlatLambdaCDM(H0=Header['HubbleParam'] * 100.0, Om0=Header['Omega0'], Ob0=Header['OmegaBaryon'], Tcmb0=2.73)
+    elif 'Illustris' in basePath:
+        cosmo = FlatLambdaCDM(H0=Header['HubbleParam'] * 100.0, Om0=Header['Omega0'], Ob0=0.0456, Tcmb0=2.73)
     return cosmo.age(Header['Redshift']).value
