@@ -154,6 +154,7 @@ def subboxPath(basePath, snapNum, subboxNum, chunkNum=0):
     filePath += '.' + str(chunkNum) + '.hdf5'
     return filePath
 
+
 def loadHeader(basePath, snapNum):
     """ load Header information for given snapshot """
     snap = h5py.File(il.snapshot.snapPath(basePath, snapNum), 'r')
@@ -165,6 +166,9 @@ def loadHeader(basePath, snapNum):
 def loadParameters(basePath, snapNum):
     """ load Parameters information for given snapshot """
     snap = h5py.File(il.snapshot.snapPath(basePath, snapNum), 'r')
+    if 'Parameters' not in snap:
+        print('Parameters not available for basePath: %s'%basePath)
+        return
     Parameters = dict(snap['Parameters'].attrs.items())
     snap.close()
     return Parameters
@@ -173,6 +177,9 @@ def loadParameters(basePath, snapNum):
 def loadConfig(basePath, snapNum):
     """ load Config information for given snapshot """
     snap = h5py.File(il.snapshot.snapPath(basePath, snapNum), 'r')
+    if 'Config' not in snap:
+        print('Parameters not available for basePath: %s'%basePath)
+        return
     Config = dict(snap['Config'].attrs.items())
     snap.close()
     return Config
@@ -412,11 +419,17 @@ def convertGroupUnits(basePath, snapNum, dic):
             dic[key] = dset * u.mag
         elif key in ['SubhaloBfldDisk', 'SubhaloBfldHalo']:
             dic[key] = (dset * Header['HubbleParam'] / (Header['Time'])**2 * (code_mass / code_length)**(1/2) / (code_length / code_velocity)).to(standard_pressure**(1/2))
+        elif key == 'count':
+            dic[key] = dset * u.dimensionless_unscaled
         elif (key in ['SubhaloGrNr', 'SubhaloIDMostbound', 'SubhaloLen', 'SubhaloLenType', 'SubhaloParent', 'SubhaloFlag',
                      'GroupCM', 'GroupFirstSub', 'GroupLen', 'GroupLenType', 'GroupNsubs', 'GroupContaminationFracByMass', 
                      'GroupContaminationFracByNumPart', 'GroupOrigHaloID', 'GroupPrimaryZoomTarget', 'GroupOffsetType', 
-                     'SubhaloOrigHaloID', 'SubhaloOffsetType', 'count']) or ('MetalFractions' in key):
+                     'SubhaloOrigHaloID', 'SubhaloOffsetType']) or ('MetalFractions' in key):
             dic[key] = dset * u.dimensionless_unscaled
+            # Illustris uses uint32, so convert to int and replace bad values with -1
+            if ('Illustris/' in basePath) and (dset.dtype == np.uint32):
+                mask = dset.astype(np.uint32) == 2**(32) - 1
+                dic[key][mask] = -1
 
         if not isinstance(dic[key], u.Quantity):
             print('%s not converted'%key)
@@ -718,6 +731,24 @@ def loadSnapTimes(basePath):
             r[key] = f[key][()]
         f.close()
     return r
+
+
+def findSnapNum(basePath, key='Redshift', val=5.0):
+    """Find the snapshot number closest to the given key, value pair"""
+
+    snapTimes = loadSnapTimes(basePath)
+    index = np.argmin(np.abs(snapTimes[key] - val))
+    closest_val = snapTimes[key][index]
+    # for values != 0, use tolerance of 1%
+    # for values close to 0, use a tolerance of 0.01 
+    if np.abs(val) > 1.0e-5:
+        if np.abs(closest_val - val) / val > 0.01:
+            raise RuntimeWarning('No snapshot found with %s = %.3f. Closest value is %.3f.'%(key, val, closest_val))
+    else:
+        if np.abs(closest_val) > 0.01:
+            raise RuntimeWarning('No snapshot found with %s = %.3f. Closest value is %.3f.'%(key, val, closest_val))
+
+    return snapTimes['SnapNum'][index]
 
 
 def calcCosmicTime(basePath):
