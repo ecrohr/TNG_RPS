@@ -186,14 +186,17 @@ def loadConfig(basePath, snapNum):
 
 
 def loadMainTreeBranch(basePath, snap, subfindID, fields=None, treeName='SubLink_gal',
-                       min_snap=0, max_snap=99):
+                       stop_snap=0, start_snap=99):
     """
     Return the entire main branch (progenitor + descendant) of a given subhalo.
-    When snap == 99, then just returns the MPB.
+    When snap == max_snap of the sim, then just returns the MPB.
     Has the option only to return the tree between min and max snaps. 
     if fields = None (default), then returns all fields.
-    CURRENTLY ONLY WORKS FOR TNG SIMS WITH 100 SNAPSHOTS
     """
+
+    snapTimes = loadSnapTimes(basePath)
+    min_snap = snapTimes['SnapNum'].min()
+    max_snap = snapTimes['SnapNum'].max()
     
     # start by loading the MPB
     if not fields:
@@ -214,10 +217,13 @@ def loadMainTreeBranch(basePath, snap, subfindID, fields=None, treeName='SubLink
     if not subMPB:
         return 
     
-    # if snap == 99, then just return the MPB [ONLY FOR TNG SIMS]
-    if snap == 99:
+    # if snap == max_snap, then just return the MPB 
+    if snap == max_snap:
         tree = subMPB
-        tree['count'] = len(tree['SnapNum'])
+        indices = (tree['SnapNum'] >= stop_snap) & (tree['SnapNum'] <= start_snap)
+        for field in fields:
+            tree[field] = tree[field][indices]
+        tree['count'] = len(indices[indices])
         return tree
 
     # load the MDB and combine 
@@ -226,10 +232,10 @@ def loadMainTreeBranch(basePath, snap, subfindID, fields=None, treeName='SubLink
 
     # check if there's an issue with the MDB -- if the MDB reaches z=0
     # if so, then only use the MPB
-    if (subMDB['count'] + snap) > (99 + 1):
+    if (subMDB['count'] + snap) > (max_snap - min_snap + 1):
 
         # find where the MDB stops
-        stop  = -(max_snap - min_snap + 1)
+        stop  = -(start_snap - stop_snap + 1)
         start = np.max(np.where((subMDB['SnapNum'][1:] - subMDB['SnapNum'][:-1]) >= 0)) + 1
 
         for key in fields:
@@ -244,13 +250,13 @@ def loadMainTreeBranch(basePath, snap, subfindID, fields=None, treeName='SubLink
         else:
             tree[key] = np.concatenate([subMDB[key][:-1], subMPB[key]])
 
-
-    indices = (tree['SnapNum'] >= min_snap) & (tree['SnapNum'] <= max_snap)
+    indices = (tree['SnapNum'] >= stop_snap) & (tree['SnapNum'] <= start_snap)
     for field in fields:
         tree[field] = tree[field][indices]
     tree['count'] = len(indices[indices])
     
     return tree
+
 
 def convertSnapshotUnits(basePath, snapNum, dic):
     """ Convert all loaded snapshot properties to standard units """
