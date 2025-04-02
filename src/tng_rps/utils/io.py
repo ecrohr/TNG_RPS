@@ -18,6 +18,7 @@ from stellar_array_helpers import expand_all_arrays
 from createMCSTFiles import createMCSTFiles
 from astropy.cosmology import FlatLambdaCDM
 from .units import *
+from createOffsets import createOffsets
 
 def loadSubboxSubset(basePath, snapNum, subboxNum, partType, fields=None, subset=None, mdi=None, sq=True, float32=False):
     """ 
@@ -676,6 +677,11 @@ def loadMCSTFiles(basePath, snapNum):
     return dic
 
 
+def getSnapTimesPath(basePath):
+    """Return path for snaptimes.hdf5"""
+    return os.path.join(Path(basePath).parent, 'postprocessing', 'snaptimes.hdf5')
+
+
 def createSnapTimes(basePath):
     """
     Create and save postprocessing file snaptimes.hdf5.
@@ -685,7 +691,7 @@ def createSnapTimes(basePath):
     """
         
     # check if file already exists
-    out_fname = os.path.join(Path(basePath).parent, 'postprocessing', 'snaptimes.hdf5')
+    out_fname = getSnapTimesPath(basePath)
     if os.path.isfile(out_fname):
         return
 
@@ -728,7 +734,7 @@ def createSnapTimes(basePath):
 def loadSnapTimes(basePath):
     """Load postprocessing file with snapshot times"""
 
-    fname = os.path.join(Path(basePath).parent, 'postprocessing', 'snaptimes.hdf5')
+    fname = getSnapTimesPath(basePath)
     if not os.path.isfile(fname):
         createSnapTimes(basePath)
     with h5py.File(fname, 'r') as f:
@@ -755,6 +761,59 @@ def findSnapNum(basePath, key='Redshift', val=5.0):
             raise RuntimeWarning('No snapshot found with %s = %.3f. Closest value is %.3f.'%(key, val, closest_val))
 
     return snapTimes['SnapNum'][index]
+
+
+def prepareSim(simFamily, simName, globalStartPath='/virgotng/universe', localSimFamilyPath='../'):
+    """
+    Prepare the given simulation for analysis. Returns the basePath.
+    """
+    createSimDirecStruct(simFamily, simName, globalStartPath=globalStartPath, localSimFamilyPath=localSimFamilyPath)
+    basePath = getBasePath(simFamily, simName)
+    createSnapTimes(basePath)
+    snapTimes = loadSnapTimes(basePath)
+    for snapNum in snapTimes['SnapNum']:
+        createOffsets(basePath, snapNum)
+
+    return basePath
+
+
+def createSimDirecStruct(simFamily, simName, globalStartPath='/virgotng/universe', localSimFamilyPath='../'):
+    """
+    create a local copy using symbolic links to a given simulation.
+    the default global path is /virgotng/universe, which then gets
+    combined with simFamily (and output) to become the global basePath.
+    localSimFamilyPath, which defaults to the parent directory, will 
+    then hold the simFamily directory, which holds simName. Lastly, 
+    local basePath = localSimFamilyPath + simFamily + simName + output.
+    if local simFamily directory already exists, then nothing is done.
+    Returns the local basePath.
+    """
+
+    localbasePath = getBasePath(simFamily, simName, localSimFamilyPath=localSimFamilyPath)
+    localSimPath = Path(localbasePath).parent
+    if os.path.isdir(localSimPath):
+        if os.path.isdir(localbasePath):
+            return 
+    else:
+        os.makedirs(localSimPath)
+
+    # output directory should be a sym link to the global direc
+    globalBasePath = os.path.join(globalStartPath, simFamily, simName, 'output')
+    os.symlink(globalBasePath, localbasePath, target_is_directory=True)
+
+    # postprocesing directory should be local, but existing catalogs should be linked
+    localPostprocessingPath = os.path.join(localSimPath, 'postprocessing')
+    os.makedirs(localPostprocessingPath)
+
+    globalPostprocessingPath = os.path.join(Path(globalBasePath).parent, 'postprocessing')
+    os.system('ln -s %s %s'%(os.path.join(globalPostprocessingPath, '*'), os.path.join(localPostprocessingPath, '.')))
+
+    return 
+
+
+def getBasePath(simFamily, simName, localSimFamilyPath='../'):
+    """Return basePath for simFamily and simName"""
+    return os.path.join(localSimFamilyPath, 'sims.%s'%simFamily, simName, 'output')
 
 
 def calcCosmicTime(basePath):
