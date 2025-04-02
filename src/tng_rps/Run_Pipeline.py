@@ -12,6 +12,9 @@ import os
 import yaml
 import glob
 import argparse
+from pathlib import Path
+import utils.io as io
+from utils.units import *
 
 class Configuration(dict):
     """
@@ -48,8 +51,7 @@ class Configuration(dict):
     def add_vals(self):
         """ Add additional attributes """
 
-        #self = argparse_Config(self)
-
+        # set legacy keys
         self.zooniverse_keys = [self.ins_key, self.jel_key, self.non_key]
         self.subfindsnapshot_flags = [self.in_tree_key, self.central_key,
                                       self.in_z0_host_key, self.host_m200c_key]
@@ -69,19 +71,33 @@ class Configuration(dict):
                                  self.preprocessed_flag,
                                  self.clean_key,
                                  self.all_key]
-        
-        self.basePath = ru.loadbasePath(self.sim)
+            
+        # run standard setup procedures if not already done
+        # (i) setup the dictionary structure
+        # (ii) run snapTimes
+        # (iii) create offsets for each snapshot
+        self.basePath = io.prepareSim(self.simFamily, self.simName, self.globalStartPath)
+        self.snapTimes = io.loadSnapTimes(self.basePath)
 
-        self.outdirec = '../Output/%s_subfindGRP/'%self.sim
+        # determine the min and max snaps based on snapTimes
+        self.max_snap = io.findSnapNum(self.basePath, 'Redshift', self.min_redshift)
+        self.min_snap = io.findSnapNum(self.basePath, 'Redshift', self.max_redshift)
+
+        # load basic sim info
+        self.Header = io.loadHeader(self.basePath, self.max_snap)
+        self.h = self.Header['HubbleParam']
+        self.Config = io.loadConfig(self.basePath, self.snapTimes['SnapNum'][0])
+        self.snapNum_z0 = io.findSnapNum(self.basePath, 'Redshift', 0.0)
+
+        # define the GRP output directory and filename
+        self.outdirec = os.path.join(Path(self.basePath).parent, 'postprocessing', 'subfindGRP')
         if not os.path.isdir(self.outdirec):
             os.system('mkdir %s'%self.outdirec)
+
         GRPfname, taufname = self.return_fnames()
         self.outfname = self.GRPfname = GRPfname
         self.taufname = taufname
 
-        self.Header = il.groupcat.loadHeader(self.basePath, self.max_snap)
-        self.h = self.Header['HubbleParam']
-        
         SnapNums = np.arange(self.max_snap, self.min_snap-1, -1)
         Times = np.zeros(SnapNums.size, dtype=float)
         BoxSizes = Times.copy()
@@ -111,7 +127,8 @@ class Configuration(dict):
         
         # set the subfindIDs and accompanying snapnums of interest
         # first check if the tau_dict already exists
-        full_taufname = self.outdirec + self.taufname
+        full_taufname = os.path.join(self.outdirec, self.taufname)
+        full_GRPfname = os.path.join(self.outdirec, self.GRPfname)
         if (self.zooniverse_flag):
             SnapNums_SubfindIDs, SubfindIDs = initialize_zooniverseindices(self)
         elif os.path.isfile(full_taufname):
@@ -124,11 +141,11 @@ class Configuration(dict):
                 f.close()
         # does the GRP file exist? If so, then use this file. 
         # Note that this assumes that the branches exist at z=0
-        elif os.path.isfile(self.outdirec + self.GRPfname):
-            print('File %s exists. Using SubfindIDs and SnapNums from there.'%(self.outdirec + self.GRPfname))
+        elif os.path.isfile(full_GRPfname):
+            print('File %s exists. Using SubfindIDs and SnapNums from there.'%(full_GRPfname))
             with h5py.File(self.outdirec + self.GRPfname) as f:
                 SubfindIDs = np.zeros(len(f.keys()), dtype=int) - 1
-                SnapNums_SubfindIDs = SubfindIDs.copy() + 100
+                SnapNums_SubfindIDs = SubfindIDs.copy() + 1 + self.snapNum_z0
                 for i, key in enumerate(f.keys()):
                     group = f[key]
                     SubfindIDs[i] = group['SubfindID'][0]
@@ -138,8 +155,7 @@ class Configuration(dict):
         # no tau or GRP files, so initialize SnapNums and SubfindIDs here
         else:
             # based on the simulation and flags, find the appropriate initialziation function
-            print('Files %s and %s do not exist. Initializing SubfindIDs and SnapNums elsewhere.'%(full_taufname,
-                                                                                                   self.outdirec + self.GRPfname))
+            print('Files %s and %s do not exist. Initializing SubfindIDs and SnapNums elsewhere.'%(full_taufname, full_GRPfname))
             # TNG-Cluster?
             if (self.TNGCluster_flag):
                 SnapNums_SubfindIDs, SubfindIDs = initialize_TNGCluster_subfindindices(self)
@@ -155,6 +171,10 @@ class Configuration(dict):
             # all subhalos?
             elif (self.allsubhalos_flag):
                 SnapNums_SubfindIDs, SubfindIDs = initialize_allsubhalos(self)
+
+            # cosmological sim comparison project?
+            elif (self.CosmoSimComparison_flag):
+                SnapNums_SubfindIDs, SubfindIDs = initialize_CosmoSimComparisonSubhaloIDs(self)
               
             # general satellites?
             else:
@@ -196,15 +216,17 @@ class Configuration(dict):
             sample = 'central_subfind'
         elif self.allsubhalos_flag:
             sample = 'all_subfind'
+        elif self.CosmoSimComparison_flag:
+            sample = 'CosmoSimComparison_subfind'
         else:
             sample = 'subfind'
             
-        sim = self.sim
+        sim = self.simName
         
         GRPfname = '%s_%s_branches'%(sample, sim)
         taufname = '%s_%s_tau'%(sample, sim)
         if (self.min_snap == self.max_snap):
-            if (self.min_snap == 99):
+            if (self.min_snap == self.snapTimes['SnapNum'].max()):
                 GRPfname += '_z0'
                 taufname += '_z0'
             else:
@@ -349,7 +371,7 @@ def return_taufname(Config):
         
 def return_Mstar_lolim(Config):
     """ given the simulation, determine the minimum resolved Mstar mass"""
-    sim = Config.sim
+    sim = Config.simName
     if 'TNG50' in sim:
         res = 10.**(8.3)
     elif 'TNG100' in sim:
@@ -377,12 +399,13 @@ def return_Mstar_lolim(Config):
             
     return Mstar_lolim
 
+
 def return_gas_lolim(Config):
     """ 
     given the simulation, determine the minimum gas resolution, ~1.5 dex below the
     target resolution mass, to fill in when the simulated gas mass is 0.
     """
-    sim = Config.sim
+    sim = Config.simName
     if 'TNG50' in sim:
         res = 1.0e3
     elif 'TNG100' in sim:
@@ -404,7 +427,6 @@ def return_gas_lolim(Config):
     return res
 
  
-
 def initialize_allsubhalos(Config):
     """
     Create a list of the subfindIDs for all subhalos in the simulation.
@@ -560,6 +582,35 @@ def initialize_TNGCluster_subfindindices(Config):
     
     return snaps, subfindIDs
 
+
+def initialize_CosmoSimComparisonSubhaloIDs(Config):
+    """
+    Find all z=0 halos with M200c > 10^10.5 Msun with a central 
+    galaxy that has Mstar > 0.
+    """
+    m200c_lolim = 10**(10.5) * u.M_sun
+    mstar_lolim = 0 * u.M_sun
+    halo_fields = ['Group_M_Crit200', 'GroupFirstSub']
+    subhalo_fields = ['SubhaloMassInRadType', 'SubhaloGrNr']
+
+    Halos = il.groupcat.loadHalos(Config.basePath, Config.snapNum_z0, halo_fields)
+    io.convertGroupUnits(Config.basePath, Config.snapNum_z0, Halos)
+
+    maskHalosCentrals = (Halos['Group_M_Crit200'] > m200c_lolim) & (Halos['GroupFirstSub'] >= 0)
+    GroupFirstSub = Halos['GroupFirstSub'][maskHalosCentrals].astype(int)
+
+    Subhalos = il.groupcat.loadSubhalos(Config.basePath, Config.snapNum_z0, subhalo_fields)
+    io.convertGroupUnits(Config.basePath, Config.snapNum_z0, Subhalos)
+    for key in subhalo_fields:
+        Subhalos[key] = Subhalos[key][GroupFirstSub]
+
+    maskMstar = Subhalos['SubhaloMassInRadType'][:,4] > mstar_lolim
+
+    subfindIDs = GroupFirstSub[maskMstar].value
+    snaps = np.zeros(subfindIDs.size, dtype=subfindIDs.dtype) + Config.snapNum_z0
+
+    return snaps, subfindIDs
+
     
 def initialize_zooniverseindices(Config):
     """
@@ -594,7 +645,6 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
-    
 fname = 'config.yaml'
 config_dict = Configuration.from_yaml(fname)
 Config = Configuration(config_dict)
