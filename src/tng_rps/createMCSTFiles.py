@@ -4,6 +4,7 @@ import h5py
 import numpy as np
 import glob
 import csv
+from pathlib import Path
 
 Ncolumns_dict = dict(sf_details=11, sn_details=15)
 
@@ -31,12 +32,12 @@ def createMCSTFiles(basePath):
     ftypes = ['sf_details', 'sn_details']
     for ftype in ftypes:
         Ncolumns = Ncolumns_dict[ftype]
-        direc = os.path.join(os.path.split(basePath)[0], 'postprocessing', ftype)
+        direc = os.path.join(Path(basePath).parent, 'postprocessing', ftype)
 
         # check if the directory already exists. if not, then create it
         if not os.path.isdir(direc):
             c_path = os.path.join(basePath, 'txt-files')
-            p_path = os.path.split(direc)[0]
+            p_path = Path(direc).parent
             _fname = ftype + '.tar.gz'
             
             # copy the tar file from c_path to p_path
