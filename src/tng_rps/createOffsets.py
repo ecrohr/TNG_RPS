@@ -103,7 +103,7 @@ def saveOffsets(basePath, snapNum, offsets):
     """
 
     # hardcode output name rather than using il.groupcat.offsetPath to avoid issues with write permissions
-    out_fname = os.path.join(Path(basePath).parent, 'postprocessing/offsets/offsets_%03d.hdf5' % snapNum)
+    out_fname = il.groupcat.offsetPath(basePath, snapNum)
     
     path = os.path.split(out_fname)[0]
     if not os.path.isdir(path):
