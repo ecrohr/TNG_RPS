@@ -717,10 +717,10 @@ def computeRadii(dic, center=np.zeros(3)*standard_length, basePath=None, snapNum
     if not validateHeader(basePath, snapNum, computeRadii):
         return
     
-    Header = io.loadHeader(basePath, snapNum)
+    Header = loadHeader(basePath, snapNum)
     BoxSize = Header['BoxSize'] * Header['Time'] / Header['HubbleParam'] * code_length
     
-    Radii = ru.mag(dic['Coordinates'], center, BoxSize)
+    Radii = mag(dic['Coordinates'], center, BoxSize)
 
     dic['Radii'] = Radii
 
