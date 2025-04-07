@@ -20,6 +20,47 @@ from astropy.cosmology import FlatLambdaCDM
 from .units import *
 from createOffsets import createOffsets
 
+def loadHaloWithoutSatellites(basePath, snapNum, haloID=-1, subhaloID=-1, ptn=0, fields=None):
+    """ Load the snapshot data for a given halo removing all data bound to satellites """
+
+    if (haloID < 0 and subhaloID < 0) or (haloID >= 0 and subhaloID >= 0):
+        raise Exception("Must specify either haloID or subhaloID (and not both).")
+
+    if haloID < 0 and subhaloID >= 0:
+        haloID = il.groupcat.loadSingle(basePath, snapNum, subhaloID=subhaloID)['SubhaloGrNr']
+
+    if haloID < 0:
+        return
+
+    # load the halo info
+    halo = il.groupcat.loadSingle(basePath, snapNum, haloID=haloID)
+
+    if halo['GroupFirstSub'] < 0:
+        return
+
+    # load the FoF
+    snapFoF = il.snapshot.loadHalo(basePath, snapNum, haloID, ptn, fields=fields)
+        
+    # find the length of the GroupFirstSub's cells
+    subsetGroupFirstSub = il.snapshot.getSnapOffsets(basePath, snapNum, halo['GroupFirstSub'], 'Group')
+    lengthGroupFirstSub = subsetGroupFirstSub['lenType'][ptn]
+
+    # find the last index of the last subhalo of the FoF
+    haloLastSubhaloID = halo['GroupFirstSub'] + halo['GroupNsubs'] - 1
+    subsetLastSubhalo = il.snapshot.getSnapOffsets(basePath, snapNum, haloLastSubhaloID, 'Subhalo')
+    lastSubhaloIndex = subsetLastSubhalo['offsetType'][ptn] + subsetLastSubhalo['lenType'][ptn]
+
+    # remove the snapshot elements between the end of the central and the last satellite
+    r = {}
+    for key in snapFoF:
+        if key == 'count':
+            r[key] = snapFoF[key] - (lastSubhaloIndex - lengthGroupFirstSub)
+        else:
+            r[key] = np.concatenate((snapFoF[key][:lengthGroupFirstSub], snapFoF[key][lastSubhaloIndex:]))
+
+    return r
+
+
 def loadSubboxSubset(basePath, snapNum, subboxNum, partType, fields=None, subset=None, mdi=None, sq=True, float32=False):
     """ 
     Load a subset of fields for all particles/cells of a given partType.
@@ -179,7 +220,7 @@ def loadConfig(basePath, snapNum):
     """ load Config information for given snapshot """
     snap = h5py.File(il.snapshot.snapPath(basePath, snapNum), 'r')
     if 'Config' not in snap:
-        print('Parameters not available for basePath: %s'%basePath)
+        print('Config not available for basePath: %s'%basePath)
         return
     Config = dict(snap['Config'].attrs.items())
     snap.close()
@@ -654,11 +695,89 @@ def computeEntropy(dic, basePath=None, snapNum=None):
         if not validateHeader(basePath, snapNum, computeEntropy):
             return
         Header = loadHeader(basePath, snapNum)
-        k = const.k_B * dic['Temperature'] / (dic['Density'] * code_mass / const.m_p / Header['HubbleParam'] / (code_length * Header['Time'] / Header['HubbleParam'])**3)**(2/3)
+        k = (const.k_B * dic['Temperature'] / 
+             (dic['Density'] * code_mass / const.m_p / Header['HubbleParam'] / (code_length * Header['Time'] / Header['HubbleParam'])**3))**(2/3).value
 
     dic['Entropy'] = k.to(standard_entropy)
     
     return
+
+
+def computeRadii(dic, center=np.zeros(3)*standard_length, basePath=None, snapNum=None):
+    """
+    Add Radii dataset to dic. No returns.
+    Using the center and getting BoxSize from the Header, computes the radius for each 
+    element of dic using 'Coordinates'. 
+    """
+
+    req_keys = ['Coordinates']
+    if not validateDicInputs(dic, req_keys, computeRadii):
+        return
+
+    if not validateHeader(basePath, snapNum, computeRadii):
+        return
+    
+    Header = io.loadHeader(basePath, snapNum)
+    BoxSize = Header['BoxSize'] * Header['Time'] / Header['HubbleParam'] * code_length
+    
+    Radii = ru.mag(dic['Coordinates'], center, BoxSize)
+
+    dic['Radii'] = Radii
+
+    return
+
+
+def shift(u, v, box_length):
+    """
+    returns the position vector u-v in a periodic Cartesian box
+    
+    Parameters
+    ----------
+    u : N x 3 position array
+    v : N x 3 OR 1 x 3 position array
+    box_length : float in same units as [u], [v]
+    
+    Returns 
+    -------
+    result: N x M position vector (array)
+    """
+
+    result = u - v
+    result[result > box_length / 2.0] -= box_length
+    result[result < -box_length / 2.0] += box_length
+    return result
+
+
+def mag(u, v, box_length):
+    """
+    returns the distance between two physical positions in a periodic box
+    assumes Cartesian coordinates
+    
+    Parameters
+    ----------
+    u : 3 x N position array
+    v : 3 x N OR 3 x 1 position array
+    box_length : float in same units as [u], [v]
+    
+    Returns 
+    -------
+    magnitude (float)
+    
+    Notes
+    --------
+    if u, v are 3x3 arrays, then be careful -- operations are on a row basis
+    so column 0 = x; column 1 = y; column 2 = z
+    """
+    
+    v = v.T # replace v with its transpose
+            
+    diff = shift(u, v, box_length)       
+    
+    if diff.shape[0] != 3:
+        diff = diff.T
+
+    return np.sqrt( (diff[0])**2 + (diff[1])**2 + (diff[2])**2 )
+
 
 
 def loadMCSTFiles(basePath, snapNum):
