@@ -716,7 +716,7 @@ def createSnapTimes(basePath):
         r['SnapNum'][i] = snapNum
         r['Redshift'][i] = Header['Redshift']
         r['Time'][i] = Header['Time']
-        r['CosmicTime'][i] = calcCosmicTime(basePath)
+        r['CosmicTime'][i] = calcCosmicTime(basePath, snapNum)
 
     # check that all entries are filled
     for key in r:
@@ -816,14 +816,14 @@ def getBasePath(simFamily, simName, localSimFamilyPath='../'):
     return os.path.join(localSimFamilyPath, 'sims.%s'%simFamily, simName, 'output')
 
 
-def calcCosmicTime(basePath):
+def calcCosmicTime(basePath, snapNum=0):
     """
     Compute the Cosmic Time given the cosmological parameters in the Header, which
     is loaded using basePath and assuming snapNum=0. If not all necessary parameters
     (HubbleParam, Omega0, OmegaBaryon) are in Header, then an exception must be 
     written to manually code the values, which is implemented for Illustris.
     """
-    Header = loadHeader(basePath, 0)
+    Header = loadHeader(basePath, snapNum)
     keys = ['HubbleParam', 'Omega0', 'OmegaBaryon']
     if all([key in Header for key in keys]):
         cosmo = FlatLambdaCDM(H0=Header['HubbleParam'] * 100.0, Om0=Header['Omega0'], Ob0=Header['OmegaBaryon'], Tcmb0=2.73)
