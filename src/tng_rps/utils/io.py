@@ -509,14 +509,14 @@ def computeTemperature(dic, tempSFR=1.0e3*u.K):
 
 def computeCoolingTime(dic, basePath=None, snapNum=None):
     """
-    Add CoolingTime dataset to dic. Returns dic with CoolingTime added.
+    Add CoolingTime dataset to dic. No returns.
     If astropy units are already attached to dic['Density'] and dic['InternalEnergy'], then 
     basePath and snapNum are not necessary to load the Header.
     Computes the CoolingTime in units of standard_time. 
     """
 
     if 'Temperature' not in dic.keys():
-        dic = computeTemperature(dic)
+        computeTemperature(dic)
 
     req_keys = ['Density', 'ElectronAbundance', 'Temperature', 'GFM_CoolingRate']
     if not validateDicInputs(dic, req_keys, computeCoolingTime):
@@ -546,7 +546,7 @@ def computeCoolingTime(dic, basePath=None, snapNum=None):
 
 def computeCellSizes(dic, basePath=None, snapNum=None):
     """
-    Add CellSizes dataset to dic. Returns dic with CellSizes added.
+    Add CellSizes dataset to dic. No returns.
     If astropy units are already attached to dic['Masses'] and dic['Density'], then 
     CellSizes units are standard_length, and basePath and snapNum do not need to be provided.
     If there are no units attached, then basePath and snapNum but be provided to
@@ -574,7 +574,7 @@ def computeCellSizes(dic, basePath=None, snapNum=None):
 
 def computeGasPressure(dic, basePath=None, snapNum=None):
     """ 
-    Add Pressure dataset to dic. Returns dic with Pressure added. 
+    Add Pressure dataset to dic. No returns. 
     Assumes P = (gamma - 1) * rho * u, where gamma = 5/3.
     If astropy units are already attached, then computes Pressure in units of 
     standard_pressure. If no units are attached, then basePath and snapNum
@@ -603,7 +603,7 @@ def computeGasPressure(dic, basePath=None, snapNum=None):
 
 def computeJeansNumber(dic, basePath=None, snapNum=None):
     """ 
-    Add JeansNumber to dic. Returns dic with JeansNumber added.
+    Add JeansNumber to dic. No returns.
     Assumes Nj = (pi^(5/2) * cs^3 / (6 * G^(3/2) * rho^(1/2)) / m, where cs = sqrt(gamma * (gamma - 1) * u), gamma = 5/3.
     If astropy units are already attached, then computes JeansNumber in units of 
     user-defined standard_JeansNumber (dimensionless_unscaled).
@@ -631,6 +631,33 @@ def computeJeansNumber(dic, basePath=None, snapNum=None):
 
     dic['JeansNumber'] = Nj
 
+    return
+
+
+def computeEntropy(dic, basePath=None, snapNum=None):
+    """
+    Add Entropy dataset to dic. No returns. 
+    Assumes that entropy k = k_b * T / n^2/3, where
+    n is the number density in cm^-3.
+    """ 
+
+    if 'Temperature' not in dic:
+        computeTemperature(dic)
+
+    req_keys = ['Density', 'Temperature']
+    if not validateDicInputs(dic, req_keys, computeEntropy):
+        return
+
+    if isinstance(dic['Density'], u.quantity.Quantity):
+        k = const.k_B * dic['Temperature'] / (dic['Density'] / const.m_p)**(2/3)
+    else:
+        if not validateHeader(basePath, snapNum, computeEntropy):
+            return
+        Header = loadHeader(basePath, snapNum)
+        k = const.k_B * dic['Temperature'] / (dic['Density'] * code_mass / const.m_p / Header['HubbleParam'] / (code_length * Header['Time'] / Header['HubbleParam'])**3)**(2/3)
+
+    dic['Entropy'] = k.to(standard_entropy)
+    
     return
 
 

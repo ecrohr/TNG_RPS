@@ -17,3 +17,4 @@ standard_metallicity = u.def_unit('Zsun', doc='Solar Metallicity', format=dict(l
 standard_JeansNumber = u.def_unit('Nj',doc='Jeans Number', format=dict(latex=r'N_j', latex_inline=r'N_j'))
 standard_pressure = u.erg / u.cm**3
 standard_power = u.erg / u.s
+standard_entropy = u.keV * u.cm**2
