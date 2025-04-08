@@ -18,6 +18,7 @@ from stellar_array_helpers import expand_all_arrays
 from createMCSTFiles import createMCSTFiles
 from astropy.cosmology import FlatLambdaCDM
 from .units import *
+from .utils import *
 from createOffsets import createOffsets
 
 def loadSnapshotData(basePath, snapNum, partType, haloID=-1, subhaloID=-1, fields=None, extra_fields=None,
@@ -257,7 +258,7 @@ def subboxPath(basePath, snapNum, subboxNum, chunkNum=0):
     return filePath
 
 
-def loadHeader(basePath, snapNum):
+def loadHeader(basePath, snapNum=0):
     """ load Header information for given snapshot """
     snap = h5py.File(il.snapshot.snapPath(basePath, snapNum), 'r')
     Header = dict(snap['Header'].attrs.items())
@@ -369,6 +370,10 @@ def convertSnapshotUnits(basePath, snapNum, dic):
         dset = dic[key]
         # check if the quantity already has code units attached
         if isinstance(dset, u.quantity.Quantity):
+
+            continue
+            # leave legacy code for now to allow for backwards compatibility 
+            
             # yes, let's convert to standard units
             # NB: BH_Mdot and related units are falsely coded (see arepo PR 419)
             #     so manually overwrite the unit scalings for these quantities
@@ -424,15 +429,15 @@ def convertSnapshotUnits(basePath, snapNum, dic):
 
         # if no code units, then manually attach units 
         else:
-            dimensionless_keys = ['AllowRefinement', 'HIIMassFraction', 'HIMassFraction', 
-                                  'HeIIIMassFraction', 'HeIIMassFraction', 'HeIMassFraction',
-                                  'Machnumber', 'StromgrenSourceID', 'count', 'TimebinHydro', 'TimeStep',
-                                  'ParentID', 'TracerID',  'ParticleIDs', 'FluidQuantities',
-                                  'ElectronAbundance', 'NeutralHydrogenAbundance', 'GFM_StellarFormationTime',
-                                  'IonisingPhotonRate1e49', 'NumberOfSupernovaEvents', 'NumberOfSupernovae',
-                                  'BH_Progs', 'StromgrenSourceID', 'StellarFormationTime', 'LocalFlag',
-                                  'BH_WindCount', 'BH_WindTimes']
-            if key in dimensionless_keys:
+            # don't convert integer (or bool) keys
+            if key in ['AllowRefinement', 'count', 'StromgrenSourceID', 'ParentID', 'TracerID', 
+                       'ParticleIDs', 'IonisingPhotonRate1e49', 'NumberOfSupernovaEvents', 'NumberOfSupernovae', 
+                       'BH_Progs', 'StromgrenSourceID', 'LocalFlag', 'BH_WindCount']:
+                continue
+
+            elif key in ['HIIMassFraction', 'HIMassFraction', 'HeIIIMassFraction', 'HeIIMassFraction', 'HeIMassFraction',
+                         'Machnumber', 'TimebinHydro', 'TimeStep', 'FluidQuantities', 'ElectronAbundance', 'NeutralHydrogenAbundance', 
+                         'GFM_StellarFormationTime', 'StellarFormationTime', 'BH_WindTimes']:
                 dic[key] *= u.dimensionless_unscaled
             elif key in ['BH_Mdot', 'BH_MdotBondi', 'BH_MdotEddington']:
                 dic[key] = (dset * 10.22) * standard_massderivative
@@ -498,46 +503,66 @@ def convertSnapshotUnits(basePath, snapNum, dic):
     return
             
 
-def convertGroupUnits(basePath, snapNum, dic):
+def convertGroupUnits(basePath, snapNum, dic, tree=False):
     """ Convert all loaded properties to standard units """
 
     Header = loadHeader(basePath, snapNum)
+    HubbleParam = Header['HubbleParam']
+    if tree:
+        SnapTimes = loadSnapTimes(basePath)
+        allSnapNums = SnapTimes['SnapNum']
+
+        # find the snapshots where the subhalo exists and compute the scale factor at these snapshots
+        _, _, alltimes_indices = find_common_snaps(np.sort(allSnapNums)[::-1], dic['SnapNum'], allSnapNums)
+        Time = SnapTimes['Time'][alltimes_indices]
+    else:
+        Time = Header['Time']
 
     for key in dic:
         dset = dic[key]
 
-        if 'Mass' in key or '_M_' in key:
-            dic[key] = (dset / Header['HubbleParam'] * code_mass).to(standard_mass)
+        # check if units have already been converted
+        if isinstance(dset, u.quantity.Quantity):
+            continue
+
+        # don't add units to integer datasets to keep them as ints
+        if key in ['count', 'DescendantID', 'FirstProgenitorID', 'FirstSubhaloInFOFGroupID', 'GroupFirstSub', 'GroupLen', 'GroupLenType',
+                   'GroupNsubs', 'LastProgenitorID', 'MainLeafProgenitorID', 'NextProgenitorID', 'NextSubhaloInFOFGroupID', 'NumParticles',
+                   'RootDescendantID', 'SnapNum', 'SubfindID', 'SubhaloGrNr', 'SubhaloID', 'SubhaloIDMostbound', 'SubhaloLen', 'SubhaloLenType',
+                   'SubhaloIDRaw', 'SubhaloParent', 'SubhaloFlag', 'GroupOrigHaloID', 'GroupPrimaryZoomTarget', 'GroupOffsetType', 'SubhaloOrigHaloID',
+                   'SubhaloOffsetType', 'TreeID']:
+            # check for unsigned ints 
+            if ('Illustris/' in basePath) and (dset.dtype == np.uint32):
+                mask = dset.astype(np.uint32) == 2**(32) - 1
+                dic[key][mask] = -1
+            continue
+        
+        # dimensionless quantities (floats)
+        elif (key in ['GroupContaminationFracByMass', 'GroupContaminationFracByNumPart']) or ('MetalFractions' in key):
+            dic[key] = dset * u.dimensionless_unscaled
+
+        elif 'Mass' in key or '_M_' in key:
+            dic[key] = (dset /HubbleParam * code_mass).to(standard_mass)
         elif 'Mdot' in key:
             dic[key] = (dset * 10.22) * u.Msun / u.yr
-        elif (key in ['SubhaloCM', 'SubhaloPos', 'SubhaloHalfmassRad', 'SubhaloHalfmassRadType', 'SubhaloStellarPhotometricsRad', 'SubhaloVmaxRad', 'GroupPos']) or '_R_' in key:
-            dic[key] = (dset * Header['Time'] / Header['HubbleParam'] * code_length).to(standard_length)
+        elif (key in ['SubhaloCM', 'SubhaloPos', 'SubhaloHalfmassRad', 'SubhaloHalfmassRadType', 'SubhaloStellarPhotometricsRad', 'SubhaloVmaxRad', 
+                      'GroupCM', 'GroupPos']) or '_R_' in key:
+            dic[key] = ((dset.T * Time / HubbleParam * code_length).T).to(standard_length)
         elif key in ['SubhaloVel', 'SubhaloVelDisp', 'SubhaloVmax']:
             dic[key] = (dset * code_velocity).to(standard_velocity)
         elif key in ['SubhaloSFR', 'SubhaloSFRinHalfRad', 'SubhaloSFRinMaxRad', 'SubhaloSFRinRad',
                      'GroupSFR']:
             dic[key] = (dset) * u.Msun / u.yr
         elif key == 'SubhaloSpin':
-            dic[key] = (dset * Header['Time'] / Header['HubbleParam'] * code_length * code_velocity).to(standard_length * standard_velocity)
+            dic[key] = ((dset.T * Time / HubbleParam * code_length * code_velocity).T).to(standard_length * standard_velocity)
         elif key == 'GroupVel':
-            dic[key] = (dset / Header['Time'] * code_velocity).to(standard_velocity)
+            dic[key] = ((dset.T / Time * code_velocity).T).to(standard_velocity)
         elif 'Metallicity' in key:
             dic[key] = (dset / 0.0127) * standard_metallicity
         elif key == 'SubhaloStellarPhotometrics':
             dic[key] = dset * u.mag
         elif key in ['SubhaloBfldDisk', 'SubhaloBfldHalo']:
-            dic[key] = (dset * Header['HubbleParam'] / (Header['Time'])**2 * (code_mass / code_length)**(1/2) / (code_length / code_velocity)).to(standard_pressure**(1/2))
-        elif key == 'count':
-            dic[key] = dset * u.dimensionless_unscaled
-        elif (key in ['SubhaloGrNr', 'SubhaloIDMostbound', 'SubhaloLen', 'SubhaloLenType', 'SubhaloParent', 'SubhaloFlag',
-                     'GroupCM', 'GroupFirstSub', 'GroupLen', 'GroupLenType', 'GroupNsubs', 'GroupContaminationFracByMass', 
-                     'GroupContaminationFracByNumPart', 'GroupOrigHaloID', 'GroupPrimaryZoomTarget', 'GroupOffsetType', 
-                     'SubhaloOrigHaloID', 'SubhaloOffsetType']) or ('MetalFractions' in key):
-            dic[key] = dset * u.dimensionless_unscaled
-            # Illustris uses uint32, so convert to int and replace bad values with -1
-            if ('Illustris/' in basePath) and (dset.dtype == np.uint32):
-                mask = dset.astype(np.uint32) == 2**(32) - 1
-                dic[key][mask] = -1
+            dic[key] = (dset * HubbleParam / (Time)**2 * (code_mass / code_length)**(1/2) / (code_length / code_velocity)).to(standard_pressure**(1/2))
 
         if not isinstance(dic[key], u.Quantity):
             print('%s not converted'%key)
@@ -785,59 +810,6 @@ def computeRadii(dic, center=np.zeros(3)*standard_length, basePath=None, snapNum
     dic['Radii'] = Radii
 
     return
-
-
-def shift(u, v, box_length):
-    """
-    returns the position vector u-v in a periodic Cartesian box
-    
-    Parameters
-    ----------
-    u : N x 3 position array
-    v : N x 3 OR 1 x 3 position array
-    box_length : float in same units as [u], [v]
-    
-    Returns 
-    -------
-    result: N x M position vector (array)
-    """
-
-    result = u - v
-    result[result > box_length / 2.0] -= box_length
-    result[result < -box_length / 2.0] += box_length
-    return result
-
-
-def mag(u, v, box_length):
-    """
-    returns the distance between two physical positions in a periodic box
-    assumes Cartesian coordinates
-    
-    Parameters
-    ----------
-    u : 3 x N position array
-    v : 3 x N OR 3 x 1 position array
-    box_length : float in same units as [u], [v]
-    
-    Returns 
-    -------
-    magnitude (float)
-    
-    Notes
-    --------
-    if u, v are 3x3 arrays, then be careful -- operations are on a row basis
-    so column 0 = x; column 1 = y; column 2 = z
-    """
-    
-    v = v.T # replace v with its transpose
-            
-    diff = shift(u, v, box_length)       
-    
-    if diff.shape[0] != 3:
-        diff = diff.T
-
-    return np.sqrt( (diff[0])**2 + (diff[1])**2 + (diff[2])**2 )
-
 
 
 def loadMCSTFiles(basePath, snapNum):
