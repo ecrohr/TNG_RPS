@@ -532,9 +532,10 @@ def convertGroupUnits(basePath, snapNum, dic, tree=False):
                    'SubhaloIDRaw', 'SubhaloParent', 'SubhaloFlag', 'GroupOrigHaloID', 'GroupPrimaryZoomTarget', 'GroupOffsetType', 'SubhaloOrigHaloID',
                    'SubhaloOffsetType', 'TreeID']:
             # check for unsigned ints 
-            if ('Illustris/' in basePath) and (dset.dtype == np.uint32):
-                mask = dset.astype(np.uint32) == 2**(32) - 1
-                dic[key][mask] = -1
+            if 'ID' in key:
+                if ('Illustris/' in basePath) and (dset.dtype == np.uint32):
+                    mask = dset.astype(np.uint32) == 2**(32) - 1
+                    dic[key][mask] = -1
             continue
         
         # dimensionless quantities (floats)
