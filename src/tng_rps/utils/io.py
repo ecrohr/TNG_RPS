@@ -20,6 +20,66 @@ from astropy.cosmology import FlatLambdaCDM
 from .units import *
 from createOffsets import createOffsets
 
+def loadSnapshotData(basePath, snapNum, partType, haloID=-1, subhaloID=-1, fields=None, extra_fields=None,
+                     convert_units=True, scope='HaloWithoutSatellites'):
+    """ 
+    Load snapshot data and return the data as a dictionary, defaults with units converted. 
+    Most importantly is scope, which determines which data are loaded, with the following options:
+    - 'Halo': loads all particles in the halo; works via haloID or by loading SubhaloGrNr using subhaloID
+    - 'Subhalo': loads all particles in the subhalo; works via subhaloID or loading GroupFirstSub using haloID
+    - 'HaloWithoutSatellites': loads all particles in the halo, but excludes any subhalos within the halo
+    - 'OriginalZoom': loads the original zoom simualtion
+    - 'FullSimulation': loads the full simulation, ignoring haloID and subhaloID 
+    fields are passed to the load function, and these fields should exist in the snapshot data. if None, then all fields are loaded.
+    extra_fields are added to the dictionary after loading and converting units, and the following options are available:
+    - None (default), then no extra fields are added
+    - PartType0: 'Temperature', 'CoolingTime', 'Pressure', 'CellSize', 'Entropy', 'Radii', 'JeansNumber'
+    """
+    
+    if ((haloID < 0 and subhaloID < 0) or (haloID >= 0 and subhaloID >= 0)) and (scope != 'FullSimulation'):
+        raise Exception("Must specify either haloID or subhaloID (and not both).")
+    
+    if haloID < 0 and subhaloID >= 0:
+        haloID = il.groupcat.loadSingle(basePath, snapNum, subhaloID=subhaloID)['SubhaloGrNr']
+    elif haloID >= 0 and subhaloID < 0:
+        subhaloID = il.groupcat.loadSingle(basePath, snapNum, haloID=haloID)['GroupFirstSub']
+
+    # load the snapshot data based on the scope
+    if scope == 'Halo':
+        data = il.snapshot.loadHalo(basePath, snapNum, haloID, partType, fields=fields)
+    elif scope == 'Subhalo':
+        data = il.snapshot.loadSubhalo(basePath, snapNum, subhaloID, partType, fields=fields)
+    elif scope == 'HaloWithoutSatellites':
+        data = loadHaloWithoutSatellites(basePath, snapNum, haloID=haloID, ptn=partType, fields=fields)
+    elif scope == 'OriginalZoom':
+        data = il.snapshot.loadOriginalZoom(basePath, snapNum, haloID, partType, fields=fields)
+    elif scope == 'FullSimulation':
+        data = il.snapshot.loadSubset(basePath, snapNum, partType, fields=fields)
+
+    if convert_units:
+        convertSnapshotUnits(basePath, snapNum, data)
+
+    if extra_fields is not None:
+        if 'Temperature' in extra_fields:
+            computeTemperature(data)
+        if 'CoolingTime' in extra_fields:
+            computeCoolingTime(data, basePath=basePath, snapNum=snapNum)
+        if 'Pressure' in extra_fields:
+            computeGasPressure(data, basePath=basePath, snapNum=snapNum)
+        if 'CellSize' in extra_fields:
+            computeCellSizes(data, basePath=basePath, snapNum=snapNum)
+        if 'Entropy' in extra_fields:
+            computeEntropy(data, basePath=basePath, snapNum=snapNum)
+        if 'JeansNumber' in extra_fields:
+            computeJeansNumber(data, basePath=basePath, snapNum=snapNum)
+        if 'Radii' in extra_fields:
+            subhalo = il.groupcat.loadSingle(basePath, snapNum, subhaloID=subhaloID)
+            convertGroupUnits(basePath, snapNum, subhalo)
+            computeRadii(data, subhalo['SubhaloPos'], basePath=basePath, snapNum=snapNum)
+    
+    return data
+
+
 def loadHaloWithoutSatellites(basePath, snapNum, haloID=-1, subhaloID=-1, ptn=0, fields=None):
     """ Load the snapshot data for a given halo removing all data bound to satellites """
 
